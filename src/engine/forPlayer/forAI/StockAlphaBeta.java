@@ -8,7 +8,6 @@ import engine.forBoard.Move;
 import engine.forBoard.MoveTransition;
 import engine.forPlayer.Player;
 
-import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveTask;
@@ -117,9 +116,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   /*** The count of quiescence searches performed during the algorithm execution. */
   private int quiescenceCount;
 
-  /*** A DecimalFormat object for formatting evaluation scores. */
-  private final DecimalFormat neatFormat = new DecimalFormat("#.###");
-
   /*** The maximum number of quiescence searches allowed. The higher this value is, the longer the search will take,
    * but theoretically will increase the strength of the engine's result. */
   private static final int MaxQuiescence = 30000;
@@ -132,9 +128,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
 
   /*** The delta pruning value used to prune likely unnecessary branches. */
   private static final double DeltaPruningValue = 15;
-
-  /*** Cache to store calculated SEE scores for each move. */
-  /*private final Map<Move, Integer> seeCache = new HashMap<>();*/
 
   /*** Enumeration representing different move sorting strategies. */
   private enum MoveSorter {
@@ -261,25 +254,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
    */
   private double calculateAspirationWindow(double highestSeenValue, double lowestSeenValue) {
     return Math.min(Math.abs(highestSeenValue - lowestSeenValue) * 0.2, 13);
-  }
-
-  /**
-   * Calculates the score and formats it based on the alliance of the current player.
-   *
-   * @param currentPlayer   The current player.
-   * @param highestSeenValue The highest seen value in the search.
-   * @param lowestSeenValue  The lowest seen value in the search.
-   * @return The formatted score.
-   */
-  private String score(final Player currentPlayer,
-                       final double highestSeenValue,
-                       final double lowestSeenValue) {
-    if (currentPlayer.getAlliance().isWhite()) {
-      return "[score: " + neatFormat.format(highestSeenValue) + "]";
-    } else if (currentPlayer.getAlliance().isBlack()) {
-      return "[score: " + neatFormat.format(lowestSeenValue) + "]";
-    }
-    throw new RuntimeException("How did you get here? :( ");
   }
 
   /**
