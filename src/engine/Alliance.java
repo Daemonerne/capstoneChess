@@ -13,7 +13,7 @@ import engine.forPlayer.WhitePlayer;
  * and positional bonuses for different pieces on the chessboard. This enum encapsulates the behavior and
  * attributes associated with each alliance, providing a structured way to handle alliance-specific logic
  * within a chess engine. The class includes methods for retrieving movement directions, pawn promotion checks,
- * choosing player objects based on the alliance, and calculating positional bonuses for different chess pieces.
+ * choosing player objects based on the alliance, and calculates positional bonuses for different chess pieces.
  *
  * @author Aaron Ho
  */

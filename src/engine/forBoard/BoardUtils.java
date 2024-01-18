@@ -74,10 +74,7 @@ public enum BoardUtils {
   
   /*** A list of algebraic notation representing each tile on the chessboard. */
   public static final List < String > ALGEBRAIC_NOTATION = initializeAlgebraicNotation();
-  
-  /*** A map that maps position strings (algebraic notation) to their corresponding tile coordinates. */
-  public static final Map < String, Integer > POSITION_TO_COORDINATE = initializePositionToCoordinateMap();
-  
+
   /*** The index of the starting tile. */
   public static final int START_TILE_INDEX = 0;
   
@@ -121,19 +118,6 @@ public enum BoardUtils {
   }
 
   /**
-   * Initializes a map that maps algebraic notation positions to their corresponding tile coordinates.
-   *
-   * @return A map mapping algebraic notation positions to tile coordinates.
-   */
-  private static Map < String, Integer > initializePositionToCoordinateMap() {
-    final Map < String, Integer > positionToCoordinate = new HashMap < > ();
-    for (int i = START_TILE_INDEX; i < NUM_TILES; i++) {
-      positionToCoordinate.put(ALGEBRAIC_NOTATION.get(i), i);
-    }
-    return Collections.unmodifiableMap(positionToCoordinate);
-  }
-
-  /**
    * Initializes a list of strings representing algebraic notation positions for each tile on the chessboard.
    *
    * @return A list of algebraic notation positions.
@@ -162,16 +146,6 @@ public enum BoardUtils {
   }
 
   /**
-   * Returns the tile coordinate corresponding to a given algebraic notation position.
-   *
-   * @param position The algebraic notation position to convert.
-   * @return The corresponding tile coordinate.
-   */
-  public int getCoordinateAtPosition(final String position) {
-    return POSITION_TO_COORDINATE.get(position);
-  }
-
-  /**
    * Returns the algebraic notation position corresponding to a given tile coordinate.
    *
    * @param coordinate The tile coordinate to convert.
@@ -179,16 +153,6 @@ public enum BoardUtils {
    */
   public static String getPositionAtCoordinate(final int coordinate) {
     return ALGEBRAIC_NOTATION.get(coordinate);
-  }
-
-  /**
-   * Checks whether the current board is in an immediate threat state, i.e., if either player's king is under threat.
-   *
-   * @param board The current state of the board.
-   * @return True if either king is under threat, false otherwise.
-   */
-  public static boolean isThreatenedBoardImmediate(final Board board) {
-    return board.whitePlayer().isInCheck() || board.blackPlayer().isInCheck();
   }
 
   /**
@@ -221,7 +185,7 @@ public enum BoardUtils {
   }
 
   /**
-   * Calculates the Modified Value, Victim, Least Value, Victim Attacker (MVVLVA) score for a move.
+   * Calculates the Modified Value, Victim, The Least Value, Victim Attacker (MVVLVA) score for a move.
    *
    * @param move The move for which to calculate the MVVLVA score.
    * @return The MVVLVA score.
@@ -266,24 +230,6 @@ public enum BoardUtils {
   }
 
   /**
-   * Checks if the current game has progressed into an endgame.
-   * 
-   * @param board The current state of the board.
-   * @return True if the game is in an endgame state, false otherwise.
-   */
-  public static boolean isEndGame(final Board board) {
-
-    int total = 0;
-    for (final Piece piece : board.getAllPieces()) {
-      if(!(piece instanceof King)) {
-        total += piece.getPieceValue();
-      }
-    }
-
-    return total <= 1500;
-  }
-
-  /**
    * Checks if the current game is in the opening stage.
    *
    * @param board The current state of the board.
@@ -303,10 +249,9 @@ public enum BoardUtils {
    * @return The SEE value for the move.
    */
   public static int see(Board board, Move move) {
-    int fromSquare = move.getCurrentCoordinate();
-    int toSquare = move.getDestinationCoordinate();
+      int toSquare = move.getDestinationCoordinate();
 
-    int result = 0;
+    int result;
 
     // Make the move on a temporary board
     Board tempBoard = board.currentPlayer().makeMove(move).toBoard();

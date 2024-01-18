@@ -28,9 +28,6 @@ public final class PawnStructureAnalyzer {
   /*** Penalty applied for each doubled pawn. */
   public static final int DoubledPawnPenalty = 8;
 
-  /*** Penalty applied for each backward pawn. */
-  public static final int BackwardPawnPenalty = 6;
-
   /*** Bonus applied for each connected passed pawn. */
   public static final int ConnectedPassedPawnBonus = 15;
 
@@ -81,58 +78,6 @@ public final class PawnStructureAnalyzer {
     pawnStructureScore += calculatePawnIslands(pawnsOnColumnTable);
 
     return pawnStructureScore;
-  }
-
-  /**
-   * Calculates the penalty for backward pawns for the specified player on the given chess board.
-   * A backward pawn is one that has no friendly pawns in front or on adjacent files,
-   * and has opponent pawns in adjacent files.
-   *
-   * @param player The player whose backward pawns are being evaluated.
-   * @param board The current state of the chess board.
-   * @return The penalty for backward pawns.
-   */
-  private static int calculateBackwardPawns(final Player player, final Board board) {
-    int backwardPawnPenalty = 0;
-    for (final Piece pawn : calculatePlayerPawns(player)) {
-      if (isPawnBackward(pawn, board)) {
-        backwardPawnPenalty -= BackwardPawnPenalty;
-      }
-    }
-    return backwardPawnPenalty;
-  }
-
-  /**
-   * Checks if the specified pawn is backward.
-   * A backward pawn has no friendly pawns in front or on the same file,
-   * and has opponent pawns in adjacent files.
-   *
-   * @param pawn The pawn being checked.
-   * @param board The current state of the chess board.
-   * @return True if the pawn is backward, false otherwise.
-   */
-  private static boolean isPawnBackward(final Piece pawn, final Board board) {
-    final int[] pawnsOnColumnTable = createPawnColumnTable(board.currentPlayer());
-    int pawnSquare = pawn.getPiecePosition();
-    int file = pawnSquare % 8;
-    int rank = pawnSquare / 8;
-
-    List<Piece> opponentPawns = calculatePlayerPawns(board.currentPlayer().getOpponent());
-
-    for (int i = Math.max(0, file - 1); i <= Math.min(7, file + 1); i++) {
-      int finalI = i;
-      if (opponentPawns.stream().anyMatch(p -> p.getPiecePosition() / 8 == rank && p.getPiecePosition() % 8 == finalI)) {
-        return false;
-      }
-    }
-
-    for (int i = rank + 1; i < 8; i++) {
-      if (pawnsOnColumnTable[i] > 0) {
-        return false;
-      }
-    }
-
-    return true;
   }
 
   /**

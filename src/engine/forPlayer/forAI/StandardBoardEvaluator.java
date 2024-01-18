@@ -30,10 +30,7 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
   /*** Bonus applied when a player has successfully castled. */
   private final static int CastleBonus = 20;
 
-  /*** Bonus applied when a player has two bishops. */
-  private final static int BishopPairBonus = 20;
-
-  /*** Bonus applied when a player has two pawns in the center. */
+    /*** Bonus applied when a player has two pawns in the center. */
   private final static double PawnCenterBonus = 25;
 
   /*** Bonus applied when a developed piece is a minor piece. */

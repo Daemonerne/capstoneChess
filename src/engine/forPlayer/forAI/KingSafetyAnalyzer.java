@@ -2,13 +2,10 @@ package engine.forPlayer.forAI;
 
 import engine.forBoard.Board;
 import engine.forBoard.BoardUtils;
-import engine.forBoard.Move;
 import engine.forPiece.Pawn;
 import engine.forPiece.Piece;
 import engine.forPiece.Rook;
 import engine.forPlayer.Player;
-
-import java.util.Collection;
 
 /**
  * The `KingSafetyAnalyzer` class is responsible for comprehensively analyzing the safety of the king during a chess game.
@@ -44,32 +41,7 @@ public final class KingSafetyAnalyzer {
   }
 
   /**
-   * Calculates the king's tropism by determining the closest enemy piece and its distance to the player's king.
-   * The tropism is a measure of how attracted the opponent's pieces are to the player's king. A lower distance indicates
-   * a higher level of threat, and the closest enemy piece is identified for further analysis.
-   *
-   * @param player The player whose king's safety is being analyzed.
-   * @return An instance of `KingDistance` representing the closest enemy piece and its distance.
-   */
-  KingDistance calculateKingTropism(final Player player) {
-    final int playerKingSquare = player.getPlayerKing().getPiecePosition();
-    final Collection<Move> enemyMoves = player.getOpponent().getLegalMoves();
-    Piece closestPiece = null;
-    int closestDistance = Integer.MAX_VALUE;
-
-    for (final Move move : enemyMoves) {
-      final int currentDistance = calculateChebyshevDistance(playerKingSquare, move.getDestinationCoordinate());
-
-      if (currentDistance < closestDistance) {
-        closestDistance = currentDistance;
-        closestPiece = move.getMovedPiece();
-      }
-    }
-    return new KingDistance(closestPiece, closestDistance);
-  }
-
-  /**
-   * Evaluates the potential threat to the player's king by assessing the presence of pawns in close proximity.
+   * Evaluates the potential threat to the player's king by assessing the presence of pawns in proximity.
    * The method assigns a score based on the number of pawns forming a shelter around the king.
    * A higher score suggests a more secure pawn shelter, contributing to improved king safety.
    *
@@ -138,41 +110,6 @@ public final class KingSafetyAnalyzer {
       }
     }
     return score;
-  }
-
-  /**
-   * Evaluates the control over key squares around the player's king.
-   * The method assigns a score based on the player's dominance over crucial squares around the king.
-   * A higher score indicates better control over key squares, contributing to improved king safety.
-   *
-   * @param player The player whose king's safety is being evaluated.
-   * @return The key squares control score.
-   */
-  double evaluateKeySquaresControl(final Player player, final Board board) {
-    int keySquaresControlScore = 0;
-    int kingSquare = player.getPlayerKing().getPiecePosition();
-
-    int[] targetSquares = {
-            kingSquare - 9,
-            kingSquare - 8,
-            kingSquare - 7,
-            kingSquare - 1,
-            kingSquare + 1,
-            kingSquare + 7,
-            kingSquare + 8,
-            kingSquare + 9
-    };
-
-    for (int targetSquare : targetSquares) {
-      if (BoardUtils.isValidTileCoordinate(targetSquare)) {
-        Piece piece = board.getPiece(targetSquare);
-        if (piece == null || piece.getPieceAllegiance() != player.getAlliance()) {
-          keySquaresControlScore += 4;
-        }
-      }
-    }
-
-    return keySquaresControlScore;
   }
 
   /**
@@ -279,32 +216,4 @@ public final class KingSafetyAnalyzer {
     throw new RuntimeException("Should not reach here!");
   }
 
-  /*** The `KingDistance` class represents the distance between the player's king and the closest enemy piece. */
-  static class KingDistance {
-
-    /** The closest enemy piece. */
-    final Piece enemyPiece;
-    /** The distance between the king and the enemy piece. */
-    final int distance;
-
-    /**
-     * Constructs a `KingDistance` instance.
-     *
-     * @param enemyDistance The closest enemy piece.
-     * @param distance      The distance between the king and the enemy piece.
-     */
-    KingDistance(final Piece enemyDistance, final int distance) {
-      this.enemyPiece = enemyDistance;
-      this.distance = distance;
-    }
-
-    /**
-     * Gets the distance between the king and the enemy piece.
-     *
-     * @return The distance between the king and the enemy piece.
-     */
-    public int getDistance() {
-      return distance;
-    }
-  }
 }

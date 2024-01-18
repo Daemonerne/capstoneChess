@@ -39,12 +39,12 @@ import static javax.swing.SwingUtilities.*;
  * There is also a possibility is a runtime error because of the rapid rate of play.
  * <br><br>
  * Known bug:
- * Encountered mysterious bug when attempted to check for three fold repetition among players. There is no indication as to
+ * Encountered mysterious bug when attempted to check for three-fold repetition among players. There is no indication as to
  * what is causing the bug, but it is likely a runtime error or a logic error because it is encountered after execution.
- * Most of the code has been deleted, or commented out, as it would likely require an overhual to implment successfully.
+ * Most of the code has been deleted, or commented out, as it would likely require an overhaul to implement successfully.
  * <br><br>
  * Known bug:
- * Once a game has started and the computer is thinking, it is possible to make more AI players' think in parrallel. This
+ * Once a game has started and the computer is thinking, it is possible to make more AI players' think in parallel. This
  * Drastically slows down the computation and glitches out the DebugPanel and the StockAlphaBeta class. A lock on selecting
  * the buttons in the "Setup Game" menu might be required to fix this.
  *
@@ -468,13 +468,7 @@ public final class Table extends Observable {
                 JOptionPane.INFORMATION_MESSAGE);
       }
 
-      /* if(isThreeFoldRepetition()) { //Bug in logic
-        JOptionPane.showMessageDialog(Table.get().getBoardPanel(),
-                "Game Over: Players repeated moves!", "Game Over",
-                JOptionPane.INFORMATION_MESSAGE);
-      } */
-
-      if (Table.get().getGameBoard().currentPlayer().isInStaleMate()) {
+        if (Table.get().getGameBoard().currentPlayer().isInStaleMate()) {
         JOptionPane.showMessageDialog(Table.get().getBoardPanel(),
                 "Game Over: Player " + Table.get().getGameBoard().currentPlayer() + " is in stalemate!", "Game Over",
                 JOptionPane.INFORMATION_MESSAGE);

@@ -2,14 +2,11 @@ package engine.forPlayer.forAI;
 
 import com.google.common.collect.ImmutableList;
 import engine.forBoard.Board;
-import engine.forBoard.BoardUtils;
 import engine.forBoard.Move;
 import engine.forPiece.Piece;
 import engine.forPlayer.Player;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 
 /**
  * The RookStructureAnalyzer class is responsible for analyzing the rook structure on the chess board,
@@ -20,10 +17,7 @@ public final class RookStructureAnalyzer {
   /*** The singleton instance of RookStructureAnalyzer. */
   private static final RookStructureAnalyzer Instance = new RookStructureAnalyzer();
 
-  /*** The list of columns on the chess board. */
-  private static final List < List < Boolean >> BOARD_COLUMNS = initColumns();
-
-  /*** Bonus applied for rooks on an open file. */
+    /*** Bonus applied for rooks on an open file. */
   private static final int OpenFileControlBonus = 10;
 
   /*** Bonus applied when a rook can lift itself to a higher rank position on the board. */
@@ -50,19 +44,6 @@ public final class RookStructureAnalyzer {
     return Instance;
   }
 
-  private static List<List<Boolean>> initColumns() {
-    final List<List<Boolean>> columns = new ArrayList<>();
-    columns.add(BoardUtils.Instance.FirstColumn);
-    columns.add(BoardUtils.Instance.SecondColumn);
-    columns.add(BoardUtils.Instance.ThirdColumn);
-    columns.add(BoardUtils.Instance.FourthColumn);
-    columns.add(BoardUtils.Instance.FifthColumn);
-    columns.add(BoardUtils.Instance.SixthColumn);
-    columns.add(BoardUtils.Instance.SeventhColumn);
-    columns.add(BoardUtils.Instance.EighthColumn);
-    return ImmutableList.copyOf(columns);
-  }
-
   /**
    * Calculate the rook structure score based on open files and the positions of rooks.
    *
@@ -78,7 +59,7 @@ public final class RookStructureAnalyzer {
     score += calculateConnectedRookBonus(rookOnColumnTable);
     //  score += calculateRookOn7thRankBonus(rookOnColumnTable);
     //  Alternative to bonus applied via `Alliance`
-    score += calculateRookLiftBonus(player, board);
+    score += calculateRookLiftBonus(player);
     score += calculateHalfOpenFileBonus(rookOnColumnTable, board);
     score += calculateOpenFileControlBonus(rookOnColumnTable, board);
     score += calculateUnsafeKingBonus(player, board);
@@ -103,24 +84,12 @@ public final class RookStructureAnalyzer {
   }
 
   /**
-   * Calculate the bonus for a rook on the 7th rank.
-   *
-   * @param rookOnColumnTable The table of rook counts per column.
-   * @return The rook on 7th rank bonus.
-   */
-  private static int calculateRookOn7thRankBonus(final int[] rookOnColumnTable) {
-    return 0; //See `rookStructureScore`
-    //return rookOnColumnTable[6] > 0 ? ROOK_ON_7TH_RANK_BONUS * rookOnColumnTable[6] : NO_BONUS;
-  }
-
-  /**
    * Calculate the bonus for a rook lift.
    *
    * @param player The player for whom to calculate rook lift.
-   * @param board  The chess board.
    * @return The rook lift bonus.
    */
-  private static int calculateRookLiftBonus(final Player player, final Board board) {
+  private static int calculateRookLiftBonus(final Player player) {
     int bonus = 0;
     final Piece rook = player.getActivePieces()
             .stream()
@@ -234,24 +203,6 @@ public final class RookStructureAnalyzer {
     return player.getActivePieces().stream()
             .filter(piece -> piece.getPieceType() == Piece.PieceType.ROOK)
             .collect(ImmutableList.toImmutableList());
-  }
-
-  /**
-   * Create a table that represents the number of pieces on each column.
-   *
-   * @param board The chess board.
-   * @return The table containing piece counts per column.
-   */
-  private static int[] createPiecesOnColumnTable(final Board board) {
-    final int[] piecesOnColumnTable = new int[BOARD_COLUMNS.size()];
-    for (final Piece piece: board.getAllPieces()) {
-      for (int i = 0; i < BOARD_COLUMNS.size(); i++) {
-        if (BOARD_COLUMNS.get(i).get(piece.getPiecePosition())) {
-          piecesOnColumnTable[i]++;
-        }
-      }
-    }
-    return piecesOnColumnTable;
   }
 
 }

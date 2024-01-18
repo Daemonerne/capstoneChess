@@ -16,7 +16,7 @@ import static engine.forBoard.Board.Builder;
  * details of the current board state, the moved piece, and the destination coordinate. MajorAttackMove extends MajorMove
  * to encompass attacking moves, including information about the attacked piece. PawnMove and PawnAttackMove subclasses
  * handle pawn movements and attacks, distinguishing between regular and attacking pawn moves. The PawnEnPassantAttack
- * subclass manages en passant pawn attacks, ensuring accurate execution and undoing of such moves. PawnJump handles pawn
+ * subclass manages en passant pawn attacks, ensuring accurate execution and undoing of such moves. PawnJump handles pawn's
  * initial two-square advances. CastleMove serves as the base class for castling moves, featuring details about the castling
  * rook, its starting and destination coordinates, and overrides the execute method to implement castling. KingSideCastleMove
  * and QueenSideCastleMove extend CastleMove for specific castling directions. AttackMove, a subclass of Move, specifically
@@ -27,7 +27,7 @@ import static engine.forBoard.Board.Builder;
  * The MoveFactory inner class acts as a factory for creating various types of moves, and its methods aid in move validation,
  * retrieval, and creation.
  * <br><br>
- * A known bug occurs occassionally when `.hashCode()` is called because the searching algorithm occassioaly evaluates
+ * A known bug occurs occasionally when `.hashCode()` is called because the searching algorithm occasionally evaluates
  * a `NullMove` object, and a `NullPointerException` is thrown because of the reference to the null object.
  *
  * @author Aaron Ho
@@ -248,7 +248,7 @@ public abstract class Move {
    * back rank, it can be promoted to any other chess piece (queen, rook, bishop, or knight). This class extends a
    * standard `PawnMove` by adding promotion information and handles the execution of the promotion move.
    * <br>
-   * Note that promotion is hard coded for a Queen. No underpromotions are allowed.
+   * Note that promotion is hard coded for a Queen. No under-promotions are allowed.
    *
    * @author Aaron Ho
    */
@@ -333,7 +333,7 @@ public abstract class Move {
     }
   
     /**
-     * Gets the piece that is attacked by this pawn promotion move.
+     * Gets the piece attacked by this pawn promotion move.
      *
      * @return The attacked piece, or `null` if it's not an attack move.
      */
@@ -357,7 +357,7 @@ public abstract class Move {
 
   /**
    * The `MajorMove` class represents a standard major move in chess. This move is typically associated with major
-   * pieces (queen, rook, knihgt, or bishop) and involves the piece moving to a new destination coordinate on the board.
+   * pieces (queen, rook, knight, or bishop) and involves the piece moving to a new destination coordinated on the board.
    *
    * @author Aaron Ho
    */
@@ -399,7 +399,7 @@ public abstract class Move {
   
   /**
    * The `MajorAttackMove` class represents a major attack move in chess. This type of move involves a major piece
-   * (queen, rook, knight, or bishop) moving to a new destination coordinate and capturing an opponent's piece.
+   * (queen, rook, knight, or bishop) moving to a new destination to coordinate and capturing an opponent's piece.
    *
    * @author Aaron Ho
    */
@@ -485,7 +485,7 @@ public abstract class Move {
   
   /**
    * The `PawnAttackMove` class represents a pawn attack move in chess. This type of move involves a pawn moving to a new
-   * destination coordinate and capturing an opponent's piece.
+   *  destination to coordinate and capturing an opponent's piece.
    *
    * @author Aaron Ho
    */
@@ -536,7 +536,8 @@ public abstract class Move {
   public static class PawnEnPassantAttack extends PawnAttackMove {
   
     /**
-     * Constructs a `PawnEnPassantAttack` instance with the provided board, moving piece, destination coordinate, and piece attacked.
+     * Constructs a `PawnEnPassantAttack` instance with the provided board,
+     * moving a piece, destination coordinate, and a piece attacked.
      *
      * @param board                 The chess board on which the move is made.
      * @param pieceMoved            The pawn piece that is moved.
@@ -907,7 +908,7 @@ public abstract class Move {
     }
   
     /**
-     * Gets the piece that is attacked as a result of this move.
+     * Gets the piece attacked as a result of this move.
      *
      * @return The attacked piece.
      */
@@ -1019,8 +1020,5 @@ public abstract class Move {
       }
       return MoveUtils.NULL_MOVE;
     }
-  }
-  public Board getBoardAfterMove() {
-    return this.execute();
   }
 }

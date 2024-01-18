@@ -99,15 +99,6 @@ public abstract class Piece {
   }
 
   /**
-   * Gets the number of moves made by the chess piece.
-   *
-   * @return The number of moves made by the chess piece.
-   */
-  public int getNumMoves() {
-    return this.numMoves;
-  }
-
-  /**
    * Gets the value of the chess piece in terms of its type.
    *
    * @return The value of the chess piece.
@@ -197,7 +188,7 @@ public abstract class Piece {
     /*** Represents a queen with a value of 9 pawns. */
     QUEEN(900, "Q"),
     
-    /*** Represents a king with a value of 100 pawns. In reality it is of infinite worth, but 10,000 is high enough. */
+    /*** Represents a king with a value of 100 pawns. In reality, it is of infinite worth, but 10,000 is high enough. */
     KING(10000, "K");
 
     /*** The value of the piece. */
@@ -238,7 +229,7 @@ public abstract class Piece {
     }
 
     /**
-     * Checks if the peice in question is a minor piece (e.g. bishop or knight). 
+     * Checks if the piece in question is a minor piece (e.g. bishop or knight).
      *
      * @return True if the piece is a minor piece, false otherwise. 
      */
