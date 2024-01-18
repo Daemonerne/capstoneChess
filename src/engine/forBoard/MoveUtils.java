@@ -12,7 +12,7 @@ import java.util.List;
 public class MoveUtils {
 
   /*** An instance of the `MoveUtils` class that can be used to access its methods. */
-  public static final MoveUtils Instance = new   MoveUtils();
+  public static final MoveUtils Instance = new MoveUtils();
 
   /*** A special move representing a lack of valid move, used to signify an invalid or non-existent move. */
   public static final Move NULL_MOVE = new Move.NullMove();
