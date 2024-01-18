@@ -117,9 +117,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   /*** The count of quiescence searches performed during the algorithm execution. */
   private int quiescenceCount;
 
-  /*** Using SLF4J as a logger, so there are no costly print statements outputted by the compiler. */
-  //private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(StockAlphaBeta.class);
-
   /*** A DecimalFormat object for formatting evaluation scores. */
   private final DecimalFormat neatFormat = new DecimalFormat("#.###");
 
@@ -216,51 +213,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     }
     return depth - 1;
   }
-
-  
-  /**
-   * Calculates the static exchange evaluation (SEE) score for a move on the given board.
-   *
-   * @param board The current chess board.
-   * @param move  The move to be evaluated.
-   * @return The SEE score for the move.
-   */
-  /*private int calculateSEE(Board board, Move move) {
-    return seeCache.computeIfAbsent(move, key -> {
-      int score = 0;
-      int targetSquare = move.getDestinationCoordinate();
-      int attackerSquare = move.getCurrentCoordinate();
-      Board copyBoard = board.currentPlayer().makeMove(move).toBoard();
-
-      if (copyBoard.getPiece(targetSquare) != null) {
-        int pieceValue = BoardUtils.getPieceValue(copyBoard.getPiece(attackerSquare).getPiece());
-        score = pieceValue;
-
-        while (true) {
-          int finalTargetSquare = targetSquare;
-          List<Move> captures = MoveSorter.STANDARD.sort(copyBoard.currentPlayer().getLegalMoves(), copyBoard)
-              .stream()
-              .filter(capture -> capture.getDestinationCoordinate() == finalTargetSquare)
-              .toList();
-
-          if (captures.isEmpty()) {
-            break;
-          }
-
-          Move nextCapture = captures.get(0);
-          pieceValue = BoardUtils.getPieceValue(copyBoard.getPiece(nextCapture.getCurrentCoordinate()).getPiece());
-          score -= pieceValue;
-
-          seeCache.put(nextCapture, score); // Store SEE score in the cache
-          
-          copyBoard = copyBoard.currentPlayer().makeMove(nextCapture).toBoard();
-          targetSquare = nextCapture.getDestinationCoordinate();
-        }
-      }
-
-      return score;
-    });
-  }*/
 
   /**
    * Executes the alpha-beta search algorithm with Iterative Deepening to find the best move for the current player.
