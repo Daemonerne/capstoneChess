@@ -25,7 +25,8 @@ public final class King extends Piece {
   /*** An array of possible candidate move coordinates for a king, representing all possible one-square moves. */
   private final static int[] CANDIDATE_MOVE_COORDINATES = { -9, -8, -7, -1, 1, 7, 8, 9 };
 
-  /*** A map that stores the precomputed legal move offsets for each tile on the board, taking into account edge cases. */
+  /*** A map that stores the precomputed legal move offsets for each tile on the board,
+   * taking edge cases into consideration. */
   private final static Map <Integer, int[]> PRECOMPUTED_CANDIDATES = computeCandidates();
 
   /*** A boolean indicating if the king has been castled. */
@@ -80,7 +81,7 @@ public final class King extends Piece {
 
   /**
    * Computes and precomputes the legal move offsets for each tile on the board for the king.
-   * Takes into account edge cases to exclude illegal move offsets.
+   * Takes into account-edge cases to exclude illegal move offsets.
    *
    * @return A map containing the precomputed legal move offsets for each tile on the board.
    */
@@ -109,7 +110,7 @@ public final class King extends Piece {
   /**
    * Checks if the king has been castled.
    *
-   * @return true if the king has been castled, otherwise false.
+   * @return true, if the king has been castled, otherwise false.
    */
   public boolean isCastled() {
     return this.isCastled;

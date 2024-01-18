@@ -18,7 +18,7 @@ import static engine.forBoard.MoveUtils.Line;
  * <br><br>
  * This class provides methods for calculating legal moves for a rook, including horizontal and vertical moves,
  * as well as capturing opponent pieces. It precomputes valid move lines for each tile on the board, taking into
- * account edge cases and exclusions.
+ * cases and exclusions into consideration.
  *
  * @author Aaron Ho
  */

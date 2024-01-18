@@ -99,7 +99,7 @@ class GameSetup extends JDialog {
   }
 
   /**
-   * Checks if the given player is controlled by AI based on the setup configuration.
+   * Checks if AI controls the given player on the setup configuration.
    *
    * @param player The player for which to check AI status.
    * @return True if the player is AI-controlled, indicating a computer player; false if the player is human-controlled.

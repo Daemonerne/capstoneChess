@@ -18,7 +18,7 @@ import static engine.forBoard.MoveUtils.Line;
  * color of square it started on.
  * <br><br>
  * This class provides methods for calculating legal moves for a bishop, including diagonal moves and capturing moves.
- * It precomputes legal move lines for each tile on the board, taking into account edge cases and exclusions.
+ * It precomputes legal move lines for each tile on the board, taking edge cases and exclusions into consideration.
  *
  * @author Aaron Ho
  */
@@ -60,7 +60,7 @@ public final class Bishop extends Piece {
 
   /**
    * Computes and precomputes the legal move lines for each tile on the board for the bishop, considering diagonal moves.
-   * Takes into account edge cases and exclusions.
+   * Takes edge cases and exclusions into consideration
    *
    * @return A map containing the precomputed legal move lines for each tile on the board.
    */
@@ -155,7 +155,7 @@ public final class Bishop extends Piece {
    *
    * @param position            The current position of the bishop.
    * @param offset              The offset being considered for the diagonal move.
-   * @return true if the exclusion applies, otherwise false.
+   * @return true, if the exclusion applies, otherwise false.
    */
   private static boolean isFirstColumnExclusion(final int position,
                                                 final int offset) {
@@ -168,7 +168,7 @@ public final class Bishop extends Piece {
    *
    * @param position            The current position of the bishop.
    * @param offset              The offset being considered for the diagonal move.
-   * @return true if the exclusion applies, otherwise false.
+   * @return true, if the exclusion applies, otherwise false.
    */
   private static boolean isEighthColumnExclusion(final int position,
                                                  final int offset) {

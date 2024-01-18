@@ -23,14 +23,14 @@ import static engine.forBoard.Move.*;
  * Additionally, the class keeps track of the number of moves made by the pawn, and this information is used for certain functionalities
  * such as pawn promotion and move tracking.
  * <br><br>
- * Known bug: Occasionally, at a rapid pace of input (1 move a second) a promoted pawn will not be promoted into a
- * queen and will remain a pawn on either the 1st or 8th rank. We think this has to do with the `paint()` or `repaint()` calls
+ * Known bug: Occasionally, at a rapid pace of input (one move a second) a promoted pawn will not be promoted into a
+ * queen and will remain a pawn at either the first or eighth rank. We think this has to do with the `paint()` or `repaint()` calls
  * in the `Table` class when the new queen is supposed to be painted.
  * <br><br>
  * Note: Despite the rules of chess allowing you to under-promote pieces, there are only a few rare circumstances where knights
  * are the best or only move to end the game or keep it alive. Therefore, to simplify this experience for both the coder and the
  * player, the promotion is hardcoded to be a `Queen`. This is also for your enjoyment of the game, because we know that you are
- * too stupid and dramatic and romantic to realize that promoting to any other piece is horribly pointless and idiotic.
+ * too stupid and dramatic and romantic to realize that promoting any other piece is horribly pointless and idiotic.
  *
  * @author Aaron Ho
  * @author dareTo81

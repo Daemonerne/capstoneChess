@@ -26,7 +26,8 @@ public final class Knight extends Piece {
   /*** An array of possible candidate move coordinates for a knight in its L-shaped move pattern. */
   private final static int[] CANDIDATE_MOVE_COORDINATES = { -17, -15, -10, -6, 6, 10, 15, 17 };
 
-  /*** A map that stores the precomputed legal move offsets for each tile on the board, taking into account edge cases. */
+  /*** A map that stores the precomputed legal move offsets for each tile on the board,
+   * taking edge cases into consideration. */
   private final static Map < Integer, int[] > PRECOMPUTED_CANDIDATES = computeCandidates();
 
   /**
@@ -59,7 +60,7 @@ public final class Knight extends Piece {
 
   /**
    * Computes and precomputes the legal move offsets for each tile on the board for the knight.
-   * Takes into account edge cases to exclude illegal move offsets.
+   * Takes edge cases to exclude illegal move offsets into consideration.
    *
    * @return A map containing the precomputed legal move offsets for each tile on the board.
    */

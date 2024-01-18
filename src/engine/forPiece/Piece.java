@@ -182,10 +182,10 @@ public abstract class Piece {
     /*** Represents a bishop with a value of 3.3 pawns. */
     BISHOP(330, "B"),
     
-    /*** Represents a rook with a value of 5 pawns. */
+    /*** Represents a rook with a value of five pawns. */
     ROOK(500, "R"),
     
-    /*** Represents a queen with a value of 9 pawns. */
+    /*** Represents a queen with a value of nine pawns. */
     QUEEN(900, "Q"),
     
     /*** Represents a king with a value of 100 pawns. In reality, it is of infinite worth, but 10,000 is high enough. */
@@ -194,7 +194,7 @@ public abstract class Piece {
     /*** The value of the piece. */
     private final int value;
 
-    /*** The name of the piece (e.g. R for rook). */
+    /*** The name of the piece (e.g., R for rook). */
     private final String pieceName;
 
     /**
@@ -229,7 +229,7 @@ public abstract class Piece {
     }
 
     /**
-     * Checks if the piece in question is a minor piece (e.g. bishop or knight).
+     * Checks if the piece in question is a minor piece (e.g., bishop or knight).
      *
      * @return True if the piece is a minor piece, false otherwise. 
      */
