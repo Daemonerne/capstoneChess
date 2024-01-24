@@ -37,7 +37,7 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
   private final static int MinorDevelopmentBonus = 15;
 
   /*** Penalty applied for moving the same piece multiple times in the opening period. */
-  private final static int RepeatedMoveInOpeningPenalty = -10; //Customizable if desired.
+  private final static int RepeatedMoveInOpeningPenalty = -10; 
 
   /*** Singleton instance of the StandardBoardEvaluator. */
   private static final StandardBoardEvaluator Instance = new StandardBoardEvaluator();
