@@ -36,7 +36,7 @@ import static javax.swing.SwingUtilities.*;
  * Known bug:
  * At a very rapid pace of play (1 move in < .1 sec), promoted pawns will incorrectly remain pawns on the back ranks
  * instead of repainting to a queen. Likely due to a bug in the logic in the drawBoard() method, or even in the Pawn class. 
- * There is also a possibility is a runtime error because of the rapid rate of play.
+ * There is also a possibility of a runtime error because of the rapid rate of play.
  * <br><br>
  * Known bug:
  * Encountered mysterious bug when attempted to check for three-fold repetition among players. There is no indication as to
@@ -44,7 +44,7 @@ import static javax.swing.SwingUtilities.*;
  * Most of the code has been deleted, or commented out, as it would likely require an overhaul to implement successfully.
  * <br><br>
  * Known bug:
- * Once a game has started and the computer is thinking, it is possible to make more AI players' think in parallel. This
+ * Once a game has started and the computer is thinking, it is possible to make more AI players think in parallel. This
  * Drastically slows down the computation and glitches out the DebugPanel and the StockAlphaBeta class. A lock on selecting
  * the buttons in the "Setup Game" menu might be required to fix this.
  *
@@ -438,7 +438,7 @@ public final class Table extends Observable {
 
   /**
    * A watcher class that observes changes in the game state and triggers AI actions
-   * or displays game-over messages based on certain conditions. Observer is deprecated
+   * or displays game-over messages based on certain conditions. Observer is deprecated,
    * but its use in this class was heavily advised.
    */
   private static class TableGameAIWatcher implements Observer {
@@ -868,7 +868,7 @@ public final class Table extends Observable {
 
     /**
      * Assigns the appropriate background color to the tile based on its position on the chess board.
-     * Differentiates between light and dark tiles on alternating rows.
+     * Differentiates between light and dark tiles in alternating rows.
      */
     private void assignTileColor() {
       if (BoardUtils.Instance.FirstRow.get(this.tileId) ||

@@ -70,7 +70,7 @@ public final class King extends Piece {
   public King(final Alliance alliance,
               final int piecePosition,
               final boolean isFirstMove,
-              final boolean isCastled,
+              final boolean isCastled, 
               final boolean kingSideCastleCapable,
               final boolean queenSideCastleCapable) {
     super(PieceType.KING, alliance, piecePosition, isFirstMove, 0);

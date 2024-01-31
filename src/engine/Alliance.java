@@ -46,7 +46,7 @@ public enum Alliance {
      * Checks if a given position on the board is a square where a pawn of this alliance can be promoted.
      *
      * @param position The position to check.
-     * @return True if it is a pawn promotion square, false otherwise.
+     * @return         True if it is a pawn promotion square, false otherwise.
      */
     @Override
     public boolean isPawnPromotionSquare(final int position) {
@@ -58,7 +58,7 @@ public enum Alliance {
      *
      * @param whitePlayer The WhitePlayer object.
      * @param blackPlayer The BlackPlayer object.
-     * @return The WhitePlayer object.
+     * @return            The WhitePlayer object.
      */
     @Override
     public Player choosePlayerByAlliance(final WhitePlayer whitePlayer, final BlackPlayer blackPlayer) {
@@ -80,7 +80,7 @@ public enum Alliance {
      *
      * @param position The position of the pawn.
      * @param board    The current chess board.
-     * @return The pawn bonus.
+     * @return         The pawn bonus.
      */
     @Override
     public int pawnBonus(final int position, final Board board) {
@@ -92,7 +92,7 @@ public enum Alliance {
      *
      * @param position The position of the knight.
      * @param board    The current chess board.
-     * @return The knight bonus.
+     * @return         The knight bonus.
      */
     @Override
     public int knightBonus(final int position, final Board board) {
@@ -104,7 +104,7 @@ public enum Alliance {
      *
      * @param position The position of the bishop.
      * @param board    The current chess board.
-     * @return The bishop bonus.
+     * @return         The bishop bonus.
      */
     @Override
     public int bishopBonus(final int position, final Board board) {
@@ -116,7 +116,7 @@ public enum Alliance {
      *
      * @param position The position of the rook.
      * @param board    The current chess board.
-     * @return The rook bonus.
+     * @return         The rook bonus.
      */
     @Override
     public int rookBonus(final int position, final Board board) {
@@ -128,7 +128,7 @@ public enum Alliance {
      *
      * @param position The position of the queen.
      * @param board    The current chess board.
-     * @return The queen bonus.
+     * @return         The queen bonus.
      */
     @Override
     public int queenBonus(final int position, final Board board) {
@@ -143,7 +143,7 @@ public enum Alliance {
      *
      * @param position The position of the king.
      * @param board    The current chess board.
-     * @return The king bonus.
+     * @return         The king bonus.
      */
     @Override
     public int kingBonus(final int position, final Board board) {
@@ -198,7 +198,7 @@ public enum Alliance {
      * Checks if a given position on the board is a square where a pawn of this alliance can be promoted.
      *
      * @param position The position to check.
-     * @return True if it is a pawn promotion square, false otherwise.
+     * @return         True if it is a pawn promotion square, false otherwise.
      */
     @Override
     public boolean isPawnPromotionSquare(final int position) {
@@ -210,7 +210,7 @@ public enum Alliance {
      *
      * @param whitePlayer The WhitePlayer object.
      * @param blackPlayer The BlackPlayer object.
-     * @return The BlackPlayer object.
+     * @return            The BlackPlayer object.
      */
     @Override
     public Player choosePlayerByAlliance(final WhitePlayer whitePlayer, final BlackPlayer blackPlayer) {
@@ -232,7 +232,7 @@ public enum Alliance {
      *
      * @param position The position of the pawn.
      * @param board    The current chess board.
-     * @return The pawn bonus.
+     * @return         The pawn bonus.
      */
     @Override
     public int pawnBonus(final int position, final Board board) {
@@ -244,7 +244,7 @@ public enum Alliance {
      *
      * @param position The position of the knight.
      * @param board    The current chess board.
-     * @return The knight bonus.
+     * @return         The knight bonus.
      */
     @Override
     public int knightBonus(final int position, final Board board) {
@@ -256,7 +256,7 @@ public enum Alliance {
      *
      * @param position The position of the bishop.
      * @param board    The current chess board.
-     * @return The bishop bonus.
+     * @return         The bishop bonus.
      */
     @Override
     public int bishopBonus(final int position, final Board board) {
@@ -273,7 +273,7 @@ public enum Alliance {
      *
      * @param position The position of the rook.
      * @param board    The current chess board.
-     * @return The rook bonus.
+     * @return         The rook bonus.
      */
     @Override
     public int rookBonus(final int position, final Board board) {
@@ -285,7 +285,7 @@ public enum Alliance {
      *
      * @param position The position of the queen.
      * @param board    The current chess board.
-     * @return The queen bonus.
+     * @return         The queen bonus.
      */
     @Override
     public int queenBonus(final int position, final Board board) {
@@ -299,7 +299,7 @@ public enum Alliance {
      *
      * @param position The position of the king.
      * @param board    The current chess board.
-     * @return The king bonus.
+     * @return         The king bonus.
      */
     @Override
     public int kingBonus(final int position, final Board board) {
@@ -346,7 +346,7 @@ public enum Alliance {
    *
    * @param position The position of the pawn.
    * @param board    The current chess board.
-   * @return The pawn bonus.
+   * @return         The pawn bonus.
    */
   public abstract int pawnBonus(final int position, final Board board);
 
@@ -355,7 +355,7 @@ public enum Alliance {
    *
    * @param position The position of the knight.
    * @param board    The current chess board.
-   * @return The knight bonus.
+   * @return         The knight bonus.
    */
   public abstract int knightBonus(final int position, final Board board);
 
@@ -364,7 +364,7 @@ public enum Alliance {
    *
    * @param position The position of the bishop.
    * @param board    The current chess board.
-   * @return The bishop bonus.
+   * @return         The bishop bonus.
    */
   public abstract int bishopBonus(final int position, final Board board);
 
@@ -373,7 +373,7 @@ public enum Alliance {
    *
    * @param position The position of the rook.
    * @param board    The current chess board.
-   * @return The rook bonus.
+   * @return         The rook bonus.
    */
   public abstract int rookBonus(final int position, final Board board);
 
@@ -382,7 +382,7 @@ public enum Alliance {
    *
    * @param position The position of the queen.
    * @param board    The current chess board.
-   * @return The queen bonus.
+   * @return         The queen bonus.
    */
   public abstract int queenBonus(final int position, final Board board);
 
@@ -391,7 +391,7 @@ public enum Alliance {
    *
    * @param position The position of the king.
    * @param board    The current chess board.
-   * @return The king bonus.
+   * @return         The king bonus.
    */
   public abstract int kingBonus(final int position, final Board board);
 
@@ -413,7 +413,7 @@ public enum Alliance {
    * Checks if a given position on the board is a square where a pawn of this alliance can be promoted.
    *
    * @param position The position to check.
-   * @return True if it is a pawn promotion square, false otherwise.
+   * @return         True if it is a pawn promotion square, false otherwise.
    */
   public abstract boolean isPawnPromotionSquare(final int position);
 
@@ -422,7 +422,7 @@ public enum Alliance {
    *
    * @param whitePlayer The WhitePlayer object.
    * @param blackPlayer The BlackPlayer object.
-   * @return The chosen player object.
+   * @return            The chosen player object.
    */
   public abstract Player choosePlayerByAlliance(final WhitePlayer whitePlayer, final BlackPlayer blackPlayer);
 

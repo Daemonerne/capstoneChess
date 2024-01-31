@@ -80,8 +80,7 @@ import static engine.forBoard.Move.MoveFactory;
  * <br><br>
  * In a very strange phenomenon that I cannot fully explain sees Black win against White the majority of the time that the
  * engine plays itself at a mid to high depth. This could be explained by the fact that in the beginning, White is the one 
- * that is trying to attack Black from the very first move. It could also be explained by the essence of AlphaBeta itself. 
- * It is an optimization of the Minimax search algorithm, and the Black having the second move might affect the outcome of the game.
+ * that is trying to attack Black from the very first move, creating weaknesses that the engine is not strong enough to see.
  * <br><br>
  * A known bug occurs at very low depths (e.g., depth 1), where rapid parallelism may lead to an
  * `ExecutionException` caused by a `StackOverflowError`. This issue minimally impacts engine functionality
@@ -116,6 +115,9 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   /*** The count of quiescence searches performed during the algorithm execution. */
   private int quiescenceCount;
 
+  /*** A transposition table that tracks the scores of previously evaluated moves. */
+  private final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
+
   /*** The maximum number of quiescence searches allowed. The higher this value is, the longer the search will take,
    * but theoretically will increase the strength of the engine's result. */
   private static final int MaxQuiescence = 30000;
@@ -135,8 +137,8 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     /*** An enum representing the standard sorting method. */
     STANDARD {
       @Override
-      Collection <Move> sort(final Collection < Move > moves, final Board board) {
-        return Ordering.from((Comparator< Move >)(move1, move2) -> ComparisonChain.start()
+      Collection <Move> sort(final Collection <Move> moves, final Board board) {
+        return Ordering.from((Comparator<Move>)(move1, move2) -> ComparisonChain.start()
                 .compareTrueFirst(move1.isCastlingMove(), move2.isCastlingMove())
                 .compare(mvvlva(move2), mvvlva(move1))
                 .result()).immutableSortedCopy(moves);
@@ -145,8 +147,8 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     /*** An enum representing the expensive sorting method. */
     EXPENSIVE {
       @Override
-      Collection <Move> sort(final Collection < Move > moves, final Board board) {
-        return Ordering.from((Comparator < Move > )(move1, move2) -> ComparisonChain.start()
+      Collection <Move> sort(final Collection <Move> moves, final Board board) {
+        return Ordering.from((Comparator <Move> )(move1, move2) -> ComparisonChain.start()
                 .compareTrueFirst(BoardUtils.kingThreat(move1), BoardUtils.kingThreat(move2))
                 .compareTrueFirst(move1.isCastlingMove(), move2.isCastlingMove())
                 .compare(mvvlva(move2), mvvlva(move1))
@@ -154,10 +156,8 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       }
     };
 
-    abstract Collection <Move> sort(Collection < Move > moves, final Board board);
+    abstract Collection <Move> sort(Collection <Move> moves, final Board board);
   }
-
-  private final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
 
   /**
    * Constructs a StockAlphaBeta instance with the specified search depth.
@@ -272,23 +272,24 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       this.boardsEvaluated++;
       return this.evaluator.evaluate(board, depth);
     }
-    TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
-    if (entry != null && entry.depth() >= depth) {
-      if (entry.nodeType() == TranspositionTableEntry.NodeType.EXACT) {
-        return entry.score();
-      } else if (entry.nodeType() == TranspositionTableEntry.NodeType.LOWERBOUND) {
-        lowest = Math.max(lowest, entry.score());
-      } else if (entry.nodeType() == TranspositionTableEntry.NodeType.UPPERBOUND) {
-        highest = Math.min(highest, entry.score());
-      }
-
-      if (lowest >= highest) {
-        return entry.score();
+    synchronized (transpositionTable) {
+      TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
+      if (entry != null && entry.depth() >= depth) {
+        if (entry.nodeType() == TranspositionTableEntry.NodeType.EXACT) {
+          return entry.score();
+        } else if (entry.nodeType() == TranspositionTableEntry.NodeType.LOWERBOUND) {
+          lowest = Math.max(lowest, entry.score());
+        } else if (entry.nodeType() == TranspositionTableEntry.NodeType.UPPERBOUND) {
+          highest = Math.min(highest, entry.score());
+        }
+  
+        if (lowest >= highest) {
+          return entry.score();
+        }
       }
     }
 
     if(depth >= LMRThreshold) depth = (int) (depth * LMRScale); 
-      
     double currentHighest = highest;
     for (final Move move: MoveSorter.STANDARD.sort(board.currentPlayer().getLegalMoves(), board)) {
       final MoveTransition moveTransition = board.currentPlayer().makeMove(move);
@@ -326,23 +327,24 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       return this.evaluator.evaluate(board, depth);
     }
 
-    TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
-    if (entry != null && entry.depth() >= depth) {
-      if (entry.nodeType() == TranspositionTableEntry.NodeType.EXACT) {
-        return entry.score();
-      } else if (entry.nodeType() == TranspositionTableEntry.NodeType.LOWERBOUND) {
-        lowest = Math.max(lowest, entry.score());
-      } else if (entry.nodeType() == TranspositionTableEntry.NodeType.UPPERBOUND) {
-        highest = Math.min(highest, entry.score());
-      }
-
-      if (lowest >= highest) {
-        return entry.score();
+    synchronized (transpositionTable) {
+      TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
+      if (entry != null && entry.depth() >= depth) {
+        if (entry.nodeType() == TranspositionTableEntry.NodeType.EXACT) {
+          return entry.score();
+        } else if (entry.nodeType() == TranspositionTableEntry.NodeType.LOWERBOUND) {
+          lowest = Math.max(lowest, entry.score());
+        } else if (entry.nodeType() == TranspositionTableEntry.NodeType.UPPERBOUND) {
+          highest = Math.min(highest, entry.score());
+        }
+  
+        if (lowest >= highest) {
+          return entry.score();
+        }
       }
     }
     
     if(depth >= LMRThreshold) depth = (int) (depth * LMRScale);
-      
     double currentLowest = lowest;
     for (final Move move: MoveSorter.STANDARD.sort(board.currentPlayer().getLegalMoves(), board)) {
       final MoveTransition moveTransition = board.currentPlayer().makeMove(move);
@@ -370,7 +372,9 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
    * @param nodeType The NodeType to be recorded
    */
   private void storeTranspositionTableEntry(Board board, double score, int depth, TranspositionTableEntry.NodeType nodeType) {
-    transpositionTable.put((long) board.hashCode(), new TranspositionTableEntry(score, depth, nodeType));
+    synchronized (transpositionTable) {
+      transpositionTable.put((long) board.hashCode(), new TranspositionTableEntry(score, depth, nodeType));
+    }
   }
 
   private record TranspositionTableEntry(double score, int depth, StockAlphaBeta.TranspositionTableEntry.NodeType nodeType) {

@@ -16,8 +16,14 @@ import static engine.forGUI.Table.*;
  * white and black players, indicating if a move leads to check or checkmate for the opposing player.
  */
 class GameHistoryPanel extends JPanel {
+
+  /*** The DataModel containing the moves. */
   private final DataModel model;
+
+  /*** The scroll pane for the panel. */
   private final JScrollPane scrollPane;
+
+  /*** The Dimension of the panel. */
   private static final Dimension HistoryPanelDimension = new Dimension(250, 40);
 
   /**
@@ -201,7 +207,7 @@ class GameHistoryPanel extends JPanel {
     }
 
     @Override
-    public Class < ? > getColumnClass(final int col) {
+    public Class <?> getColumnClass(final int col) {
       return Move.class;
     }
 

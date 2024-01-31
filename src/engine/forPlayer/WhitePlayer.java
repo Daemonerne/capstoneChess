@@ -53,7 +53,7 @@ public final class WhitePlayer extends Player {
    *
    * @param playerLegals   A collection of legal moves for the white player.
    * @param opponentLegals A collection of legal moves for the black player (opponent).
-   * @return A collection of possible castling moves for the white player, which may be empty.
+   * @return               A collection of possible castling moves for the white player, which may be empty.
    */ 
   @Override
   protected Collection<Move> calculateKingCastles(final Collection<Move> playerLegals,
