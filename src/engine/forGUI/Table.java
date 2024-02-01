@@ -351,7 +351,7 @@ public final class Table extends Observable {
    * state of the player in the chess game.
    *
    * @param player The player for which to generate the information.
-   * @return A string representation of the player's status and legal moves.
+   * @return       A string representation of the player's status and legal moves.
    */
   private static String playerInfo(final Player player) {
     return ("Player is: " + player.getAlliance() + 
@@ -447,7 +447,7 @@ public final class Table extends Observable {
      * Responds to updates from the observed object, triggering AI actions or
      * displaying game-over messages based on the current game state.
      *
-     * @param o The observable object (not used in this context).
+     * @param o   The observable object (not used in this context).
      * @param arg An argument passed by the observed object (not used in this context).
      */
     @Override
@@ -610,7 +610,7 @@ public final class Table extends Observable {
      * Traverses the list of tile panels according to the current board direction.
      *
      * @param boardTiles The list of tile panels to traverse.
-     * @return A list of tile panels in the desired traversal order.
+     * @return           A list of tile panels in the desired traversal order.
      */
     abstract List < TilePanel > traverse(final List < TilePanel > boardTiles);
 
@@ -671,7 +671,7 @@ public final class Table extends Observable {
      * Removes a move at the specified index from the MoveLog.
      *
      * @param index The index of the move to be removed.
-     * @return The removed move.
+     * @return      The removed move.
      */
     Move removeMove(final int index) {
       return this.moves.remove(index);
@@ -714,12 +714,10 @@ public final class Table extends Observable {
       addMouseListener(new MouseListener() {
         @Override
         public void mouseClicked(final MouseEvent event) {
-
           if (Table.get().getGameSetup().isAIPlayer(Table.get().getGameBoard().currentPlayer()) ||
                   BoardUtils.isEndOfGame(Table.get().getGameBoard())) {
             return;
           }
-
           if (isRightMouseButton(event)) {
             sourceTile = null;
             humanMovedPiece = null;
