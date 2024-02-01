@@ -40,9 +40,7 @@ class DebugPanel extends JPanel implements Observer {
 
   /*** Redraws or updates the debug panel. This method can be called to trigger a visual update or to refresh the panel's contents. */
   public void redo() {
-
     validate();
-
   }
 
   /**
