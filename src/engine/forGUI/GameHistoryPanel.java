@@ -46,7 +46,7 @@ class GameHistoryPanel extends JPanel {
    * Updates the move history panel to display the latest move made in the game. It adds the move text to the appropriate
    * column based on the player's alliance and indicates check or checkmate if applicable.
    *
-   * @param board The current game board after the move.
+   * @param board       The current game board after the move.
    * @param moveHistory The move history log that contains all previous moves made in the game.
    */
   void redo(final Board board, final MoveLog moveHistory) {
@@ -78,7 +78,7 @@ class GameHistoryPanel extends JPanel {
    * Calculates and returns a string hash indicating check or checkmate based on the current state of the game board.
    *
    * @param board The current game board.
-   * @return A hash string representing the status of the game, indicating check (+) or checkmate (#).
+   * @return      A hash string representing the status of the game, indicating check (+) or checkmate (#).
    */
   private static String calculateCheckAndCheckMateHash(final Board board) {
     if (board.currentPlayer().isInCheckMate()) {
