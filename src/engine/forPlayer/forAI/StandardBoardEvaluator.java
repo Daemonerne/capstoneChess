@@ -30,14 +30,14 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
   /*** Bonus applied when a player has successfully castled. */
   private final static int CastleBonus = 20;
 
-    /*** Bonus applied when a player has two pawns in the center. */
+  /*** Bonus applied when a player has two pawns in the center. */
   private final static double PawnCenterBonus = 25;
 
   /*** Bonus applied when a developed piece is a minor piece. */
   private final static int MinorDevelopmentBonus = 15;
 
   /*** Penalty applied for moving the same piece multiple times in the opening period. */
-  private final static int RepeatedMoveInOpeningPenalty = -10; 
+  private final static int RepeatedMoveInOpeningPenalty = -10;
 
   /*** Singleton instance of the StandardBoardEvaluator. */
   private static final StandardBoardEvaluator Instance = new StandardBoardEvaluator();
@@ -63,6 +63,7 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
    */
   @Override
   public double evaluate(final Board board, final int depth) {
+    System.out.println("public double evaluated in StandardBoardEvaluator has started.");
     return (score(board.whitePlayer(), depth, board) - score(board.blackPlayer(), depth, board));
   }
 
@@ -95,6 +96,7 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
   private static double score(final Player player,
                               final int depth,
                               final Board board) {
+    System.out.println("private static double score in StandardBoardEvaluator started.");
 
     return kingThreats(player, depth) +
             kingSafety(player, board) +
@@ -109,20 +111,23 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
 
   }
 
-
   public static double pawnCenter(final Board board) {
+    System.out.println("public static double pawnCenter in StandardBoardEvaluator started.");
     if ((board.getPiece(35) instanceof Pawn
             && board.getPiece(35).getPieceAllegiance().isWhite())
             && (board.getPiece(36) instanceof Pawn
             && board.getPiece(36).getPieceAllegiance().isWhite())) {
+      System.out.println("public static double pawnCenter in StandardBoardEvaluator returned for white.");
       return PawnCenterBonus;
     }  else if((board.getPiece(27) instanceof Pawn
             && board.getPiece(27).getPieceAllegiance().isBlack())
             && (board.getPiece(28) instanceof Pawn
             && board.getPiece(28).getPieceAllegiance().isBlack())) {
+      System.out.println("public static double pawnCenter in StandardBoardEvaluator returned for black.");
       return PawnCenterBonus;
     }
 
+    System.out.println("public static double pawnCenter in StandardBoardEvaluator executed properly.");
     return 0;
   }
 
@@ -133,10 +138,12 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
    * @return The piece evaluation score.
    */
   private static double pieceEvaluations(final Player player, final Board board) {
+    System.out.println("private static double pieceEvaluation in StandardBoardEvaluator started.");
     double pieceValuationScore = 0;
     for (final Piece piece: player.getActivePieces()) {
       pieceValuationScore += (piece.getPieceValue() + piece.locationBonus(board));
     }
+    System.out.println("private static double pieceEvaluations in StandardBoardEvaluator executed properly.");
     return pieceValuationScore;
   }
 
@@ -148,9 +155,10 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
    * @return The repeated move penalty score.
    */
   private static double calculateRepeatedMoveInOpeningPenalty(Player player) {
+
+    System.out.println("private static double calculateRepeatedMoveInOpeningPenalty in StandardBoardEvaluator started.");
     double penalty = 0;
     Set<Piece> movedPieces = new HashSet<>();
-
     for(final Piece piece: player.getActivePieces()) {
       if(movedPieces.contains(piece)) {
         penalty += RepeatedMoveInOpeningPenalty;
@@ -159,6 +167,7 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
       }
     }
 
+    System.out.println("private static double calculateRepeatedMoveInOpeningPenalty in StandardBoardEvaluator executed properly.");
     return penalty;
   }
 
@@ -169,6 +178,7 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
    * @return The mobility score.
    */
   private static double mobility(final Player player) {
+    System.out.println("private static double mobility in StandardBoardEvaluator started.");
     return player.getLegalMoves().size();
   }
 
@@ -181,6 +191,7 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
    */
   private static double kingThreats(final Player player,
                                     final int depth) {
+    System.out.println("private static double kingThreats in StandardBoardEvaluator started.");
     return player.getOpponent().isInCheckMate() ? CheckMateBonus * depthBonus(depth) : check(player);
   }
 
@@ -191,7 +202,9 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
    * @return The check score.
    */
   private static double check(final Player player) {
+    System.out.println("private static double check in StandardBoard Evaluator started.");
     return player.getOpponent().isInCheck() ? CheckBonus : 0;
+
   }
 
   /**
@@ -201,7 +214,9 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
    * @return The depth bonus.
    */
   private static double depthBonus(final int depth) {
+    System.out.println("private static double depthBonus in StandardBoardEvaluator started.");
     return depth == 0 ? 1 : 100 * depth;
+
   }
 
   /**
@@ -211,12 +226,15 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
    * @return The minor piece development score.
    */
   private static double minorPieceDevelopment(final Player player) {
+    System.out.println("private static double minorPieceDevelopment in StandardBoardEvaluator started.");
     double score = 0;
     for (final Piece piece : player.getActivePieces()) {
       if (piece.getPieceType().isMinorPiece()) {
         score += MinorDevelopmentBonus;
       }
     }
+
+    System.out.println("private static double minorPieceDevelopment in StandardBoardEvaluator executed properly.");
     return score;
   }
 
@@ -228,6 +246,7 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
    * @return The castling score.
    */
   private static double castle(final Player player) {
+    System.out.println("private static double castle in StandardBoardEvaluator started.");
     return player.isCastled() ? CastleBonus : 0;
   }
 
@@ -238,6 +257,7 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
    * @return The pawn structure score.
    */
   private static double pawnStructure(final Player player, final Board board) {
+    System.out.println("private static double pawnStructure in StandardBoardEvaluator started.");
     return PawnStructureAnalyzer.get().pawnStructureScore(player, board);
   }
 
@@ -248,6 +268,7 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
    * @return The king safety score. (usually negative)
    */
   private static double kingSafety(final Player player, final Board board) {
+    System.out.println("private static double kingSafety in StandardBoardEvaluator has started.");
     final KingSafetyAnalyzer kingSafetyAnalyzer = KingSafetyAnalyzer.get();
 
     double score = 0;
@@ -256,6 +277,7 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
     score += kingSafetyAnalyzer.OpponentRookOnFile(player);
     score += kingSafetyAnalyzer.evaluateKingSafetyFromSurroundingPieces(player);
 
+    System.out.println("private static double kingSafety in StandardBoardEvaluator executed properly.");
     return score;
   }
 
@@ -267,8 +289,9 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
    * @return The rook structure score.
    */
   private static double rookStructure(final Player player, final Board board) {
-
+    System.out.println("private static double rookStructure in StandardBoardEvaluator has started.");
     RookStructureAnalyzer rookStructureAnalyzer = RookStructureAnalyzer.get();
+    System.out.println("private static double rookStructure in StandardBoardEvaluator executed properly.");
     return rookStructureAnalyzer.rookStructureScore(player, board);
 
   }

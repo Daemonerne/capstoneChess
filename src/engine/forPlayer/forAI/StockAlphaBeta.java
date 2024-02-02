@@ -8,7 +8,10 @@ import engine.forBoard.Move;
 import engine.forBoard.MoveTransition;
 import engine.forPlayer.Player;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Observable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveTask;
 
@@ -18,11 +21,11 @@ import static engine.forBoard.Move.MoveFactory;
 /**
  * The `StockAlphaBeta` class represents a chess engine that employs the alpha-beta search algorithm. It is
  * enhanced with various strategies to determine the optimal move in a given chess position. This engine
- * evaluates board positions, explores multiple moves ahead, and utilizes move sorting strategies for
+ * evaluates board positions, explores multiple moves ahead, and utilizes move-sorting strategies for
  * improved search efficiency. The class extends `Observable` to allow observers to be notified about search
  * results. The alpha-beta algorithm is parallelized using `ForkJoinPool`, a framework in Java that provides
  * support for parallel programming. ForkJoinPool recursively breaks down tasks into smaller subtasks,
- * allowing concurrent execution by different threads and enhancing the alpha-beta search performance.
+ * allowing concurrent execution of different threads and enhancing the alpha-beta search performance.
  * Additionally, the engine incorporates quiescence search to handle tactical positions.
  * <br><br>
  * Alpha-beta search is an optimization of the minimax algorithm, a decision rule for minimizing potential
@@ -79,7 +82,7 @@ import static engine.forBoard.Move.MoveFactory;
  * - `calculateTimeTaken(long start, long end)`: Calculates and formats the time taken between two time points.
  * <br><br>
  * In a very strange phenomenon that I cannot fully explain sees Black win against White the majority of the time that the
- * engine plays itself at a mid to high depth. This could be explained by the fact that in the beginning, White is the one 
+ * engine plays itself at a mid-to-high depth. This could be explained by the fact that in the beginning, White is the one
  * that is trying to attack Black from the very first move, creating weaknesses that the engine is not strong enough to see.
  * <br><br>
  * A known bug occurs at very low depths (e.g., depth 1), where rapid parallelism may lead to an
@@ -89,12 +92,12 @@ import static engine.forBoard.Move.MoveFactory;
  * evaluation and tuning.
  * <br><br>
  * The current depth that the engine is able to reach without crashing or taking an unreasonable amount of time is
- * a depth of 9. At higher depths, the engine stalls because of the massive amount of boards that need to be evaluated
- * and further testing could be done to determine just how long the engine takes to reach a depth of 10,
+ * a depth of 9. At higher depths, the engine stalls because of the massive number of boards that need to be evaluated
+ * and further testing could be done to determine how long the engine takes to reach a depth of 10,
  * but it would be pretty pointless to spend 3+ days waiting for that. 
  * <br><br>
- * Probably the most optimal depth taking into consideration performance and time, is depth 7. With an average of 15,000,000
- * boards evaluated, and taking from a 30 seconds to 2 minutes depending on the stage of the game (opening, middle-game or endgame),
+ * Probably the most optimal depth, taking into consideration performance and time, is depth 7. With an average of 15 million
+ * boards evaluated, and took from 30 seconds to 2 minutes depending on the stage of the game (opening, middle-game or endgame),
  * but is centered at about 55 seconds. At a depth of 7, the computer has around a 55% win rate against Chess.com's 2000 elo
  * computer. Chess.com's 2000 elo computer can beat every human at Essex High School.
  *
@@ -116,7 +119,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   private int quiescenceCount;
 
   /*** A transposition table that tracks the scores of previously evaluated moves. */
-  private final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
+  private final ConcurrentHashMap<Long, TranspositionTableEntry> transpositionTable = new ConcurrentHashMap<>();
 
   /*** The maximum number of quiescence searches allowed. The higher this value is, the longer the search will take,
    * but theoretically will increase the strength of the engine's result. */
@@ -138,6 +141,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     STANDARD {
       @Override
       Collection <Move> sort(final Collection <Move> moves, final Board board) {
+        System.out.println("Collection <Move> sort in StockAlphaBeta has started.");
         return Ordering.from((Comparator<Move>)(move1, move2) -> ComparisonChain.start()
                 .compareTrueFirst(move1.isCastlingMove(), move2.isCastlingMove())
                 .compare(mvvlva(move2), mvvlva(move1))
@@ -148,6 +152,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     EXPENSIVE {
       @Override
       Collection <Move> sort(final Collection <Move> moves, final Board board) {
+        System.out.println("Collection <Move> sort in StockAlphaBeta has started.");
         return Ordering.from((Comparator <Move> )(move1, move2) -> ComparisonChain.start()
                 .compareTrueFirst(BoardUtils.kingThreat(move1), BoardUtils.kingThreat(move2))
                 .compareTrueFirst(move1.isCastlingMove(), move2.isCastlingMove())
@@ -189,6 +194,8 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
    * @return The adjusted depth for quiescence search.
    */
   private int calculateQuiescenceDepth(final Board toBoard, final int depth) {
+
+    System.out.println("private int calculateQuiescenceDepth");
     if (depth == 1 && this.quiescenceCount < MaxQuiescence) {
       int activityMeasure = 0;
       if (toBoard.currentPlayer().isInCheck()) {
@@ -204,6 +211,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         return 2;
       }
     }
+    System.out.println("private int calculateQuiescenceDepth in StockAlphaBeta executed properly.");
     return depth - 1;
   }
 
@@ -215,22 +223,39 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
    */
   @Override
   public Move execute(final Board board) {
+
+    System.out.println("public Move execute in StockAlphaBeta has started.");
     final long startTime = System.currentTimeMillis();
     Move bestMove = MoveFactory.getNullMove();
     double highestSeenValue = Integer.MIN_VALUE;
     double lowestSeenValue = Integer.MAX_VALUE;
+    System.out.println("Necessary variables in public Move execute in StockAlphaBeta has finished successfully.");
 
+    System.out.println("forkJoinPool initialization has started.");
     ForkJoinPool forkJoinPool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
+    System.out.println("forkJoinPool initialization has finished successfully.");
 
+    System.out.println("Iterative Deepening in public Move execute in StockAlphaBeta has started.");
     for (int currentDepth = 1; currentDepth <= maxDepth; currentDepth++) {
+      System.out.println("Initialization for aspirationWindow in StockAlphaBeta has started.");
       final double aspirationWindow = calculateAspirationWindow(highestSeenValue, lowestSeenValue);
+      System.out.println("Initialization for aspirationWindow in StockAlphaBeta has finished successfully.");
+      System.out.println("RecursiveTask task in StockAlphaBeta has started.");
       RecursiveTask <Move> task = new ParallelSearchTask(board, this, highestSeenValue, lowestSeenValue, currentDepth);
+      System.out.println("RecursiveTask task in StockAlphaBeta has finished.");
+      System.out.println("Initialization for bestMove in StockAlphaBeta has started.");
       bestMove = forkJoinPool.invoke(task);
+      System.out.println("Initialization for bestMove in StockAlphaBeta has finished successfully.");
 
+      System.out.println("Initialization for highestSeenValue in StockAlphaBeta has started.");
       highestSeenValue = Math.max(highestSeenValue - aspirationWindow, Integer.MIN_VALUE);
+      System.out.println("Initialization for highestSeenValue in StockAlphaBeta has finished successfully.");
+      System.out.println("Initialization for lowestSeenValue in StockAlphaBeta has started.");
       lowestSeenValue = Math.min(lowestSeenValue + aspirationWindow, Integer.MAX_VALUE);
-
+      System.out.println("Initialization for lowestSeenValue in StockAlphaBeta has finished successfully.");
       final long executionTime = System.currentTimeMillis() - startTime;
+      System.out.println("executionTime in StockAlphaBeta has been recorded successfully.");
+      System.out.println("final String result in StockAlphaBeta is being recorded.");
       final String result = bestMove +
               " | depth = " + currentDepth +
               " | boards evaluated = " + this.boardsEvaluated +
@@ -240,8 +265,10 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
 
       setChanged();
       notifyObservers(result);
+      System.out.println("Observers have been notified.");
     }
-
+    System.out.println("Iterative Deepening in execute in StockAlphaBeta has finished successfully.");
+    System.out.println("public Move execute in StockAlphaBeta has finished successfully.");
     return bestMove;
   }
 
@@ -253,7 +280,8 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
    * @return The dynamic aspiration window.
    */
   private double calculateAspirationWindow(double highestSeenValue, double lowestSeenValue) {
-    return Math.min(Math.abs(highestSeenValue - lowestSeenValue) * 0.2, 13);
+    System.out.println("private double calculateAspirationWindow in StockAlphaBeta has started.");
+    return Math.min(Math.abs(highestSeenValue - lowestSeenValue) * 0.12, 13);
   }
 
   /**
@@ -272,20 +300,18 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       this.boardsEvaluated++;
       return this.evaluator.evaluate(board, depth);
     }
-    synchronized (transpositionTable) {
-      TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
-      if (entry != null && entry.depth() >= depth) {
-        if (entry.nodeType() == TranspositionTableEntry.NodeType.EXACT) {
-          return entry.score();
-        } else if (entry.nodeType() == TranspositionTableEntry.NodeType.LOWERBOUND) {
-          lowest = Math.max(lowest, entry.score());
-        } else if (entry.nodeType() == TranspositionTableEntry.NodeType.UPPERBOUND) {
-          highest = Math.min(highest, entry.score());
-        }
+    TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
+    if (entry != null && entry.depth() >= depth) {
+      if (entry.nodeType() == TranspositionTableEntry.NodeType.EXACT) {
+        return entry.score();
+      } else if (entry.nodeType() == TranspositionTableEntry.NodeType.LOWERBOUND) {
+        lowest = Math.max(lowest, entry.score());
+      } else if (entry.nodeType() == TranspositionTableEntry.NodeType.UPPERBOUND) {
+        highest = Math.min(highest, entry.score());
+      }
 
-        if (lowest >= highest) {
-          return entry.score();
-        }
+      if (lowest >= highest) {
+        return entry.score();
       }
     }
 
@@ -327,20 +353,18 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       return this.evaluator.evaluate(board, depth);
     }
 
-    synchronized (transpositionTable) {
-      TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
-      if (entry != null && entry.depth() >= depth) {
-        if (entry.nodeType() == TranspositionTableEntry.NodeType.EXACT) {
-          return entry.score();
-        } else if (entry.nodeType() == TranspositionTableEntry.NodeType.LOWERBOUND) {
-          lowest = Math.max(lowest, entry.score());
-        } else if (entry.nodeType() == TranspositionTableEntry.NodeType.UPPERBOUND) {
-          highest = Math.min(highest, entry.score());
-        }
+    TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
+    if (entry != null && entry.depth() >= depth) {
+      if (entry.nodeType() == TranspositionTableEntry.NodeType.EXACT) {
+        return entry.score();
+      } else if (entry.nodeType() == TranspositionTableEntry.NodeType.LOWERBOUND) {
+        lowest = Math.max(lowest, entry.score());
+      } else if (entry.nodeType() == TranspositionTableEntry.NodeType.UPPERBOUND) {
+        highest = Math.min(highest, entry.score());
+      }
 
-        if (lowest >= highest) {
-          return entry.score();
-        }
+      if (lowest >= highest) {
+        return entry.score();
       }
     }
 
@@ -372,9 +396,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
    * @param nodeType The NodeType to be recorded
    */
   private void storeTranspositionTableEntry(Board board, double score, int depth, TranspositionTableEntry.NodeType nodeType) {
-    synchronized (transpositionTable) {
-      transpositionTable.put((long) board.hashCode(), new TranspositionTableEntry(score, depth, nodeType));
-    }
+    transpositionTable.put((long) board.hashCode(), new TranspositionTableEntry(score, depth, nodeType));
   }
 
   private record TranspositionTableEntry(double score, int depth, StockAlphaBeta.TranspositionTableEntry.NodeType nodeType) {
