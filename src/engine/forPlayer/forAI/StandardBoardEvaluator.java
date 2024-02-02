@@ -40,7 +40,7 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
   private final static int RepeatedMoveInOpeningPenalty = -10; 
 
   /*** Singleton instance of the StandardBoardEvaluator. */
-  private static StandardBoardEvaluator Instance;
+  private static final StandardBoardEvaluator Instance = new StandardBoardEvaluator();
 
   /*** Private constructor to prevent instantiation outside of class. */
   private StandardBoardEvaluator() {}
@@ -51,7 +51,6 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
    * @return The instance of StandardBoardEvaluator.
    */
   public static StandardBoardEvaluator get() {
-    if (Instance == null) Instance = new StandardBoardEvaluator();
     return Instance;
   }
 
@@ -170,7 +169,7 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
    * @return The mobility score.
    */
   private static double mobility(final Player player) {
-    return player.getLegalMoves().parallelStream().count();
+    return player.getLegalMoves().size();
   }
 
   /**

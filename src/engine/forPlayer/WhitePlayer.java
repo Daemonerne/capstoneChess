@@ -21,10 +21,11 @@ import static engine.forPiece.Piece.PieceType.ROOK;
  * It extends the abstract `Player` class and provides functionality specific to white pieces.
  * This class is responsible for generating legal moves for the white player, including special moves
  * like castling and en passant captures.
- * 
- * @author Aaron Ho
+ *
+ * @author Aaron
  * @author dareTo81
  */
+
 public final class WhitePlayer extends Player {
   
   /**

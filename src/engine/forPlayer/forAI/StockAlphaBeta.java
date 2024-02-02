@@ -232,10 +232,10 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
 
       final long executionTime = System.currentTimeMillis() - startTime;
       final String result = bestMove +
-        " | depth = " + currentDepth +
-        " | boards evaluated = " + this.boardsEvaluated +
-        " | time taken = " + (executionTime / 1000) + " sec or " + (executionTime / 60000) + " min" +
-        " | rate = " + ((double)(1000000 * this.boardsEvaluated) / (1000 * executionTime));
+              " | depth = " + currentDepth +
+              " | boards evaluated = " + this.boardsEvaluated +
+              " | time taken = " + (executionTime / 1000) + " sec or " + (executionTime / 60000) + " min" +
+              " | rate = " + ((double)(1000000 * this.boardsEvaluated) / (1000 * executionTime));
       System.out.println(result);
 
       setChanged();
@@ -282,14 +282,14 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         } else if (entry.nodeType() == TranspositionTableEntry.NodeType.UPPERBOUND) {
           highest = Math.min(highest, entry.score());
         }
-  
+
         if (lowest >= highest) {
           return entry.score();
         }
       }
     }
 
-    if(depth >= LMRThreshold) depth = (int) (depth * LMRScale); 
+    if(depth >= LMRThreshold) depth = (int) (depth * LMRScale);
     double currentHighest = highest;
     for (final Move move: MoveSorter.STANDARD.sort(board.currentPlayer().getLegalMoves(), board)) {
       final MoveTransition moveTransition = board.currentPlayer().makeMove(move);
@@ -337,13 +337,13 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         } else if (entry.nodeType() == TranspositionTableEntry.NodeType.UPPERBOUND) {
           highest = Math.min(highest, entry.score());
         }
-  
+
         if (lowest >= highest) {
           return entry.score();
         }
       }
     }
-    
+
     if(depth >= LMRThreshold) depth = (int) (depth * LMRScale);
     double currentLowest = lowest;
     for (final Move move: MoveSorter.STANDARD.sort(board.currentPlayer().getLegalMoves(), board)) {
@@ -432,16 +432,16 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       for (Move move : MoveSorter.EXPENSIVE.sort(currentPlayer.getLegalMoves(), board)) {
         MoveTransition moveTransition = currentPlayer.makeMove(move);
         this.stockAlphaBeta.quiescenceCount = 0;
-        
+
         //Check for LMR
         if(depth >= LMRThreshold) depth = (int) (depth * LMRScale);
-    
+
         if (moveTransition.moveStatus().isDone()) {
           double currentValue = 0.0;
           if (currentPlayer.getAlliance().isWhite()) {
             currentValue = this.stockAlphaBeta.min(moveTransition.toBoard(),
-                this.stockAlphaBeta.calculateQuiescenceDepth(moveTransition.toBoard(),
-                    this.depth - 1), this.highest, this.lowest);
+                    this.stockAlphaBeta.calculateQuiescenceDepth(moveTransition.toBoard(),
+                            this.depth - 1), this.highest, this.lowest);
             if (currentValue > this.highest) {
               this.highest = currentValue;
               bestMove = move;
@@ -451,8 +451,8 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
             }
           } else if (currentPlayer.getAlliance().isBlack()) {
             currentValue = this.stockAlphaBeta.max(moveTransition.toBoard(),
-                this.stockAlphaBeta.calculateQuiescenceDepth(moveTransition.toBoard(),
-                    this.depth - 1), this.highest, this.lowest);
+                    this.stockAlphaBeta.calculateQuiescenceDepth(moveTransition.toBoard(),
+                            this.depth - 1), this.highest, this.lowest);
             if (currentValue < this.lowest) {
               this.lowest = currentValue;
               bestMove = move;
