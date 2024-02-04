@@ -527,6 +527,7 @@ public final class Table extends Observable {
         Table.get().moveMadeUpdate(PlayerType.COMPUTER);
       } catch (final Exception e) {
         System.out.println("Exception in AI move handling!");
+        e.printStackTrace();
       } finally {
         executorService.shutdown();
       }
