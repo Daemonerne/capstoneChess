@@ -160,9 +160,7 @@ public abstract class Player {
     if (!this.legalMoves.contains(move)) {
       return new MoveTransition(this.board, MoveStatus.ILLEGAL_MOVE);
     }
-
     final Board transitionedBoard = move.execute();
-
     return transitionedBoard.currentPlayer().getOpponent().isInCheck() ?
             new MoveTransition(this.board, MoveStatus.LEAVES_PLAYER_IN_CHECK) :
             new MoveTransition(transitionedBoard, MoveStatus.DONE);
