@@ -140,7 +140,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     STANDARD {
       @Override
       Collection<Move> sort(final Collection<Move> moves, final Board board) {
-        System.out.println("Collection <Move> Standard sort in StockAlphaBeta has started.");
         return Ordering.from((Comparator<Move>) (move1, move2) -> ComparisonChain.start()
                 .compareTrueFirst(BoardUtils.kingThreat(move1), BoardUtils.kingThreat(move2))
                 .compareTrueFirst(move1.isCastlingMove(), move2.isCastlingMove())
@@ -154,7 +153,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     EXPENSIVE {
       @Override
       Collection<Move> sort(final Collection<Move> moves, final Board board) {
-        System.out.println("Collection <Move> EXPENSIVE sort in StockAlphaBeta has started.");
         return Ordering.from((Comparator<Move>) (move1, move2) -> ComparisonChain.start()
                 .compareTrueFirst(BoardUtils.kingThreat(move1), BoardUtils.kingThreat(move2))
                 .compareTrueFirst(move1.isCastlingMove(), move2.isCastlingMove())
@@ -199,30 +197,22 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
    * @return The adjusted depth for quiescence search.
    */
   private int calculateQuiescenceDepth(final Board toBoard, final int depth) {
-
-    System.out.println("private int calculateQuiescenceDepth in StockAlphaBeta started.");
     if (depth == 1 && this.quiescenceCount < MaxQuiescence) {
       int activityMeasure = 0;
-      System.out.println("activityMeasure in calculateQuiescenceDepth has been initialized successfully.");
       if (toBoard.currentPlayer().isInCheck()) {
         activityMeasure += 1;
-        System.out.println("activityMeasure in calculateQuiescenceDepth has been incremented successfully.");
       } for (final Move move: BoardUtils.lastNMoves(toBoard, 3)) {
         if (move.isAttack()) {
           activityMeasure += 1;
-          System.out.println("activityMeasure in calculateQuiescenceDepth has been incremented successfully. (2)");
         }
       } if (activityMeasure >= 2) {
         this.quiescenceCount++;
-        System.out.println("quiescenceCount in calculateQuiescenceDepth has been incremented successfully.");
         return 3;
       } else if (activityMeasure == 1) {
         this.quiescenceCount++;
-        System.out.println("quiescenceCount in calculateQuiescenceDepth has been incremented successfully.");
         return 2;
       }
     }
-    System.out.println("private int calculateQuiescenceDepth in StockAlphaBeta executed properly.");
     return depth - 1;
   }
 
@@ -234,39 +224,18 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
    */
   @Override
   public Move execute(final Board board) {
-
-    System.out.println("public Move execute in StockAlphaBeta has started.");
     final long startTime = System.currentTimeMillis();
     Move bestMove = MoveFactory.getNullMove();
     double highestSeenValue = Integer.MIN_VALUE;
     double lowestSeenValue = Integer.MAX_VALUE;
-    System.out.println("Necessary variables in public Move execute in StockAlphaBeta has finished successfully.");
-
-    System.out.println("forkJoinPool initialization has started.");
     ForkJoinPool forkJoinPool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
-    System.out.println("forkJoinPool initialization has finished successfully.");
-
-    System.out.println("Iterative Deepening in public Move execute in StockAlphaBeta has started.");
     for (int currentDepth = 1; currentDepth <= maxDepth; currentDepth++) {
-      System.out.println("Initialization for aspirationWindow in StockAlphaBeta has started.");
       final double aspirationWindow = calculateAspirationWindow(highestSeenValue, lowestSeenValue);
-      System.out.println("Initialization for aspirationWindow in StockAlphaBeta has finished successfully.");
-      System.out.println("RecursiveTask task in StockAlphaBeta has started.");
       RecursiveTask <Move> task = new ParallelSearchTask(board, this, highestSeenValue, lowestSeenValue, currentDepth);
-      System.out.println("RecursiveTask task in StockAlphaBeta has finished.");
-      System.out.println("Initialization for bestMove in StockAlphaBeta has started.");
       bestMove = forkJoinPool.invoke(task);
-      System.out.println("Initialization for bestMove in StockAlphaBeta has finished successfully.");
-
-      System.out.println("Initialization for highestSeenValue in StockAlphaBeta has started.");
       highestSeenValue = Math.max(highestSeenValue - aspirationWindow, Integer.MIN_VALUE);
-      System.out.println("Initialization for highestSeenValue in StockAlphaBeta has finished successfully.");
-      System.out.println("Initialization for lowestSeenValue in StockAlphaBeta has started.");
       lowestSeenValue = Math.min(lowestSeenValue + aspirationWindow, Integer.MAX_VALUE);
-      System.out.println("Initialization for lowestSeenValue in StockAlphaBeta has finished successfully.");
       final long executionTime = System.currentTimeMillis() - startTime;
-      System.out.println("executionTime in StockAlphaBeta has been recorded successfully.");
-      System.out.println("final String result in StockAlphaBeta is being recorded.");
       final String result = bestMove +
               " | depth = " + currentDepth +
               " | boards evaluated = " + this.boardsEvaluated +
@@ -276,10 +245,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
 
       setChanged();
       notifyObservers(result);
-      System.out.println("Observers have been notified.");
     }
-    System.out.println("Iterative Deepening in execute in StockAlphaBeta has finished successfully.");
-    System.out.println("public Move execute in StockAlphaBeta has finished successfully.");
     return bestMove;
   }
 
@@ -291,7 +257,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
    * @return The dynamic aspiration window.
    */
   private double calculateAspirationWindow(double highestSeenValue, double lowestSeenValue) {
-    System.out.println("private double calculateAspirationWindow in StockAlphaBeta has started.");
     return Math.min(Math.abs(highestSeenValue - lowestSeenValue) * 0.12, 13);
   }
 
