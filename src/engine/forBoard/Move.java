@@ -166,17 +166,13 @@ public abstract class Move {
    * @return The board after executing the move.
    */
   public Board execute() {
-
     final Board.Builder builder = new Builder();
     this.board.currentPlayer().getActivePieces().stream().filter(piece -> !this.movedPiece.equals(piece)).forEach(builder::setPiece);
     this.board.currentPlayer().getOpponent().getActivePieces().forEach(builder::setPiece);
     builder.setPiece(this.movedPiece.movePiece(this));
     builder.setMoveMaker(this.board.currentPlayer().getOpponent().getAlliance());
-    builder.setMoveTransition(this);
-
-    
+    builder.setMoveTransition(this); 
     return builder.build();
-
   }
 
   /**
