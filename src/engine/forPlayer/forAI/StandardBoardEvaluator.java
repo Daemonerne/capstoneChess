@@ -63,7 +63,6 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
    */
   @Override
   public double evaluate(final Board board, final int depth) {
-
     return (score(board.whitePlayer(), depth, board) - score(board.blackPlayer(), depth, board));
   }
 
@@ -246,7 +245,6 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
    */
   private static double kingSafety(final Player player, final Board board) {
     final KingSafetyAnalyzer kingSafetyAnalyzer = KingSafetyAnalyzer.get();
-
     double score = 0;
     score += kingSafetyAnalyzer.evaluatePawnStorm(player);
     score += kingSafetyAnalyzer.evaluatePawnShelter(player, board);
@@ -265,7 +263,6 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
   private static double rookStructure(final Player player, final Board board) {
     RookStructureAnalyzer rookStructureAnalyzer = RookStructureAnalyzer.get();
     return rookStructureAnalyzer.rookStructureScore(player, board);
-
   }
 
 }

@@ -10,8 +10,8 @@ import engine.forPlayer.Player;
 
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Observable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveTask;
 
@@ -110,7 +110,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   private int quiescenceCount;
 
   /*** A transposition table that tracks the scores of previously evaluated moves. */
-  private final ConcurrentHashMap<Long, TranspositionTableEntry> transpositionTable = new ConcurrentHashMap<>();
+  private final HashMap<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
 
   /*** The maximum number of quiescence searches allowed. The higher this value is, the longer the search will take,
    * but theoretically will increase the strength of the engine's result. */
@@ -198,7 +198,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         }
       } if (activityMeasure >= 2) {
         this.quiescenceCount++;
-        return 3;
+        return 2;
       }
     }
     return depth - 1;
@@ -230,7 +230,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
               " | time taken = " + (executionTime / 1000) + " sec or " + (executionTime / 60000) + " min" +
               " | rate = " + ((double)(1000000 * this.boardsEvaluated) / (1000 * executionTime));
       System.out.println(result);
-
       setChanged();
       notifyObservers(result);
     }
@@ -276,7 +275,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         return entry.score();
       }
     }
-    
+
     Move killerMove = killerMoves[depth][0];
     if (killerMove != null && board.currentPlayer().getLegalMoves().contains(killerMove)) {
       killerMoves[depth][0] = null;
@@ -284,6 +283,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       if (killerScore >= lowest && killerScore < highest) {
         lowest = killerScore;
         storeTranspositionTableEntry(board, killerScore, depth, TranspositionTableEntry.NodeType.LOWERBOUND);
+        System.out.println("killer move: " + killerMove);
         return lowest;
       }
     } if(depth >= LMRThreshold) depth = (int) (depth * LMRScale);
@@ -297,6 +297,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         if (currentHighest >= lowest) {
           if (currentHighest >= lowest + DeltaPruningValue) {
             storeTranspositionTableEntry(board, currentHighest, depth, TranspositionTableEntry.NodeType.LOWERBOUND);
+            System.out.println("best move: " + move + " at depth " + depth);
             return lowest;
           }
         }
@@ -313,7 +314,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
    * @param depth   The current search depth.
    * @param highest The highest value seen in the search.
    * @param lowest  The lowest value seen in the search.
-   * @return The score value.
+   * @return        The score value.
    */
   private double min(final Board board,
                      int depth,
@@ -359,7 +360,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         if (currentLowest <= highest) {
           if (currentLowest <= highest - DeltaPruningValue) {
             storeTranspositionTableEntry(board, currentLowest, depth, TranspositionTableEntry.NodeType.UPPERBOUND);
-            System.out.println("best move: " + move);
+            System.out.println("best move: " + move + " at depth " + depth);
             return highest;
           }
         }
@@ -372,9 +373,9 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   /**
    * Stores a move that was made into the transposition table.
    *
-   * @param board The board to be recorded
-   * @param score The score to be recorded
-   * @param depth The depth to be recorded
+   * @param board    The board to be recorded
+   * @param score    The score to be recorded
+   * @param depth    The depth to be recorded
    * @param nodeType The NodeType to be recorded
    */
   private void storeTranspositionTableEntry(Board board, double score, int depth, TranspositionTableEntry.NodeType nodeType) {
