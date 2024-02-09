@@ -106,12 +106,23 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   /*** The count of quiescence searches performed during the algorithm execution. */
   private int quiescenceCount;
 
+  /*** The size of the transposition table. */
+  private static final int transpositionTableSize = 40000000;
+
   /*** A transposition table that tracks the scores of previously evaluated moves. */
-  private final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
+  private final Map<Long, TranspositionTableEntry> transpositionTable = new LinkedHashMap<>(transpositionTableSize, 0.75f, true) {
+      @Override
+      protected boolean removeEldestEntry(Map.Entry<Long, TranspositionTableEntry> eldest) {
+          return size() > transpositionTableSize;
+      }
+  };
 
   /*** The maximum number of quiescence searches allowed. The higher this value is, the longer the search will take,
    * but theoretically will increase the strength of the engine's result. */
   private static final int MaxQuiescence = 30000;
+
+  /*** The futility pruning depth used to prune futile moves. */
+  private static final int FutilityPruningDepth = 2;
 
   /*** A depth threshold that when crossed initiates a LMR (Late Move Reduction) in depth. */
   private static final int LMRThreshold = 6;
@@ -120,7 +131,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   private static final double LMRScale = 0.9;
 
   /*** The delta pruning value used to prune likely unnecessary branches. */
-  private static final double DeltaPruningValue = 15;
+  private static final double DeltaPruningValue = 7;
 
   /*** Array for storing killer moves encountered at each depth. */
   private final Move[][] killerMoves;
@@ -278,9 +289,12 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       } if (lowest >= highest) {
         return entry.score();
       }
-    }
-
-    Move killerMove = killerMoves[depth][0];
+    } if (depth < FutilityPruningDepth) {
+      double futilityValue = this.evaluator.evaluate(board, depth);
+      if (futilityValue >= highest) {
+        return futilityValue;
+      }
+    } Move killerMove = killerMoves[depth][0];
     if (killerMove != null && board.currentPlayer().getLegalMoves().contains(killerMove)) {
       killerMoves[depth][0] = null;
       double killerScore = min(board.currentPlayer().makeMove(killerMove).toBoard(), calculateQuiescenceDepth(board, depth), highest, lowest);
@@ -336,12 +350,13 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         lowest = Math.max(lowest, entry.score());
       } else if (entry.nodeType() == TranspositionTableEntry.NodeType.UPPERBOUND) {
         highest = Math.min(highest, entry.score());
-      } if (lowest >= highest) {
-        return entry.score();
+      } if (lowest >= highest) return entry.score();
+    } if (depth < FutilityPruningDepth) {
+      double futilityValue = this.evaluator.evaluate(board, depth);
+      if (futilityValue <= lowest) {
+        return futilityValue;
       }
-    }
-
-    Move killerMove = killerMoves[depth][0];
+    } Move killerMove = killerMoves[depth][0];
     if (killerMove != null && board.currentPlayer().getLegalMoves().contains(killerMove)) {
       killerMoves[depth][0] = null;
       double killerScore = max(board.currentPlayer().makeMove(killerMove).toBoard(), calculateQuiescenceDepth(board, depth), highest, lowest);
@@ -351,7 +366,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         return highest;
       }
     } if(depth >= LMRThreshold) depth = (int) (depth * LMRScale);
-
     double currentLowest = lowest;
     for (final Move move: MoveSorter.STANDARD.sort(board.currentPlayer().getLegalMoves(), board)) {
       final MoveTransition moveTransition = board.currentPlayer().makeMove(move);
@@ -365,8 +379,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
           }
         }
       }
-    }
-    storeTranspositionTableEntry(board, currentLowest, depth, TranspositionTableEntry.NodeType.EXACT);
+    } storeTranspositionTableEntry(board, currentLowest, depth, TranspositionTableEntry.NodeType.EXACT);
     return currentLowest;
   }
 
@@ -428,11 +441,11 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     /**
      * The constructor for this recursive task.
      *
-     * @param board           The current chess board for this search.
-     * @param stockAlphaBeta  The current StockAlphaBeta for this search.
-     * @param highest         The highest value seen in the search.
-     * @param lowest          The lowest value seen in the search.
-     * @param depth           The current search depth for this search.
+     * @param board          The current chess board for this search.
+     * @param stockAlphaBeta The current StockAlphaBeta for this search.
+     * @param highest        The highest value seen in the search.
+     * @param lowest         The lowest value seen in the search.
+     * @param depth          The current search depth for this search.
      */
     public ParallelSearchTask(Board board, StockAlphaBeta stockAlphaBeta, double highest, double lowest, int depth) {
       this.board = board;
@@ -454,15 +467,13 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       for (Move move : MoveSorter.EXPENSIVE.sort(currentPlayer.getLegalMoves(), board)) {
         MoveTransition moveTransition = currentPlayer.makeMove(move);
         this.stockAlphaBeta.quiescenceCount = 0;
-
-        //Check for LMR
         if(depth >= LMRThreshold) depth = (int) (depth * LMRScale);
         if (moveTransition.moveStatus().isDone()) {
           double currentValue = 0.0;
           if (currentPlayer.getAlliance().isWhite()) {
             currentValue = this.stockAlphaBeta.min(moveTransition.toBoard(),
                            this.stockAlphaBeta.calculateQuiescenceDepth(moveTransition.toBoard(),
-                                   this.depth - 1), this.highest, this.lowest);
+                           this.depth - 1), this.highest, this.lowest);
             if (currentValue > this.highest) {
               this.highest = currentValue;
               bestMove = move;
@@ -473,7 +484,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
           } else if (currentPlayer.getAlliance().isBlack()) {
             currentValue = this.stockAlphaBeta.max(moveTransition.toBoard(),
                            this.stockAlphaBeta.calculateQuiescenceDepth(moveTransition.toBoard(),
-                                   this.depth - 1), this.highest, this.lowest);
+                           this.depth - 1), this.highest, this.lowest);
             if (currentValue < this.lowest) {
               this.lowest = currentValue;
               bestMove = move;
@@ -481,9 +492,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
                 break;
               }
             }
-          }
-
-          if (currentPlayer.getAlliance().isWhite() && currentValue > this.highest) {
+          } if (currentPlayer.getAlliance().isWhite() && currentValue > this.highest) {
             this.highest = currentValue;
             bestMove = move;
             if (currentValue >= this.lowest) {
@@ -497,8 +506,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
             }
           }
         }
-      }
-      return bestMove;
+      } return bestMove;
     }
   }
 }

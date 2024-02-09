@@ -2,7 +2,6 @@ package engine.forPlayer.forAI;
 
 import com.google.common.annotations.VisibleForTesting;
 import engine.forBoard.Board;
-import engine.forPiece.Pawn;
 import engine.forPiece.Piece;
 import engine.forPlayer.Player;
 
@@ -19,7 +18,7 @@ import java.util.Set;
  *
  * @author Aaron Ho
  */
-public final class StandardBoardEvaluator implements BoardEvaluator {
+public class StandardBoardEvaluator implements BoardEvaluator {
 
   /*** Bonus applied when the opponent is in checkmate. */
   private final static int CheckMateBonus = 100000;
@@ -29,9 +28,6 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
 
   /*** Bonus applied when a player has successfully castled. */
   private final static int CastleBonus = 20;
-
-  /*** Bonus applied when a player has two pawns in the center. */
-  private final static double PawnCenterBonus = 25;
 
   /*** Bonus applied when a developed piece is a minor piece. */
   private final static int MinorDevelopmentBonus = 15;
@@ -98,28 +94,12 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
     return kingThreats(player, depth) +
             kingSafety(player, board) +
             mobility(player) +
-            pawnCenter(board) +
             castle(player) +
             pieceEvaluations(player, board) +
             minorPieceDevelopment(player) +
             pawnStructure(player, board) +
             rookStructure(player, board) +
             calculateRepeatedMoveInOpeningPenalty(player);
-  }
-
-  public static double pawnCenter(final Board board) {
-    if ((board.getPiece(35) instanceof Pawn
-            && board.getPiece(35).getPieceAllegiance().isWhite())
-            && (board.getPiece(36) instanceof Pawn
-            && board.getPiece(36).getPieceAllegiance().isWhite())) {
-      return PawnCenterBonus;
-    }  else if((board.getPiece(27) instanceof Pawn
-            && board.getPiece(27).getPieceAllegiance().isBlack())
-            && (board.getPiece(28) instanceof Pawn
-            && board.getPiece(28).getPieceAllegiance().isBlack())) {
-      return PawnCenterBonus;
-    }
-    return 0;
   }
 
   /**
@@ -129,11 +109,11 @@ public final class StandardBoardEvaluator implements BoardEvaluator {
    * @return The piece evaluation score.
    */
   private static double pieceEvaluations(final Player player, final Board board) {
-    double pieceValuationScore = 0;
+    double pieceEvaluationScore = 0;
     for (final Piece piece: player.getActivePieces()) {
-      pieceValuationScore += (piece.getPieceValue() + piece.locationBonus(board));
+      pieceEvaluationScore += (piece.getPieceValue() + piece.locationBonus(board));
     }
-    return pieceValuationScore;
+    return pieceEvaluationScore;
   }
 
 
