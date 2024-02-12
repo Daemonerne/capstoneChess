@@ -84,7 +84,7 @@ public abstract class Player {
    * @return True if the player is in stalemate, false otherwise.
    */
   public boolean isInStaleMate() {
-    return !this.isInCheck && !hasEscapeMoves());
+    return !this.isInCheck && !hasEscapeMoves();
   }
 
   /**
