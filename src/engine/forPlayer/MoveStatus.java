@@ -21,35 +21,24 @@ public enum MoveStatus {
   
     @Override
     public boolean isDone() {
-    
       return true;
-    
     }
-  
   },
   
   /*** Represents an illegal or invalid move. */
   ILLEGAL_MOVE {
-    
     @Override
     public boolean isDone() {
-    
       return false;
-    
     }
-    
   },
   
   /*** Represents a legal move that leaves the player in check. */
   LEAVES_PLAYER_IN_CHECK {
-    
     @Override
     public boolean isDone() {
-      
       return false;
-      
     }
-    
   };
   
   /**

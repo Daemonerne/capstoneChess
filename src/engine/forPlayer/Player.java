@@ -75,7 +75,7 @@ public abstract class Player {
    * @return True if the player is in checkmate, false otherwise.
    */
   public boolean isInCheckMate() {
-    return this.isInCheck && hasEscapeMoves();
+    return this.isInCheck && !hasEscapeMoves();
   }
 
   /**
@@ -84,7 +84,7 @@ public abstract class Player {
    * @return True if the player is in stalemate, false otherwise.
    */
   public boolean isInStaleMate() {
-    return !this.isInCheck && hasEscapeMoves();
+    return !this.isInCheck && !hasEscapeMoves());
   }
 
   /**
@@ -124,7 +124,7 @@ public abstract class Player {
    */
   private boolean hasEscapeMoves() {
     return this.legalMoves.stream()
-            .noneMatch(move -> makeMove(move)
+            .anyMatch(move -> makeMove(move)
                     .moveStatus().isDone());
   }
 

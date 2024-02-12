@@ -281,37 +281,29 @@ public final class Table extends Observable {
     final JMenuItem escapeAnalysis = new JMenuItem("Escape Analysis Score", KeyEvent.VK_S);
     escapeAnalysis.addActionListener(e -> {
       final Move lastMove = moveLog.getMoves().get(moveLog.size() - 1);
-      if (lastMove != null) {
-        System.out.println(MoveUtils.exchangeScore(lastMove));
-      }
-
-    });
-    optionsMenu.add(escapeAnalysis);
-
+      if (lastMove != null) System.out.println(MoveUtils.exchangeScore(lastMove));
+    }); optionsMenu.add(escapeAnalysis);
     final JMenuItem legalMovesMenuItem = new JMenuItem("Current State", KeyEvent.VK_L);
     legalMovesMenuItem.addActionListener(e -> {
       System.out.println(chessBoard.getWhitePieces());
       System.out.println(chessBoard.getBlackPieces());
       System.out.println(playerInfo(chessBoard.currentPlayer()));
       System.out.println(playerInfo(chessBoard.currentPlayer().getOpponent()));
-    });
-    optionsMenu.add(legalMovesMenuItem);
+    }); optionsMenu.add(legalMovesMenuItem);
 
     final JMenuItem undoMoveMenuItem = new JMenuItem("Undo last move", KeyEvent.VK_M);
     undoMoveMenuItem.addActionListener(e -> {
       if (Table.get().getMoveLog().size() > 0) {
         undoLastMove();
       }
-    });
-    optionsMenu.add(undoMoveMenuItem);
+    }); optionsMenu.add(undoMoveMenuItem);
 
     final JMenuItem setupGameMenuItem = new JMenuItem("Setup Game", KeyEvent.VK_S);
     setupGameMenuItem.addActionListener(e -> {
       Table.get().getGameSetup().promptUser();
       Table.get().setupUpdate(Table.get().getGameSetup());
-    });
-    optionsMenu.add(setupGameMenuItem);
-
+    }); optionsMenu.add(setupGameMenuItem);
+    
     return optionsMenu;
   }
 
@@ -323,26 +315,20 @@ public final class Table extends Observable {
    * @return The JMenu containing user preferences and settings.
    */
   private JMenu createPreferencesMenu() {
-
     final JMenu preferencesMenu = new JMenu("Preferences");
     final JMenuItem flipBoardMenuItem = new JMenuItem("Flip board");
 
     flipBoardMenuItem.addActionListener(e -> {
       boardDirection = boardDirection.opposite();
       boardPanel.drawBoard(chessBoard);
-    });
-
+    }); 
+    
     preferencesMenu.add(flipBoardMenuItem);
     preferencesMenu.addSeparator();
-
-    final JCheckBoxMenuItem cbLegalMoveHighlighter = new JCheckBoxMenuItem(
-            "Highlight Legal Moves", false);
-
+    final JCheckBoxMenuItem cbLegalMoveHighlighter = new JCheckBoxMenuItem("Highlight Legal Moves", false);
     cbLegalMoveHighlighter.addActionListener(e -> highlightLegalMoves = cbLegalMoveHighlighter.isSelected());
-
     preferencesMenu.add(cbLegalMoveHighlighter);
     return preferencesMenu;
-
   }
 
   /**
@@ -391,8 +377,8 @@ public final class Table extends Observable {
     for (int i = Table.get().getMoveLog().size() - 1; i >= 0; i--) {
       final Move lastMove = Table.get().getMoveLog().removeMove(Table.get().getMoveLog().size() - 1);
       this.chessBoard = this.chessBoard.currentPlayer().unMakeMove(lastMove).toBoard();
-    }
-    this.computerMove = null;
+    } this.computerMove = null;
+
     Table.get().getMoveLog().clear();
     Table.get().getGameHistoryPanel().redo(chessBoard, Table.get().getMoveLog());
     Table.get().getBoardPanel().drawBoard(chessBoard);
@@ -453,27 +439,21 @@ public final class Table extends Observable {
     @Override
     public void update(final Observable o,
                        final Object arg) {
-
       if (Table.get().getGameSetup().isAIPlayer(Table.get().getGameBoard().currentPlayer()) &&
               !Table.get().getGameBoard().currentPlayer().isInCheckMate() &&
               !Table.get().getGameBoard().currentPlayer().isInStaleMate()) {
-        System.out.println(Table.get().getGameBoard().currentPlayer() + " is set to AI, thinking....");
+        System.out.println(Table.get().getGameBoard().currentPlayer() + " is thinking....");
         final AIThinkTank thinkTank = new AIThinkTank();
         thinkTank.execute();
-      }
-
-      if (Table.get().getGameBoard().currentPlayer().isInCheckMate()) {
+      } if (Table.get().getGameBoard().currentPlayer().isInCheckMate()) {
         JOptionPane.showMessageDialog(Table.get().getBoardPanel(),
                 "Game Over: Player " + Table.get().getGameBoard().currentPlayer() + " is in checkmate!", "Game Over",
                 JOptionPane.INFORMATION_MESSAGE);
-      }
-
-        if (Table.get().getGameBoard().currentPlayer().isInStaleMate()) {
+      } if (Table.get().getGameBoard().currentPlayer().isInStaleMate()) {
         JOptionPane.showMessageDialog(Table.get().getBoardPanel(),
                 "Game Over: Player " + Table.get().getGameBoard().currentPlayer() + " is in stalemate!", "Game Over",
                 JOptionPane.INFORMATION_MESSAGE);
       }
-
     }
   }
 
@@ -482,15 +462,13 @@ public final class Table extends Observable {
 
     /*** Represents a human player. */
     HUMAN,
-
+    
     /*** Represents a computer player. */
     COMPUTER
-
   }
 
   /*** An asynchronous worker class responsible for AI move calculation and execution. */
   private static class AIThinkTank extends SwingWorker < Move, String > {
-
     private final ExecutorService executorService;  
 
     /*** Constructs an instance of AIThinkTank. */
@@ -509,7 +487,6 @@ public final class Table extends Observable {
       final StockAlphaBeta strategy = new StockAlphaBeta(Table.get().getGameSetup().getSearchDepth());
       strategy.addObserver(Table.get().getDebugPanel());
       bestMove = strategy.execute(Table.get().getGameBoard());
-
       return bestMove;
     }
 
@@ -532,7 +509,6 @@ public final class Table extends Observable {
         executorService.shutdown();
       }
     }
-
   }
 
   /**
@@ -542,7 +518,7 @@ public final class Table extends Observable {
   private class BoardPanel extends JPanel {
 
     /*** List of tile panels representing the individual tiles on the chess board. */
-    final List < TilePanel > boardTiles;
+    final List <TilePanel> boardTiles;
 
     /*** Constructs a new BoardPanel and initializes its tile panels. */
     BoardPanel() {
@@ -552,8 +528,8 @@ public final class Table extends Observable {
         final TilePanel tilePanel = new TilePanel(this, i);
         this.boardTiles.add(tilePanel);
         add(tilePanel);
-      }
-
+      } 
+      
       setPreferredSize(BOARD_PANEL_DIMENSION);
       setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
       setBackground(Color.decode("#8B4726"));
@@ -570,10 +546,8 @@ public final class Table extends Observable {
       for (final TilePanel boardTile: boardDirection.traverse(boardTiles)) {
         boardTile.drawTile(board);
         add(boardTile);
-      }
-      validate();
+      } validate();
       repaint();
-
     }
   }
 
@@ -582,12 +556,11 @@ public final class Table extends Observable {
 
     /*** Represents the normal direction of the chess board, where tiles are displayed in their natural order. */
     NORMAL {
-
       @Override
-      List < TilePanel > traverse(final List < TilePanel > boardTiles) {
+      List <TilePanel> traverse(final List <TilePanel> boardTiles) {
         return boardTiles;
       }
-
+      
       @Override
       BoardDirection opposite() {
         return FLIPPED;
@@ -597,7 +570,7 @@ public final class Table extends Observable {
     /*** Represents the flipped direction of the chess board, where tiles are displayed in reverse order. */
     FLIPPED {
       @Override
-      List < TilePanel > traverse(final List < TilePanel > boardTiles) {
+      List <TilePanel> traverse(final List <TilePanel> boardTiles) {
         return Lists.reverse(boardTiles);
       }
 
@@ -613,7 +586,7 @@ public final class Table extends Observable {
      * @param boardTiles The list of tile panels to traverse.
      * @return           A list of tile panels in the desired traversal order.
      */
-    abstract List < TilePanel > traverse(final List < TilePanel > boardTiles);
+    abstract List <TilePanel> traverse(final List <TilePanel> boardTiles);
 
     /**
      * Returns the opposite board direction.
@@ -621,12 +594,12 @@ public final class Table extends Observable {
      * @return The opposite board direction.
      */
     abstract BoardDirection opposite();
-
   }
 
   /*** A class representing a log of moves made during a chess game. */
   public static class MoveLog {
 
+    /*** A list of moves to be used in the move log. */
     private final List <Move> moves;
 
     /*** Constructs a new MoveLog. */
@@ -686,7 +659,6 @@ public final class Table extends Observable {
     void removeMove(final Move move) {
       this.moves.remove(move);
     }
-
   }
 
   /**
@@ -696,6 +668,7 @@ public final class Table extends Observable {
    */
   private class TilePanel extends JPanel {
 
+    /*** The tile number. */
     private final int tileId;
 
     /**
@@ -718,8 +691,7 @@ public final class Table extends Observable {
           if (Table.get().getGameSetup().isAIPlayer(Table.get().getGameBoard().currentPlayer()) ||
                   BoardUtils.isEndOfGame(Table.get().getGameBoard())) {
             return;
-          }
-          if (isRightMouseButton(event)) {
+          } if (isRightMouseButton(event)) {
             sourceTile = null;
             humanMovedPiece = null;
           } else if (isLeftMouseButton(event)) {
@@ -727,18 +699,15 @@ public final class Table extends Observable {
               sourceTile = chessBoard.getPiece(tileId);
               humanMovedPiece = sourceTile;
             } else {
-              final Move move = createMove(chessBoard, sourceTile.getPiecePosition(),
-                      tileId);
+              final Move move = createMove(chessBoard, sourceTile.getPiecePosition(), tileId);
               final MoveTransition transition = chessBoard.currentPlayer().makeMove(move);
               if (transition.moveStatus().isDone()) {
                 chessBoard = transition.toBoard();
                 moveLog.addMove(move);
-              }
-              sourceTile = null;
+              } sourceTile = null;
               humanMovedPiece = null;
             }
-          }
-          invokeLater(() -> {
+          } invokeLater(() -> {
             gameHistoryPanel.redo(chessBoard, moveLog);
             Table.get().moveMadeUpdate(PlayerType.HUMAN);
             boardPanel.drawBoard(chessBoard);
@@ -841,8 +810,7 @@ public final class Table extends Observable {
     private Collection < Move > pieceLegalMoves(final Board board) {
       if (humanMovedPiece != null && humanMovedPiece.getPieceAllegiance() == board.currentPlayer().getAlliance()) {
         return humanMovedPiece.calculateLegalMoves(board);
-      }
-      return Collections.emptyList();
+      } return Collections.emptyList();
     }
 
     /**

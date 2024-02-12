@@ -58,32 +58,6 @@ import static engine.forBoard.Move.MoveFactory;
  * <br><br>
  * `StockAlphaBeta` extends `Observable` and implements the `MoveStrategy` interface.
  * <br><br>
- * Fields:
- * - `evaluator`: Board evaluator for assessing positions.
- * - `maxDepth`: Maximum depth for iterative deepening.
- * - `boardsEvaluated`: Count of boards evaluated during the search.
- * - `quiescenceCount`: Count of quiescence searches performed during the algorithm execution.
- * - `neatFormat`: DecimalFormat object for formatting evaluation scores.
- * - `MaxQuiescence`: Maximum number of quiescence searches allowed.
- * - `LMRThreshold`: Depth threshold for initiating Late Move Reduction (LMR).
- * - `LMRScale`: Reduction scale used in Late Move Reduction.
- * - `DeltaPruningValue`: Delta pruning value used to prune likely unnecessary branches.
- * - `MoveSorter`: Enumeration representing different move sorting strategies.
- * - `transpositionTable`: Map for storing transposition table entries.
- * - `killerMoves`: Array for storing killer moves at each depth.
- * <br><br>
- * Methods:
- * - `toString()`: Returns a string representation of the StockAlphaBeta instance.
- * - `calculateQuiescenceDepth(Board toBoard, int depth)`: Calculates the depth for quiescence search.
- * - `execute(Board board)`: Executes the alpha-beta search algorithm with iterative deepening.
- * - `score(Player currentPlayer, double highestSeenValue, double lowestSeenValue)`: Calculates and formats
- *   the score based on the alliance of the current player.
- * - `max(Board board, int depth, double highest, double lowest)`: Implements the max portion of alpha-beta search.
- * - `min(Board board, int depth, double highest, double lowest)`: Implements the min portion of alpha-beta search.
- * - `calculateTimeTaken(long start, long end)`: Calculates and formats the time taken between two time points.
- * - `storeTranspositionTableEntry(Board board, double score, int depth, TranspositionTableEntry.NodeType nodeType)`: Stores a move in the transposition table.
- * - `calculateAspirationWindow(double highestSeenValue, double lowestSeenValue)`: Calculates the dynamic aspiration window based on previous search results.
- * <br><br>
  * A known bug occurs at very low depths (e.g., depth 1), where rapid parallelism may lead to an
  * `ExecutionException` caused by a `StackOverflowError`. This issue minimally impacts engine functionality
  * at such depths, as it is not practical to use an engine at depth 1. Setting the depth to 2 or 3 may provide
@@ -131,7 +105,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   private static final double LMRScale = 0.9;
 
   /*** The delta pruning value used to prune likely unnecessary branches. */
-  private static final double DeltaPruningValue = 7;
+  private static final double DeltaPruningValue = 5;
 
   /*** Array for storing killer moves encountered at each depth. */
   private final Move[][] killerMoves;
@@ -303,9 +277,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         storeTranspositionTableEntry(board, killerScore, depth, TranspositionTableEntry.NodeType.LOWERBOUND);
         return lowest;
       }
-    } if(depth >= LMRThreshold) depth = (int) (depth * LMRScale);
-
-    double currentHighest = highest;
+    } double currentHighest = highest;
     for (final Move move: MoveSorter.STANDARD.sort(board.currentPlayer().getLegalMoves(), board)) {
       final MoveTransition moveTransition = board.currentPlayer().makeMove(move);
       if (moveTransition.moveStatus().isDone()) {
@@ -365,8 +337,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         storeTranspositionTableEntry(board, killerScore, depth, TranspositionTableEntry.NodeType.LOWERBOUND);
         return highest;
       }
-    } if(depth >= LMRThreshold) depth = (int) (depth * LMRScale);
-    double currentLowest = lowest;
+    } double currentLowest = lowest;
     for (final Move move: MoveSorter.STANDARD.sort(board.currentPlayer().getLegalMoves(), board)) {
       final MoveTransition moveTransition = board.currentPlayer().makeMove(move);
       if (moveTransition.moveStatus().isDone()) {
@@ -467,7 +438,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       for (Move move : MoveSorter.EXPENSIVE.sort(currentPlayer.getLegalMoves(), board)) {
         MoveTransition moveTransition = currentPlayer.makeMove(move);
         this.stockAlphaBeta.quiescenceCount = 0;
-        if(depth >= LMRThreshold) depth = (int) (depth * LMRScale);
         if (moveTransition.moveStatus().isDone()) {
           double currentValue = 0.0;
           if (currentPlayer.getAlliance().isWhite()) {

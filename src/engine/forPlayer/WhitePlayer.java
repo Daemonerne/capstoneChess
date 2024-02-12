@@ -59,13 +59,9 @@ public final class WhitePlayer extends Player {
   @Override
   protected Collection<Move> calculateKingCastles(final Collection<Move> playerLegals,
                                                   final Collection<Move> opponentLegals) {
-    
-    if(hasCastleOpportunities()) {
+    if(!hasCastleOpportunities()) {
       return Collections.emptyList();
-    }
-    
-    final List<Move> kingCastles = new ArrayList<>();
-    
+    } final List<Move> kingCastles = new ArrayList<>();
     if(this.playerKing.isFirstMove() && this.playerKing.getPiecePosition() == 60 && !this.isInCheck()) {
       if(this.board.getPiece(61) == null && this.board.getPiece(62) == null) {
         final Piece kingSideRook = this.board.getPiece(63);
@@ -78,8 +74,7 @@ public final class WhitePlayer extends Player {
             }
           }
         }
-      }
-      if(this.board.getPiece(59) == null && this.board.getPiece(58) == null &&
+      } if(this.board.getPiece(59) == null && this.board.getPiece(58) == null &&
         this.board.getPiece(57) == null) {
         final Piece queenSideRook = this.board.getPiece(56);
         if(queenSideRook != null && queenSideRook.isFirstMove()) {
@@ -91,8 +86,7 @@ public final class WhitePlayer extends Player {
           }
         }
       }
-    }
-    return Collections.unmodifiableList(kingCastles);
+    } return Collections.unmodifiableList(kingCastles);
   }
   
   /**
@@ -134,5 +128,4 @@ public final class WhitePlayer extends Player {
   public String toString() {
     return Alliance.WHITE.toString();
   }
-  
 }

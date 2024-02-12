@@ -25,55 +25,55 @@ public enum BoardUtils {
   Instance;
 
   /*** A list indicating whether each tile belongs to the first column on the chessboard. */
-  public final List < Boolean > FirstColumn = initColumn(0);
+  public final List <Boolean> FirstColumn = initColumn(0);
   
   /*** A list indicating whether each tile belongs to the second column on the chessboard. */
-  public final List < Boolean > SecondColumn = initColumn(1);
+  public final List <Boolean> SecondColumn = initColumn(1);
   
   /*** A list indicating whether each tile belongs to the third column on the chessboard. */
-  public final List < Boolean > ThirdColumn = initColumn(2);
+  public final List <Boolean> ThirdColumn = initColumn(2);
   
   /*** A list indicating whether each tile belongs to the fourth column on the chessboard. */
-  public final List < Boolean > FourthColumn = initColumn(3);
+  public final List <Boolean> FourthColumn = initColumn(3);
   
   /*** A list indicating whether each tile belongs to the fifth column on the chessboard. */
-  public final List < Boolean > FifthColumn = initColumn(4);
+  public final List <Boolean> FifthColumn = initColumn(4);
   
   /*** A list indicating whether each tile belongs to the sixth column on the chessboard. */
-  public final List < Boolean > SixthColumn = initColumn(5);
+  public final List <Boolean> SixthColumn = initColumn(5);
   
   /*** A list indicating whether each tile belongs to the seventh column on the chessboard. */
-  public final List < Boolean > SeventhColumn = initColumn(6);
+  public final List <Boolean> SeventhColumn = initColumn(6);
   
   /*** A list indicating whether each tile belongs to the eighth column on the chessboard. */
-  public final List < Boolean > EighthColumn = initColumn(7);
+  public final List <Boolean> EighthColumn = initColumn(7);
   
   /*** A list indicating whether each tile belongs to the first row on the chessboard. */
-  public final List < Boolean > FirstRow = initRow(0);
+  public final List <Boolean> FirstRow = initRow(0);
   
   /*** A list indicating whether each tile belongs to the second row on the chessboard. */
-  public final List < Boolean > SecondRow = initRow(8);
+  public final List <Boolean> SecondRow = initRow(8);
   
   /*** A list indicating whether each tile belongs to the third row on the chessboard. */
-  public final List < Boolean > ThirdRow = initRow(16);
+  public final List <Boolean> ThirdRow = initRow(16);
   
   /*** A list indicating whether each tile belongs to the fourth row on the chessboard. */
-  public final List < Boolean > FourthRow = initRow(24);
+  public final List <Boolean> FourthRow = initRow(24);
   
   /*** A list indicating whether each tile belongs to the fifth row on the chessboard. */
-  public final List < Boolean > FifthRow = initRow(32);
+  public final List <Boolean> FifthRow = initRow(32);
   
   /*** A list indicating whether each tile belongs to the sixth row on the chessboard. */
-  public final List < Boolean > SixthRow = initRow(40);
+  public final List <Boolean> SixthRow = initRow(40);
   
   /*** A list indicating whether each tile belongs to the seventh row on the chessboard. */
-  public static final List < Boolean > SeventhRow = initRow(48);
+  public static final List <Boolean> SeventhRow = initRow(48);
   
   /*** A list indicating whether each tile belongs to the eighth row on the chessboard. */
-  public final List < Boolean > EighthRow = initRow(56);
+  public final List <Boolean> EighthRow = initRow(56);
   
   /*** A list of algebraic notation representing each tile on the chessboard. */
-  public static final List < String > ALGEBRAIC_NOTATION = initializeAlgebraicNotation();
+  public static final List <String> ALGEBRAIC_NOTATION = initializeAlgebraicNotation();
 
   /*** The index of the starting tile. */
   public static final int START_TILE_INDEX = 0;
@@ -90,7 +90,7 @@ public enum BoardUtils {
    * @param columnNumber The column number for which to generate the list.
    * @return A list of boolean values indicating the tiles in the specified column.
    */
-  private static List < Boolean > initColumn(int columnNumber) {
+  private static List <Boolean> initColumn(int columnNumber) {
 
     final Boolean[] column = new Boolean[NUM_TILES];
     Arrays.fill(column, false);
@@ -107,7 +107,7 @@ public enum BoardUtils {
    * @param rowNumber The row number for which to generate the list.
    * @return A list of boolean values indicating the tiles in the specified row.
    */
-  private static List < Boolean > initRow(int rowNumber) {
+  private static List <Boolean> initRow(int rowNumber) {
     final Boolean[] row = new Boolean[NUM_TILES];
     Arrays.fill(row, false);
     do {
@@ -122,7 +122,7 @@ public enum BoardUtils {
    *
    * @return A list of algebraic notation positions.
    */
-  private static List < String > initializeAlgebraicNotation() {
+  private static List <String> initializeAlgebraicNotation() {
     return List.of("a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8",
       "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
       "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6",
@@ -140,9 +140,7 @@ public enum BoardUtils {
    * @return True if the coordinate is valid, false otherwise.
    */
   public static boolean isValidTileCoordinate(final int coordinate) {
-
     return coordinate >= START_TILE_INDEX && coordinate < NUM_TILES;
-
   }
 
   /**
@@ -195,8 +193,7 @@ public enum BoardUtils {
     if (move.isAttack()) {
       final Piece attackedPiece = move.getAttackedPiece();
       return (attackedPiece.getPieceValue() - movingPiece.getPieceValue() + Piece.PieceType.KING.getPieceValue()) * 100;
-    }
-    return Piece.PieceType.KING.getPieceValue() - movingPiece.getPieceValue();
+    } return Piece.PieceType.KING.getPieceValue() - movingPiece.getPieceValue();
   }
 
   /**
@@ -207,15 +204,14 @@ public enum BoardUtils {
    * @return A list of the last N moves.
    */
   public static List <Move> lastNMoves(final Board board, int N) {
-    final List < Move > moveHistory = new ArrayList < > ();
+    final List <Move> moveHistory = new ArrayList<>();
     Move currentMove = board.getTransitionMove();
     int i = 0;
     while (currentMove != getNullMove() && i < N) {
       moveHistory.add(currentMove);
       currentMove = currentMove.getBoard().getTransitionMove();
       i++;
-    }
-    return Collections.unmodifiableList(moveHistory);
+    } return Collections.unmodifiableList(moveHistory);
   }
 
   /**
@@ -236,90 +232,6 @@ public enum BoardUtils {
    * @return True if the game is in the opening phase, false otherwise.
    */
   public static boolean isOpening(final Board board) {
-
-      return lastNMoves(board, 100).size() < 12;
-  }
-
-
-  /**
-   * Calculates the Static Exchange Evaluation (SEE) value for a given move on the board.
-   *
-   * @param board The current chess board.
-   * @param move  The move for which SEE is calculated.
-   * @return The SEE value for the move.
-   */
-  public static int see(Board board, Move move) {
-      int toSquare = move.getDestinationCoordinate();
-
-    int result;
-
-    // Make the move on a temporary board
-    Board tempBoard = board.currentPlayer().makeMove(move).toBoard();
-
-    // Get the value of the captured piece
-    int capturedValue = move.getAttackedPiece().getPieceValue();
-
-    // Recursively evaluate the next capture
-    int nextSeeValue = seeRecursively(tempBoard, toSquare, -capturedValue);
-
-    // The result is the negation of the recursive value if the move is not a capture
-    result = !(move.isAttack()) ? -nextSeeValue : nextSeeValue;
-
-    return result;
-  }
-
-  /**
-   * Recursively calculates the Static Exchange Evaluation (SEE) value for a given square on the board.
-   *
-   * @param board            The current chess board.
-   * @param square           The square for which SEE is calculated.
-   * @param accumulatedValue The accumulated value of the evaluation.
-   * @return The SEE value for the square.
-   */
-  private static int seeRecursively(Board board, int square, int accumulatedValue) {
-    // Base case: If the square is empty, return the accumulated value
-    if (board.getPiece(square) == null) {
-      return accumulatedValue;
-    }
-
-    // Get the piece on the square
-    Piece piece = board.getPiece(square);
-
-    // Update the accumulated value based on the piece value
-    accumulatedValue += pieceValue(piece);
-
-    // Generate all captures from the square
-    for(final Move captureMove : Player.calculateAttacksOnTile(square, board.currentPlayer().getOpponent().getLegalMoves())) {
-      // Recursive call for the next capture
-      int nextSeeValue = seeRecursively(board, captureMove.getDestinationCoordinate(), -accumulatedValue);
-
-      // Update the result based on the negation of the recursive value
-      accumulatedValue = Math.max(accumulatedValue, -nextSeeValue);
-    }
-
-    return accumulatedValue;
-  }
-
-  /**
-   * Calculates the value of a piece for SEE based on its type.
-   *
-   * @param piece The chess piece.
-   * @return The value of the piece for SEE.
-   */
-  private static int pieceValue(Piece piece) {
-    if (piece != null) {
-      switch (piece.getPieceType()) {
-        case PAWN:
-          return 1;
-        case KNIGHT:
-        case BISHOP:
-          return 3;
-        case ROOK:
-          return 5;
-        case QUEEN:
-          return 9;
-      }
-    }
-    return 0; // Empty square
+    return lastNMoves(board, 100).size() < 12;
   }
 }
