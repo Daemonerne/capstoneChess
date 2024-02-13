@@ -48,15 +48,10 @@ import static engine.forBoard.Move.MoveFactory;
  * This reduction in depth helps improve the efficiency of the search, especially in positions where the move order can significantly
  * impact the evaluation.
  * <br><br>
- * Killer move heuristics and history heuristic have been added to the alpha-beta search algorithm. Killer moves are stored and
- * considered in move ordering to improve pruning. History heuristic scores are used to order moves based on their historical success.
- * <br><br>
  * The class utilizes the `StandardBoardEvaluator` for assessing board positions and generating evaluation scores.
  * Move sorting strategies, such as `STANDARD` and `EXPENSIVE`, are implemented for ordering moves based on
  * certain criteria. Transposition tables are used to store and retrieve previously evaluated positions to
  * avoid redundant computations.
- * <br><br>
- * `StockAlphaBeta` extends `Observable` and implements the `MoveStrategy` interface.
  * <br><br>
  * A known bug occurs at very low depths (e.g., depth 1), where rapid parallelism may lead to an
  * `ExecutionException` caused by a `StackOverflowError`. This issue minimally impacts engine functionality
@@ -80,16 +75,8 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   /*** The count of quiescence searches performed during the algorithm execution. */
   private int quiescenceCount;
 
-  /*** The size of the transposition table. */
-  private static final int transpositionTableSize = 40000000;
-
   /*** A transposition table that tracks the scores of previously evaluated moves. */
-  private final Map<Long, TranspositionTableEntry> transpositionTable = new LinkedHashMap<>(transpositionTableSize, 0.75f, true) {
-      @Override
-      protected boolean removeEldestEntry(Map.Entry<Long, TranspositionTableEntry> eldest) {
-          return size() > transpositionTableSize;
-      }
-  };
+  private final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
 
   /*** The maximum number of quiescence searches allowed. The higher this value is, the longer the search will take,
    * but theoretically will increase the strength of the engine's result. */
@@ -170,13 +157,13 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       int activityMeasure = 0;
       if (toBoard.currentPlayer().isInCheck()) {
         activityMeasure += 1;
-      } for (final Move move: BoardUtils.lastNMoves(toBoard, 3)) {
+      } for (final Move move: BoardUtils.lastNMoves(toBoard, 2)) {
         if (move.isAttack()) {
           activityMeasure += 1;
         }
       } if (activityMeasure >= 2) {
         this.quiescenceCount++;
-        return 2;
+        return 1;
       }
     }
     return depth - 1;
@@ -257,7 +244,8 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       if (futilityValue >= highest) {
         return futilityValue;
       }
-    } double currentHighest = highest;
+    } if (depth <= LMRThreshold) depth = (int) (depth * LMRScale);
+    double currentHighest = highest;
     for (final Move move: MoveSorter.STANDARD.sort(board.currentPlayer().getLegalMoves(), board)) {
       final MoveTransition moveTransition = board.currentPlayer().makeMove(move);
       if (moveTransition.moveStatus().isDone()) {
@@ -265,13 +253,13 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         currentHighest = Math.max(currentHighest, min(toBoard, calculateQuiescenceDepth(toBoard, depth), currentHighest, lowest));
         if (currentHighest >= lowest) {
           if (currentHighest >= lowest + DeltaPruningValue) {
-            storeTranspositionTableEntry(board, currentHighest, depth - 1, TranspositionTableEntry.NodeType.LOWERBOUND);
+            storeTranspositionTableEntry(board, currentHighest, depth, TranspositionTableEntry.NodeType.LOWERBOUND);
             return lowest;
           }
         }
       }
     }
-    storeTranspositionTableEntry(board, currentHighest, depth - 1, TranspositionTableEntry.NodeType.EXACT);
+    storeTranspositionTableEntry(board, currentHighest, depth, TranspositionTableEntry.NodeType.EXACT);
     return currentHighest;
   }
 
@@ -308,12 +296,13 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       if (futilityValue <= lowest) {
         return futilityValue;
       }
-    } double currentLowest = lowest;
+    } if (depth <= LMRThreshold) depth = (int) (depth * LMRScale);
+    double currentLowest = lowest;
     for (final Move move: MoveSorter.STANDARD.sort(board.currentPlayer().getLegalMoves(), board)) {
       final MoveTransition moveTransition = board.currentPlayer().makeMove(move);
       if (moveTransition.moveStatus().isDone()) {
         final Board toBoard = moveTransition.toBoard();
-        currentLowest = Math.min(currentLowest, max(toBoard, calculateQuiescenceDepth(toBoard, depth - 1), highest, currentLowest));
+        currentLowest = Math.min(currentLowest, max(toBoard, calculateQuiescenceDepth(toBoard, depth), highest, currentLowest));
         if (currentLowest <= highest) {
           if (currentLowest <= highest - DeltaPruningValue) {
             storeTranspositionTableEntry(board, currentLowest, depth, TranspositionTableEntry.NodeType.UPPERBOUND);

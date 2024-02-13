@@ -2,7 +2,6 @@ package engine;
 
 import engine.forBoard.Board;
 import engine.forBoard.BoardUtils;
-import engine.forPiece.Pawn;
 import engine.forPlayer.BlackPlayer;
 import engine.forPlayer.Player;
 import engine.forPlayer.WhitePlayer;
@@ -260,11 +259,6 @@ public enum Alliance {
      */
     @Override
     public int bishopBonus(final int position, final Board board) {
-      if (BoardUtils.isOpening(board) && board.getPiece(11) instanceof Pawn) {
-        if (position == 19) {
-          return -200;
-        }
-      }
       return BLACK_BISHOP_PREFERRED_COORDINATES[position];
     }
 
