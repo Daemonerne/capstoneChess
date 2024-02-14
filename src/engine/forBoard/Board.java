@@ -7,10 +7,8 @@ import engine.forPlayer.Player;
 import engine.forPlayer.WhitePlayer;
 
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import static engine.forBoard.Move.MoveFactory.*;
+import static engine.forBoard.Move.MoveFactory.getNullMove;
 
 /** 
  * The Board class represents a chess board containing 64 tiles and thirty-two pieces at the start of the game. 
@@ -62,7 +60,6 @@ public final class Board {
    * @param builder The builder object containing board configuration details.
    */
   private Board(final Builder builder) {
-	
     this.boardConfig = Collections.unmodifiableMap(builder.BoardConfigurations);
     this.whitePieces = calculateActivePieces(builder, Alliance.WHITE);
     this.blackPieces = calculateActivePieces(builder, Alliance.BLACK);
@@ -73,7 +70,6 @@ public final class Board {
     this.blackPlayer = new BlackPlayer(this, whiteStandardMoves, blackStandardMoves);
     this.currentPlayer = builder.nextMoveMaker.choosePlayerByAlliance(this.whitePlayer, this.blackPlayer);
     this.transitionMove = builder.transitionMove != null ? builder.transitionMove : getNullMove();
-
   }
   
   
@@ -84,35 +80,20 @@ public final class Board {
    */
   @Override
   public String toString() {
-	
     final StringBuilder builder = new StringBuilder();
     for (int i = 0; i < BoardUtils.NUM_TILES; i++) {
-		
-      final String tileText = prettyPrint(this.boardConfig.get(i));
-      builder.append(String.format("%3s", tileText));
+      builder.append(prettyPrint(this.boardConfig.get(i))).append(" ");
       if ((i + 1) % 8 == 0) {
-			
         builder.append("\n");
-				
       }
-			
-    }
-		
-    return builder.toString();
-		
+    } return builder.toString();
   }
-  
+
   private static String prettyPrint(final Piece piece) {
-	
     if(piece != null) {
-		
-      return piece.getPieceAllegiance().isBlack() ?
+      return piece.getPieceAllegiance().isBlack() ? 
         piece.toString().toLowerCase() : piece.toString();
-				
-    }
-		
-    return "-";
-		
+    } return "-";
   }
   
   /**
@@ -121,9 +102,7 @@ public final class Board {
    * @return A collection of black pieces.
    */
   public Collection<Piece> getBlackPieces() {
-	
     return this.blackPieces;
-		
   }
   
   /**
@@ -132,9 +111,7 @@ public final class Board {
    * @return A collection of white pieces.
    */
   public Collection<Piece> getWhitePieces() {
-	
     return this.whitePieces;
-		
   }
   
   /**
@@ -143,10 +120,10 @@ public final class Board {
    * @return A collection of all pieces.
    */
   public Collection<Piece> getAllPieces() {
-	
-    return Stream.concat(this.whitePieces.stream(),
-      this.blackPieces.stream()).collect(Collectors.toList());
-			
+    final List<Piece> allPieces = new ArrayList<>();
+    allPieces.addAll(this.whitePieces);
+    allPieces.addAll(this.blackPieces);
+    return allPieces;
   }
   
   /**
@@ -155,10 +132,10 @@ public final class Board {
    * @return A collection of legal moves.
    */
   public Collection<Move> getAllLegalMoves() {
-	
-    return Stream.concat(this.whitePlayer.getLegalMoves().stream(),
-      this.blackPlayer.getLegalMoves().stream()).collect(Collectors.toList());
-			
+    final List<Move> allLegalMoves = new ArrayList<>();
+    allLegalMoves.addAll(this.whitePlayer.getLegalMoves());
+    allLegalMoves.addAll(this.blackPlayer.getLegalMoves());
+    return allLegalMoves;
   }
   
   /**
@@ -167,9 +144,7 @@ public final class Board {
    * @return The white player.
    */
   public WhitePlayer whitePlayer() {
-	
     return this.whitePlayer;
-		
   }
   
   /**
@@ -178,9 +153,7 @@ public final class Board {
    * @return The black player.
    */
   public BlackPlayer blackPlayer() {
-	
     return this.blackPlayer;
-		
   }
   
   /**
@@ -189,9 +162,7 @@ public final class Board {
    * @return The current player.
    */
   public Player currentPlayer() {
-	
     return this.currentPlayer;
-		
   }
   
   /**
@@ -201,9 +172,7 @@ public final class Board {
    * @return The piece at the specified coordinate, or null if the tile is empty.
    */
   public Piece getPiece(final int coordinate) {
-	
     return this.boardConfig.get(coordinate);
-		
   }
   
   /**
@@ -212,9 +181,7 @@ public final class Board {
    * @return The en passant pawn, or null if no pawn is susceptible.
    */
   public Pawn getEnPassantPawn() {
-	
     return this.enPassantPawn;
-		
   }
   
   /**
@@ -223,9 +190,7 @@ public final class Board {
    * @return The transition move, or a null move if no transition occurred.
    */
   public Move getTransitionMove() {
-	
     return this.transitionMove;
-		
   }
   
   /**
@@ -234,9 +199,7 @@ public final class Board {
    * @return A standard chess board.
    */
   public static Board createStandardBoard() {
-
     return STANDARD_BOARD;
-
   }
   
   /**
@@ -284,7 +247,6 @@ public final class Board {
     builder.setMoveMaker(Alliance.WHITE);
 
     return builder.build();
-		
   }
   
   /**
@@ -293,11 +255,11 @@ public final class Board {
    * @param pieces The collection of pieces for which to calculate legal moves.
    * @return A collection of legal moves for the given pieces.
    */
-  private Collection<Move> calculateLegalMoves(final Collection<Piece> pieces) {
-	
-    return pieces.stream().flatMap(piece -> piece.calculateLegalMoves(this).stream())
-		 .collect(Collectors.toList());
-			
+  private Collection<Move> calculateLegalMoves(Collection<Piece> pieces) {
+    List<Move> legalMoves = new ArrayList<>();
+    for (Piece piece : pieces) {
+      legalMoves.addAll(piece.calculateLegalMoves(this));
+    } return legalMoves;
   }
  
   /**
@@ -307,28 +269,25 @@ public final class Board {
    * @param alliance The alliance (color) of the pieces to be considered.
    * @return A collection of active pieces belonging to the specified alliance.
    */
-  private static Collection<Piece> calculateActivePieces(final Builder builder,
-                                                         final Alliance alliance) {
-																												 
-    return builder.BoardConfigurations.values().stream()
-      .filter(piece -> piece.getPieceAllegiance() == alliance)
-      .collect(Collectors.toList());
-			
+  private Collection<Piece> calculateActivePieces(Builder builder, Alliance alliance) {
+    List<Piece> activePieces = new ArrayList<>();
+    for (Piece piece : builder.BoardConfigurations.values()) {
+      if (piece.getPieceAllegiance() == alliance) {
+        activePieces.add(piece);
+      }
+    } return activePieces;
   }
   
   
   /*** A builder class for constructing instances of the Board class with specific configurations. */
   public static class Builder {
-    
-    Map<Integer, Piece> BoardConfigurations;
-    Alliance nextMoveMaker;
-    Pawn enPassantPawn;
-    Move transitionMove;
+    private Map<Integer, Piece> BoardConfigurations;
+    private Alliance nextMoveMaker;
+    private Pawn enPassantPawn;
+    private Move transitionMove;
     
     public Builder() {
-		
       this.BoardConfigurations = new HashMap<>(32, 1.0f);
-			
     }
     
     /**
@@ -338,11 +297,8 @@ public final class Board {
      * @return The current builder instance to continue configuring the board.
      */
     public Builder setPiece(final Piece piece) {
-		
       this.BoardConfigurations.put(piece.getPiecePosition(), piece);
-			
       return this;
-			
     }
     
     /**
@@ -352,11 +308,8 @@ public final class Board {
      * @return The current builder instance to continue configuring the board.
      */
     public Builder setMoveMaker(final Alliance nextMoveMaker) {
-		
       this.nextMoveMaker = nextMoveMaker;
-			
       return this;
-			
     }
     
     /**
@@ -366,11 +319,8 @@ public final class Board {
      * @return The current builder instance to continue configuring the board.
      */
     public Builder setEnPassantPawn(final Pawn enPassantPawn) {
-		
       this.enPassantPawn = enPassantPawn;
-			
       return this;
-			
     }
     
     /**
@@ -379,10 +329,7 @@ public final class Board {
      * @param transitionMove The move that represents the transition between the previous and current board states.
      */
     public void setMoveTransition(final Move transitionMove) {
-		
       this.transitionMove = transitionMove;
-      
-
     }
 
     /**
@@ -391,12 +338,8 @@ public final class Board {
      * @return A new Board instance with the specified configurations.
      */
     public Board build() {
-		
       return new Board(this);
-			
     }
-    
   }
-  
 }
 

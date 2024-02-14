@@ -31,8 +31,7 @@ public class MoveUtils {
     while (currentMove != Move.MoveFactory.getNullMove()) {
       score += currentMove.isAttack() ? 5 : 1;
       currentMove = currentMove.getBoard().getTransitionMove();
-    }
-    return score;
+    } return score;
   }
 
   /**
@@ -40,13 +39,13 @@ public class MoveUtils {
    * It is used to manage and store coordinates for various chess-related calculations.
    */
   public static class Line {
+
+    /*** The coordinates. */
     private final List <Integer> coordinates;
 
-    /**
-     * Creates a new Line instance with an empty list of coordinates.
-     */
+    /*** Creates a new Line instance with an empty list of coordinates. */
     public Line() {
-      this.coordinates = new ArrayList < > ();
+      this.coordinates = new ArrayList<>();
     }
 
     /**

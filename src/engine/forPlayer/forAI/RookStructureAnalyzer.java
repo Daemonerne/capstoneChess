@@ -6,6 +6,7 @@ import engine.forBoard.Move;
 import engine.forPiece.Piece;
 import engine.forPlayer.Player;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
 /**
@@ -57,8 +58,6 @@ public final class RookStructureAnalyzer {
     int score = 0;
     score += calculateOpenFileControlBonus(rookOnColumnTable, board);
     score += calculateConnectedRookBonus(rookOnColumnTable);
-    //  score += calculateRookOn7thRankBonus(rookOnColumnTable);
-    //  Alternative to bonus applied via `Alliance`
     score += calculateRookLiftBonus(player);
     score += calculateHalfOpenFileBonus(rookOnColumnTable, board);
     score += calculateOpenFileControlBonus(rookOnColumnTable, board);
@@ -79,8 +78,7 @@ public final class RookStructureAnalyzer {
       if (rookOnColumnTable[i] > 0 && rookOnColumnTable[i + 1] > 0) {
         score += ConnectedRookBonus;
       }
-    }
-    return score;
+    } return score;
   }
 
   /**
@@ -91,19 +89,15 @@ public final class RookStructureAnalyzer {
    */
   private static int calculateRookLiftBonus(final Player player) {
     int bonus = 0;
-    final Piece rook = player.getActivePieces()
-            .stream()
-            .filter(piece -> piece.getPieceType() == Piece.PieceType.ROOK)
-            .findFirst()
-            .orElse(null);
-
-    if (rook != null) {
-      final int rank = rook.getPiecePosition() / 8;
-      if (rank > 1) {
-        bonus += RookLiftBonus;
+    for (Piece piece : player.getActivePieces()) {
+      if (piece.getPieceType() == Piece.PieceType.ROOK) {
+        final int rank = piece.getPiecePosition() / 8;
+        if (rank > 1) {
+          bonus += RookLiftBonus;
+          break;
+        }
       }
-    }
-    return bonus;
+    } return bonus;
   }
 
   /**
@@ -118,16 +112,15 @@ public final class RookStructureAnalyzer {
     for (int i = 0; i < rookOnColumnTable.length; i++) {
       if (rookOnColumnTable[i] > 0) {
         final int file = i;
-        final boolean isHalfOpen = board.getAllPieces().stream()
-                .filter(piece -> piece.getPieceType() == Piece.PieceType.PAWN)
-                .noneMatch(piece -> piece.getPiecePosition() % 8 == file);
-
-        if (isHalfOpen) {
-          bonus += HalfOpenFileBonus * rookOnColumnTable[i];
-        }
+        boolean isHalfOpen = true;
+        for (Piece piece : board.getAllPieces()) {
+          if (piece.getPieceType() == Piece.PieceType.PAWN && piece.getPiecePosition() % 8 == file) {
+            isHalfOpen = false;
+            break;
+          }
+        } if (isHalfOpen) bonus += HalfOpenFileBonus * rookOnColumnTable[i];
       }
-    }
-    return bonus;
+    } return bonus;
   }
 
   /**
@@ -142,16 +135,15 @@ public final class RookStructureAnalyzer {
     for (int i = 0; i < rookOnColumnTable.length; i++) {
       if (rookOnColumnTable[i] > 0) {
         final int file = i;
-        final boolean isOpenFile = board.getAllPieces().stream()
-                .filter(piece -> piece.getPieceType() == Piece.PieceType.ROOK)
-                .anyMatch(piece -> piece.getPiecePosition() % 8 == file);
-
-        if (isOpenFile) {
-          bonus += OpenFileControlBonus * rookOnColumnTable[i];
-        }
+        boolean isOpenFile = false;
+        for (Piece piece : board.getAllPieces()) {
+          if (piece.getPieceType() == Piece.PieceType.ROOK && piece.getPiecePosition() % 8 == file) {
+            isOpenFile = true;
+            break;
+          }
+        } if (isOpenFile) bonus += OpenFileControlBonus * rookOnColumnTable[i];
       }
-    }
-    return bonus;
+    } return bonus;
   }
 
   /**
@@ -174,8 +166,7 @@ public final class RookStructureAnalyzer {
           }
         }
       }
-    }
-    return 0;
+    } return 0;
   }
 
 
@@ -189,8 +180,7 @@ public final class RookStructureAnalyzer {
     final int[] table = new int[8];
     for (final Piece playerRook: playerRooks) {
       table[playerRook.getPiecePosition() % 8]++;
-    }
-    return table;
+    } return table;
   }
 
   /**
@@ -200,9 +190,11 @@ public final class RookStructureAnalyzer {
    * @return A collection of rooks owned by the player.
    */
   private static Collection<Piece> calculatePlayerRooks(final Player player) {
-    return player.getActivePieces().stream()
-            .filter(piece -> piece.getPieceType() == Piece.PieceType.ROOK)
-            .collect(ImmutableList.toImmutableList());
+    final Collection<Piece> rooks = new ArrayList<>();
+    for (Piece piece : player.getActivePieces()) {
+      if (piece.getPieceType() == Piece.PieceType.ROOK) {
+        rooks.add(piece);
+      }
+    } return ImmutableList.copyOf(rooks);
   }
-
 }

@@ -198,8 +198,7 @@ public abstract class Move {
         this.movedPiece.getPieceType().equals(move.getMovedPiece().getPieceType())) {
         return BoardUtils.getPositionAtCoordinate(this.movedPiece.getPiecePosition()).substring(0, 1);
       }
-    }
-    return "";
+    } return "";
   }
 
   /**
@@ -270,7 +269,6 @@ public abstract class Move {
       this.decoratedMove = decoratedMove;
       this.promotedPawn = (Pawn) decoratedMove.getMovedPiece();
       this.promotionPiece = promotionPiece;
-  
     }
   
     /**
@@ -719,6 +717,7 @@ public abstract class Move {
           builder.setPiece(piece);
         }
       }
+      
       builder.setPiece(this.movedPiece.movePiece(this));
       builder.setPiece(new Rook(this.castleRook.getPieceAllegiance(), this.castleRookDestination, false, 1));
       builder.setMoveMaker(this.board.currentPlayer().getOpponent().getAlliance());
@@ -1013,8 +1012,7 @@ public abstract class Move {
           move.getDestinationCoordinate() == destinationCoordinate) {
           return move;
         }
-      }
-      return MoveUtils.NULL_MOVE;
+      } return MoveUtils.NULL_MOVE;
     }
   }
 }
