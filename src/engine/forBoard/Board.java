@@ -281,7 +281,7 @@ public final class Board {
   
   /*** A builder class for constructing instances of the Board class with specific configurations. */
   public static class Builder {
-    private Map<Integer, Piece> BoardConfigurations;
+    private final Map<Integer, Piece> BoardConfigurations;
     private Alliance nextMoveMaker;
     private Pawn enPassantPawn;
     private Move transitionMove;
