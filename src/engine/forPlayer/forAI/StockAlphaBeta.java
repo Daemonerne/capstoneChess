@@ -163,7 +163,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         }
       } if (activityMeasure >= 2) {
         this.quiescenceCount++;
-        return 2;
+        return 1;
       }
     }
     return depth - 1;
