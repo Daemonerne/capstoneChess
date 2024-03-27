@@ -484,7 +484,7 @@ public final class Table extends Observable {
     @Override
     protected Move doInBackground() {
       final Move bestMove;
-      final StockAlphaBeta strategy = new StockAlphaBeta(Table.get().getGameSetup().getSearchDepth());
+      final StockAlphaBeta strategy = new StockAlphaBeta(Table.get().getGameSetup().getSearchDepth(), Table.get().getGameBoard());
       strategy.addObserver(Table.get().getDebugPanel());
       bestMove = strategy.execute(Table.get().getGameBoard());
       return bestMove;
