@@ -28,7 +28,7 @@ public final class Knight extends Piece {
 
   /*** A map that stores the precomputed legal move offsets for each tile on the board,
    * taking edge cases into consideration. */
-  private final static Map < Integer, int[] > PRECOMPUTED_CANDIDATES = computeCandidates();
+  private final static Map <Integer, int[]> PRECOMPUTED_CANDIDATES = computeCandidates();
 
   /**
    * Constructs a new Knight instance with the given alliance, piece position, and number of moves.
@@ -64,8 +64,8 @@ public final class Knight extends Piece {
    *
    * @return A map containing the precomputed legal move offsets for each tile on the board.
    */
-  private static Map < Integer, int[] > computeCandidates() {
-    final Map < Integer, int[] > candidates = new HashMap < > ();
+  private static Map <Integer, int[]> computeCandidates() {
+    final Map <Integer, int[]> candidates = new HashMap <>();
     for (int position = 0; position < BoardUtils.NUM_TILES; position++) {
       final int[] legalOffsets = new int[CANDIDATE_MOVE_COORDINATES.length];
       int numLegalMoves = 0;
@@ -93,8 +93,8 @@ public final class Knight extends Piece {
    * @return A collection of legal moves for the knight.
    */
   @Override
-  public Collection < Move > calculateLegalMoves(final Board board) {
-    final List < Move > legalMoves = new ArrayList < > ();
+  public Collection <Move> calculateLegalMoves(final Board board) {
+    final List <Move> legalMoves = new ArrayList <>();
     for (final int candidateDestinationCoordinate: PRECOMPUTED_CANDIDATES.get(this.piecePosition)) {
       final Piece pieceAtDestination = board.getPiece(candidateDestinationCoordinate);
       if (pieceAtDestination == null) {
