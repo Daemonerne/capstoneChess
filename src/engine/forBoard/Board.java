@@ -41,7 +41,7 @@ public final class Board {
   private final BlackPlayer blackPlayer;
   
   /*** The player whose turn it currently is to make a move. */
-  private final Player currentPlayer;
+  public final Player currentPlayer;
   
   /*** The pawn that is susceptible to en passant capture in the current position, if any. */
   private final Pawn enPassantPawn;

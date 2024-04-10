@@ -48,11 +48,6 @@ import static engine.forBoard.Move.MoveFactory;
  * This reduction in depth helps improve the efficiency of the search, especially in positions where the move order can significantly
  * impact the evaluation.
  * <br><br>
- * The class utilizes the `StandardBoardEvaluator` for assessing board positions and generating evaluation scores.
- * Move sorting strategies, such as `STANDARD` and `EXPENSIVE`, are implemented for ordering moves based on
- * certain criteria. Transposition tables are used to store and retrieve previously evaluated positions to
- * avoid redundant computations.
- * <br><br>
  * A known bug occurs at very low depths (e.g., depth 1), where rapid parallelism may lead to an
  * `ExecutionException` caused by a `StackOverflowError`. This issue minimally impacts engine functionality
  * at such depths, as it is not practical to use an engine at depth 1. Setting the depth to 2 or 3 may provide
@@ -128,11 +123,11 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
    *
    * @param maxDepth The maximum depth for iterative deepening.
    */
-  public StockAlphaBeta(final int maxDepth) {
-    this.evaluator = StandardBoardEvaluator.get();
+  public StockAlphaBeta(final int maxDepth, final Board board) {
     this.maxDepth = maxDepth;
     this.boardsEvaluated = 0;
     this.quiescenceCount = 0;
+    this.evaluator = determineGameState(board);
   }
 
   /**
@@ -197,8 +192,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       System.out.println(result);
       setChanged();
       notifyObservers(result);
-    }
-    return bestMove;
+    } return bestMove;
   }
 
   /**
@@ -227,8 +221,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     if (depth <= 0 || BoardUtils.isEndOfGame(board)) {
       this.boardsEvaluated++;
       return this.evaluator.evaluate(board, depth);
-    }
-    TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
+    } TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
     if (entry != null && entry.depth() >= depth) {
       if (entry.nodeType() == TranspositionTableEntry.NodeType.EXACT) {
         return entry.score();
@@ -241,9 +234,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       }
     } if (depth < FutilityPruningDepth) {
       double futilityValue = this.evaluator.evaluate(board, depth);
-      if (futilityValue >= highest) {
-        return futilityValue;
-      }
+      if (futilityValue >= highest) return futilityValue;
     } if (depth <= LMRThreshold) depth = (int) (depth * LMRScale);
     double currentHighest = highest;
     for (final Move move: MoveSorter.STANDARD.sort(board.currentPlayer().getLegalMoves(), board)) {
@@ -258,8 +249,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
           }
         }
       }
-    }
-    storeTranspositionTableEntry(board, currentHighest, depth, TranspositionTableEntry.NodeType.EXACT);
+    } storeTranspositionTableEntry(board, currentHighest, depth, TranspositionTableEntry.NodeType.EXACT);
     return currentHighest;
   }
 
@@ -280,9 +270,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     if (depth <= 0 || BoardUtils.isEndOfGame(board)) {
       this.boardsEvaluated++;
       return this.evaluator.evaluate(board, depth);
-    }
-
-    TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
+    } TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
     if (entry != null && entry.depth() >= depth) {
       if (entry.nodeType() == TranspositionTableEntry.NodeType.EXACT) {
         return entry.score();
@@ -418,6 +406,19 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
           }
         }
       } return bestMove;
+    }
+  }
+
+  private int determineGameState(final Board board) {
+    int boardValue = -20000;
+    for (final Piece piece : board.getWhitePieces()) {
+      boardValue += piece.getPieceValue();
+    } for (final Piece piee : board.getBlackPieces()) {
+      boardValue += piece.getPieceValue();
+    } switch(boardValue) {
+      case boardValue < 7170: return MiddlegameEvaluator.get();
+      case boardValue < 2070: return EndgameEvaluator.get();
+      default:                return openingEvaluator.get();
     }
   }
 }
