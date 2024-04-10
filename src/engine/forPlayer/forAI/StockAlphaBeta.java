@@ -6,6 +6,7 @@ import engine.forBoard.Board;
 import engine.forBoard.BoardUtils;
 import engine.forBoard.Move;
 import engine.forBoard.MoveTransition;
+import engine.forPiece.Piece;
 import engine.forPlayer.Player;
 
 import java.util.*;
@@ -409,16 +410,17 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     }
   }
 
-  private int determineGameState(final Board board) {
+  private BoardEvaluator determineGameState(final Board board) {
     int boardValue = -20000;
     for (final Piece piece : board.getWhitePieces()) {
       boardValue += piece.getPieceValue();
-    } for (final Piece piee : board.getBlackPieces()) {
+    } for (final Piece piece : board.getBlackPieces()) {
       boardValue += piece.getPieceValue();
-    } switch(boardValue) {
-      case boardValue < 7170: return MiddlegameEvaluator.get();
-      case boardValue < 2070: return EndgameEvaluator.get();
-      default:                return openingEvaluator.get();
     }
+    return switch (boardValue) {
+          case boardValue < 7170 -> MiddlegameBoardEvaluator.get();
+          case boardValue < 2070 -> EndgameBoardEvaluator.get();
+          default -> OpeningBoardEvaluator.get();
+    };
   }
 }
