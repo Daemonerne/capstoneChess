@@ -4,7 +4,6 @@ import com.google.common.collect.Lists;
 import engine.forBoard.*;
 import engine.forPiece.Piece;
 import engine.forPlayer.Player;
-import engine.forPlayer.forAI.StandardBoardEvaluator;
 import engine.forPlayer.forAI.StockAlphaBeta;
 
 import javax.imageio.ImageIO;

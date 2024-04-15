@@ -2,22 +2,24 @@ package engine.forPlayer.forAI;
 
 import com.google.common.annotations.VisibleForTesting;
 import engine.forBoard.Board;
-import engine.forPiece.*;
+import engine.forBoard.Move;
+import engine.forPiece.King;
+import engine.forPiece.Pawn;
+import engine.forPiece.Piece;
 import engine.forPlayer.Player;
 
 public class EndgameBoardEvaluator implements BoardEvaluator {
 
-  /*** Singleton instance of the StandardBoardEvaluator. */
+  /*** Singleton instance of the EndgameBoardEvaluator. */
   private static final EndgameBoardEvaluator Instance = new EndgameBoardEvaluator();
 
   /*** Private constructor to prevent instantiation outside of class. */
-  private EndgameBoardEvaluator() {
-  }
+  private EndgameBoardEvaluator() {}
 
   /**
-   * Returns the singleton instance of StandardBoardEvaluator.
+   * Returns the singleton instance of EndgameBoardEvaluator.
    *
-   * @return The instance of StandardBoardEvaluator.
+   * @return The instance of EndgameBoardEvaluator.
    */
   public static EndgameBoardEvaluator get() {
     return Instance;
@@ -28,7 +30,7 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
    *
    * @param board The current state of the chess board.
    * @param depth The search depth in the AI's thinking process.
-   * @return The evaluation score of the board.
+   * @return      The evaluation score of the board.
    */
   @Override
   public double evaluate(final Board board, final int depth) {
@@ -51,44 +53,42 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
    * Calculate the score based on piece evaluations for the specified player also give the game stage.
    *
    * @param player The player to evaluate.
-   * @return The piece evaluation score.
+   * @return       The piece evaluation score.
    */
   private double pieceEvaluations(final Player player) {
     double pieceEvaluationScore = 0;
     for (final Piece piece : player.getActivePieces()) {
       pieceEvaluationScore += piece.getPieceValue();
-    }
-    return pieceEvaluationScore;
+    } return pieceEvaluationScore;
   }
 
   /**
    * Calculates the score based on the development of pieces for the specified player.
    *
    * @param player The player to evaluate.
-   * @return The piece development score.
+   * @return       The piece development score.
    */
   private double pieceDevelopment(final Player player) {
     double pieceDevelopmentScore = 0;
     for (final Piece piece : player.getActivePieces()) {
-      if (!(piece instanceof King) && !(piece instanceof Pawn) && !(piece instanceof Rook) && !(piece instanceof Queen)) {
+      if (!(piece instanceof King) && !(piece instanceof Pawn)) {
         pieceDevelopmentScore += centerDevelopment(piece);
       }
-    }
-    return pieceDevelopmentScore;
+    } return pieceDevelopmentScore;
   }
 
   /**
    * Evaluates the development of a specific piece.
    *
    * @param piece The piece to evaluate.
-   * @return The piece development score.
+   * @return      The piece development score.
    */
   private double centerDevelopment(final Piece piece) {
     final double centerRank = 3.5;
     final double centerFile = 3.5;
     final double chebyshevDistance = Math.max(Math.abs(centerRank - ((double) piece.getPiecePosition() / 8)),
             Math.abs(centerFile - (piece.getPiecePosition() % 8)));
-    return (double) (15) / (chebyshevDistance + 0.5);
+    return (double)(12) / (chebyshevDistance + 0.5);
   }
 
 
@@ -97,45 +97,47 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
    *
    * @param player The player to evaluate.
    * @param board  The current state of the chess board.
-   * @return The piece chemistry score.
+   * @return       The piece chemistry score.
    */
   private double pieceChemistry(final Player player, final Board board) {
     double pieceActivity = 0;
     for (final Piece piece : player.getActivePieces()) {
-      for (final Piece otherPiece : player.getActivePieces()) {
-        if (!otherPiece.equals(piece) && piece.calculateLegalMoves(board).contains(otherPiece.getPiecePosition())) {
-          pieceActivity += 5;
+      if (!(piece instanceof King)) {
+        for (final Piece otherPiece : player.getActivePieces()) {
+          for (final Move move : piece.calculateLegalMoves(board)) {
+            if (!otherPiece.equals(piece) && move.getDestinationCoordinate() == otherPiece.getPiecePosition()) {
+              pieceActivity += 5;
+            }
+          }
         }
       }
-    }
-    return pieceActivity;
+    } return pieceActivity;
   }
 
   /**
    * Counts the number of doubled pawns for the specified player across the entire board.
    *
    * @param player The player to evaluate.
-   * @return The penalty score for doubled pawns.
+   * @return       The penalty score for doubled pawns.
    */
   private double doubledPawns(final Player player) {
     double doubledPawnsPenalty = 0;
     for (final Piece piece : player.getActivePieces()) {
       if (piece instanceof Pawn) {
         int numPawnsOnFile = countPawnsOnFile(player, piece.getPiecePosition() % 8);
-        if (numPawnsOnFile > 1) doubledPawnsPenalty -= 10;
+        if (numPawnsOnFile > 1) doubledPawnsPenalty -= 20;
       }
-    }
-    return doubledPawnsPenalty;
+    } return doubledPawnsPenalty;
   }
 
   /**
    * Calculates the score based on whether the players king has castled.
    *
    * @param player The player to determine whether their king is castled.
-   * @return The king castle score.
+   * @return       The king castle score.
    */
   private double kingCastled(final Player player) {
-    if (player.getPlayerKing().isCastled()) return 20;
+    if (player.getPlayerKing().isCastled()) return 15;
     return 0;
   }
 
@@ -144,7 +146,7 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
    *
    * @param player The player whose king safety is to be calculated.
    * @param board  The current state of the chess board.
-   * @return The king safety score of the player.
+   * @return       The king safety score of the player.
    */
   private double kingSafety(final Player player, final Board board) {
     return openLines(board, player.getPlayerKing().getPiecePosition()) +
@@ -157,7 +159,7 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
    *
    * @param board        The current state of the chess board.
    * @param kingPosition The position of the king.
-   * @return The open lines score.
+   * @return             The open lines score.
    */
   private double openLines(final Board board, final int kingPosition) {
     final int kingRank = kingPosition / 8;
@@ -166,9 +168,8 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
     for (final Piece piece : board.getAllPieces()) {
       if (piece instanceof Pawn && piece.getPiecePosition() % 8 == kingFile) {
         break;
-      } openLinesScore += 10;
-    }
-    for (int offset = -7; offset <= 7; offset++) {
+      } openLinesScore -= 15;
+    } for (int offset = -7; offset <= 7; offset++) {
       if (offset != 0) {
         int diagonalSquare = kingPosition + offset;
         if (diagonalSquare >= 0 && diagonalSquare < 64) {
@@ -182,8 +183,7 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
                 break;
               }
             }
-          }
-          if (openDiagonal) openLinesScore -= 10;
+          } if (openDiagonal) openLinesScore -= 15;
         }
       }
     } return openLinesScore;
@@ -206,7 +206,7 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
               board.getPiece(square).getPieceAllegiance() == player.getAlliance()) {
         pawnShieldBonus += 1;
       }
-    } if (pawnShieldBonus >= 2) return 15;
+    } if (pawnShieldBonus >= 2) return 5;
     return 0;
   }
 
@@ -224,12 +224,14 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
     for (final Piece opponentPiece: player.getOpponent().getActivePieces()) {
       int distance = calculateChebyshevDistance(player.getPlayerKing().getPiecePosition(),
               opponentPiece.getPiecePosition());
-      if (distance <= 2) {
-        return (double) opponentPiece.getPieceValue() / 30;
+      if (distance == 1) {
+        threatTotal -= (double) opponentPiece.getPieceValue() / 27;
+      } else if (distance <= 2) {
+        threatTotal -= (double) opponentPiece.getPieceValue() / 32;
       } else if (distance == 3) {
-        threatTotal += (double) opponentPiece.getPieceValue() / 45;
-      } else if (distance == 4 && !(opponentPiece instanceof Queen)) {
-        threatTotal += (double) opponentPiece.getPieceValue() / 90;
+        threatTotal -= (double) opponentPiece.getPieceValue() / 37;
+      } else if (distance == 4) {
+        threatTotal -= (double) opponentPiece.getPieceValue() / 100;
       }
     } return threatTotal;
   }
@@ -284,11 +286,11 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
         if (chebyshevDistance == 0.5) {
           centerPawnBonus += 1;
         } if (centerPawnBonus == 2) {
-          return 25;
+          return 20;
         }
       }
     } if (centerPawnBonus == 1) {
-      return 15;
+      return 10;
     } return 0;
   }
 
