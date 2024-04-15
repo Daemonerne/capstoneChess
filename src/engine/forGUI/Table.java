@@ -258,9 +258,9 @@ public final class Table extends Observable {
 
   /**
    * This method constructs a JMenu with options to interact with the game, including starting a new game,
-   * evaluating the current board position, displaying escape analysis scores, inspecting the current game state,
-   * undoing the last move, and setting up the game parameters. Each option is associated with a specific action
-   * when selected, such as undoing a move, displaying evaluation details, or configuring game settings.
+   * evaluating the current board position, inspecting the current game state, undoing the last move, and
+   * setting up the game parameters. Each option is associated with a specific action when selected, such
+   * as undoing a move, displaying evaluation details, or configuring game settings.
    *
    * @return The JMenu containing gameplay options.
    */
@@ -272,12 +272,7 @@ public final class Table extends Observable {
     final JMenuItem resetMenuItem = new JMenuItem("New Game", KeyEvent.VK_P);
     resetMenuItem.addActionListener(e -> undoAllMoves());
     optionsMenu.add(resetMenuItem);
-    
-    final JMenuItem escapeAnalysis = new JMenuItem("Escape Analysis Score", KeyEvent.VK_S);
-    escapeAnalysis.addActionListener(e -> {
-      final Move lastMove = moveLog.getMoves().get(moveLog.size() - 1);
-      if (lastMove != null) System.out.println(MoveUtils.exchangeScore(lastMove));
-    }); optionsMenu.add(escapeAnalysis);
+  
     final JMenuItem legalMovesMenuItem = new JMenuItem("Current State", KeyEvent.VK_L);
     legalMovesMenuItem.addActionListener(e -> {
       System.out.println(chessBoard.getWhitePieces());
