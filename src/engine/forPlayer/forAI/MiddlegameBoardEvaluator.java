@@ -3,10 +3,16 @@ package engine.forPlayer.forAI;
 import com.google.common.annotations.VisibleForTesting;
 import engine.forBoard.Board;
 import engine.forBoard.Move;
+import engine.forPiece.Bishop;
 import engine.forPiece.King;
 import engine.forPiece.Pawn;
 import engine.forPiece.Piece;
 import engine.forPlayer.Player;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 public class MiddlegameBoardEvaluator implements BoardEvaluator {
 
@@ -40,24 +46,28 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
   @VisibleForTesting
   private double score(final Player player,
                        final Board board) {
-    return pieceEvaluations(player) +
-           pieceDevelopment(player) +
-           pieceChemistry(player, board) +
-           doubledPawns(player) +
-           kingCastled(player) +
-           kingSafety(player, board) +
-           pawnCenter(player);
+    final Collection<Move> playerMoves = player.getLegalMoves();
+    final Collection<Piece> playerPieces = player.getActivePieces();
+    final List<Piece> playerPawns = getPlayerPawns(player);
+    return pieceEvaluations(playerPieces) +
+            pieceDevelopment(playerPieces) +
+            pieceChemistry(playerMoves) +
+            diagonalControl(playerPieces, board) +
+            attackPotential(playerMoves) +
+            doubledPawns(playerPawns) +
+            kingCastled(player) +
+            kingSafety(player, board) +
+            pawnCenter(playerPawns);
   }
 
   /**
    * Calculate the score based on piece evaluations for the specified player also give the game stage.
    *
-   * @param player The player to evaluate.
-   * @return       The piece evaluation score.
+   * @return The piece evaluation score.
    */
-  private double pieceEvaluations(final Player player) {
+  private double pieceEvaluations(final Collection<Piece> playerPieces) {
     double pieceEvaluationScore = 0;
-    for (final Piece piece : player.getActivePieces()) {
+    for (final Piece piece : playerPieces) {
       pieceEvaluationScore += piece.getPieceValue();
     } return pieceEvaluationScore;
   }
@@ -65,12 +75,12 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
   /**
    * Calculates the score based on the development of pieces for the specified player.
    *
-   * @param player The player to evaluate.
-   * @return       The piece development score.
+   * @param playerPieces the collection of player pieces.
+   * @return             The piece development score.
    */
-  private double pieceDevelopment(final Player player) {
+  private double pieceDevelopment(final Collection<Piece> playerPieces) {
     double pieceDevelopmentScore = 0;
-    for (final Piece piece : player.getActivePieces()) {
+    for (final Piece piece : playerPieces) {
       if (!(piece instanceof King) && !(piece instanceof Pawn)) {
         pieceDevelopmentScore += centerDevelopment(piece);
       }
@@ -88,45 +98,72 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
     final double centerFile = 3.5;
     final double chebyshevDistance = Math.max(Math.abs(centerRank - ((double) piece.getPiecePosition() / 8)),
             Math.abs(centerFile - (piece.getPiecePosition() % 8)));
-    return 12 / (chebyshevDistance + 0.5);
+    return (double)(12) / (chebyshevDistance + 0.5);
   }
 
 
   /**
    * Evaluates the chemistry of a piece with another.
    *
-   * @param player The player to evaluate.
-   * @param board  The current state of the chess board.
-   * @return       The piece chemistry score.
+   * @param playerMoves The collection of moves for the player.
+   * @return            The piece chemistry score.
    */
-  private double pieceChemistry(final Player player, final Board board) {
+  private double pieceChemistry(final Collection<Move> playerMoves) {
     double pieceActivity = 0;
-    for (final Piece piece : player.getActivePieces()) {
-      if (!(piece instanceof King)) {
-        for (final Piece otherPiece : player.getActivePieces()) {
-          for (final Move move : piece.calculateLegalMoves(board)) {
-            if (!otherPiece.equals(piece) && move.getDestinationCoordinate() == otherPiece.getPiecePosition()) {
-              pieceActivity += 5;
-            }
-          }
-        }
-      }
+    final ArrayList<Integer> coordinates = new ArrayList<>();
+    for (final Move move: playerMoves) {
+      coordinates.add(move.getDestinationCoordinate());
+    } for (final Integer coordinate: coordinates) {
+      double frequency = Collections.frequency(coordinates, coordinate);
+      if (frequency == 2) {
+        pieceActivity += 5;
+      } else pieceActivity += 8 * frequency;
     } return pieceActivity;
+  }
+
+  /**
+   * Evaluates bishop control of long diagonals.
+   *
+   * @param playerPieces The collection of pieces for the player.
+   * @param board        The current state of the chess board.
+   * @return             The diagonal control score.
+   */
+  private double diagonalControl(final Collection<Piece> playerPieces, final Board board) {
+    double controlScore = 0;
+    for (final Piece piece: playerPieces) {
+      if (piece instanceof Bishop) controlScore += (1.2 * piece.calculateLegalMoves(board).size());
+    } return controlScore;
+  }
+
+  /**
+   * Evaluates the attack potential of a player.
+   *
+   * @param playerMoves The collection of moves for the player.
+   * @return            The attack potential score.
+   */
+  private double attackPotential(final Collection<Move> playerMoves) {
+    double attackScore = 0;
+    for (final Move move: playerMoves) {
+      if (move.isAttack()) {
+        attackScore++;
+      }
+    } if (attackScore < 5) return attackScore;
+    else if (attackScore < 12) return 20;
+    else if (attackScore < 15) return 30;
+    return 40;
   }
 
   /**
    * Counts the number of doubled pawns for the specified player across the entire board.
    *
-   * @param player The player to evaluate.
-   * @return       The penalty score for doubled pawns.
+   * @param playerPawns The collection of pawns for the player.
+   * @return            The penalty score for doubled pawns.
    */
-  private double doubledPawns(final Player player) {
+  private double doubledPawns(final List<Piece> playerPawns) {
     double doubledPawnsPenalty = 0;
-    for (final Piece piece : player.getActivePieces()) {
-      if (piece instanceof Pawn) {
-        int numPawnsOnFile = countPawnsOnFile(player, piece.getPiecePosition() % 8);
-        if (numPawnsOnFile > 1) doubledPawnsPenalty -= 20;
-      }
+    for (final Piece pawn: playerPawns) {
+      int numPawnsOnFile = countPawnsOnFile(pawn.getPiecePosition() % 8, playerPawns);
+      if (numPawnsOnFile > 1) doubledPawnsPenalty -= 20;
     } return doubledPawnsPenalty;
   }
 
@@ -251,6 +288,7 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
 
   /**
    * Gets the rank of the given coordinate.
+   *
    * @param coordinate The given coordinate.
    * @return           The rank of the coordinate.
    */
@@ -260,6 +298,7 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
 
   /**
    * Gets the file of the given coordinate.
+   *
    * @param coordinate The given coordinate.
    * @return           The file of the coordinate.
    */
@@ -272,22 +311,20 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
   /**
    * Calculates the score based on whether the player's pawns are in the center of the board.
    *
-   * @param player The player to evaluate.
-   * @return       The pawn center score.
+   * @param playerPawns The collection of pawns for the player.
+   * @return            The pawn center score.
    */
-  private double pawnCenter(final Player player) {
+  private double pawnCenter(final List<Piece> playerPawns) {
     double centerPawnBonus = 0;
-    for (final Piece piece: player.getActivePieces()) {
-      if (piece instanceof Pawn) {
-        final double centerRank = 3.5;
-        final double centerFile = 3.5;
-        final double chebyshevDistance = Math.max(Math.abs(centerRank - ((double) piece.getPiecePosition() / 8)),
-                                                  Math.abs(centerFile - (piece.getPiecePosition() % 8)));
-        if (chebyshevDistance == 0.5) {
-          centerPawnBonus += 1;
-        } if (centerPawnBonus == 2) {
-          return 20;
-        }
+    for (final Piece pawn: playerPawns) {
+      final double centerRank = 3.5;
+      final double centerFile = 3.5;
+      final double chebyshevDistance = Math.max(Math.abs(centerRank - ((double) pawn.getPiecePosition() / 8)),
+                                                Math.abs(centerFile - (pawn.getPiecePosition() % 8)));
+      if (chebyshevDistance == 0.5) {
+        centerPawnBonus += 1;
+      } if (centerPawnBonus == 2) {
+        return 20;
       }
     } if (centerPawnBonus == 1) {
       return 10;
@@ -297,16 +334,27 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
   /**
    * Counts the number of pawns belonging to the player on a given file.
    *
-   * @param player The player to evaluate.
-   * @param file   The file to count pawns on.
-   * @return       The number of pawns belonging to the player on the specified file.
+   * @param file        The file to count pawns on.
+   * @param playerPawns The collection of pawns for the player.
+   * @return            The number of pawns belonging to the player on the specified file.
    */
-  private int countPawnsOnFile(final Player player, final int file) {
+  private int countPawnsOnFile(final int file, final List<Piece> playerPawns) {
     int numPawns = 0;
-    for (final Piece piece : player.getActivePieces()) {
-      if ((piece instanceof Pawn) && (piece.getPiecePosition() % 8) == file) {
+    for (final Piece pawn: playerPawns) {
+      if (pawn.getPiecePosition() % 8 == file) {
         numPawns++;
       }
     } return numPawns;
+  }
+
+  /**
+   * Calculates a list of opponent pawns for the specified player.
+   *
+   * @param player The opponent player.
+   * @return       A list of opponent pawns.
+   */
+  private static List<Piece> getPlayerPawns(final Player player) {
+    return player.getActivePieces().stream()
+            .filter(piece -> piece.getPieceType() == Piece.PieceType.PAWN).toList();
   }
 }
