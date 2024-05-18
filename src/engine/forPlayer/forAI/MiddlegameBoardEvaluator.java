@@ -55,6 +55,10 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
             diagonalControl(playerPieces, board) +
             attackPotential(playerMoves) +
             doubledPawns(playerPawns) +
+            isolatedPawns(playerPawns) +
+            backwardPawns(playerPawns) +
+            pawnChains(playerPawns) +
+            passedPawns(playerPawns, getPlayerPawns(player.getOpponent())) +
             kingCastled(player) +
             kingSafety(player, board) +
             pawnCenter(playerPawns);
@@ -109,16 +113,16 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
    * @return            The piece chemistry score.
    */
   private double pieceChemistry(final Collection<Move> playerMoves) {
-    double pieceActivity = 0;
+    double pieceChemistryScore = 0;
     final ArrayList<Integer> coordinates = new ArrayList<>();
     for (final Move move: playerMoves) {
       coordinates.add(move.getDestinationCoordinate());
     } for (final Integer coordinate: coordinates) {
       double frequency = Collections.frequency(coordinates, coordinate);
       if (frequency == 2) {
-        pieceActivity += 5;
-      } else pieceActivity += 8 * frequency;
-    } return pieceActivity;
+        pieceChemistryScore += 5;
+      } else pieceChemistryScore += 8 * frequency;
+    } return pieceChemistryScore;
   }
 
   /**
@@ -129,10 +133,10 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
    * @return             The diagonal control score.
    */
   private double diagonalControl(final Collection<Piece> playerPieces, final Board board) {
-    double controlScore = 0;
+    double diagonalControlScore = 0;
     for (final Piece piece: playerPieces) {
-      if (piece instanceof Bishop) controlScore += (1.2 * piece.calculateLegalMoves(board).size());
-    } return controlScore;
+      if (piece instanceof Bishop) diagonalControlScore += (5 * piece.calculateLegalMoves(board).size());
+    } return diagonalControlScore;
   }
 
   /**
@@ -142,15 +146,15 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
    * @return            The attack potential score.
    */
   private double attackPotential(final Collection<Move> playerMoves) {
-    double attackScore = 0;
+    double attackPotentialScore = 0;
     for (final Move move: playerMoves) {
       if (move.isAttack()) {
-        attackScore++;
+        attackPotentialScore += 1;
       }
-    } if (attackScore < 5) return attackScore;
-    else if (attackScore < 12) return 20;
-    else if (attackScore < 15) return 30;
-    return 40;
+    } if (attackPotentialScore < 5) return attackPotentialScore * 2;
+    else if (attackPotentialScore < 10) return 30;
+    else if (attackPotentialScore < 15) return 40;
+    return 50;
   }
 
   /**
@@ -160,11 +164,103 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
    * @return            The penalty score for doubled pawns.
    */
   private double doubledPawns(final List<Piece> playerPawns) {
-    double doubledPawnsPenalty = 0;
+    double doubledPawnScore = 0;
     for (final Piece pawn: playerPawns) {
       int numPawnsOnFile = countPawnsOnFile(pawn.getPiecePosition() % 8, playerPawns);
-      if (numPawnsOnFile > 1) doubledPawnsPenalty -= 20;
-    } return doubledPawnsPenalty;
+      if (numPawnsOnFile > 1) doubledPawnScore -= 20;
+    } return doubledPawnScore;
+  }
+
+  /**
+   * Evaluates the presence of isolated pawns for the specified player.
+   *
+   * @param playerPawns The collection of pawns for the player.
+   * @return            The isolated pawn score.
+   */
+  private double isolatedPawns(final List<Piece> playerPawns) {
+    double isolatedPawnScore = 0;
+    for (final Piece pawn : playerPawns) {
+      int pawnFile = pawn.getPiecePosition() % 8;
+      if (!hasAdjacentPawns(pawnFile, playerPawns)) {
+        isolatedPawnScore -= 15;
+      }
+    }return isolatedPawnScore;
+  }
+
+  /**
+   * Evaluates the presence of backward pawns for the specified player.
+   *
+   * @param playerPawns The collection of pawns for the player.
+   * @return            The backward pawn score.
+   */
+  private double backwardPawns(final List <Piece> playerPawns) {
+    double backwardPawnScore = 0;
+    for (final Piece pawn: playerPawns) {
+      final int pawnFile = pawn.getPiecePosition() % 8;
+      final int pawnRank = pawn.getPiecePosition() / 8;
+      boolean isBackward = true;
+      for (int rank = pawnRank - 1; rank >= 0; rank--) {
+        if (hasPawnOnFile(rank * 8 + pawnFile, playerPawns)) {
+          isBackward = false;
+          break;
+        } if (pawnFile > 0 && hasPawnOnFile(rank * 8 + pawnFile - 1, playerPawns)) {
+          isBackward = false;
+          break;
+        } if (pawnFile < 7 && hasPawnOnFile(rank * 8 + pawnFile + 1, playerPawns)) {
+          isBackward = false;
+          break;
+        }
+      } if (isBackward) {
+        backwardPawnScore -= 20;
+      }
+    } return backwardPawnScore;
+  }
+
+  /**
+   * Evaluates the presence of pawn chains for the specified player.
+   *
+   * @param playerPawns The collection of pawns for the player.
+   * @return            The pawn chain score.
+   */
+  private double pawnChains(final List <Piece> playerPawns) {
+    double pawnChainScore = 0;
+    for (final Piece pawn: playerPawns) {
+      final int pawnFile = pawn.getPiecePosition() % 8;
+      final int pawnRank = pawn.getPiecePosition() / 8;
+      if ((pawnFile > 0 && hasPawnOnFile(pawnRank * 8 + pawnFile - 1, playerPawns)) ||
+        (pawnFile < 7 && hasPawnOnFile(pawnRank * 8 + pawnFile + 1, playerPawns))) {
+        pawnChainScore += 5;
+      }
+    } return pawnChainScore;
+  }
+
+  /**
+   * Evaluates the presence of passed pawns for the specified player.
+   * 
+   * @param playerPawns The collection of pawns for the player.
+   * @return            The passed pawn score.
+   */
+  private double passedPawns(final List <Piece> playerPawns, final List <Piece> opponentPawns) {
+    double passedPawnScore = 0;
+    for (final Piece pawn: playerPawns) {
+      final int pawnFile = pawn.getPiecePosition() % 8;
+      final int pawnRank = pawn.getPiecePosition() / 8;
+      boolean isPassedPawn = true;
+      for (int rank = pawnRank + 1; rank < 8; rank++) {
+        if (hasPawnOnFile(rank * 8 + pawnFile, opponentPawns)) {
+          isPassedPawn = false;
+          break;
+        } if (pawnFile > 0 && hasPawnOnFile(rank * 8 + pawnFile - 1, opponentPawns)) {
+          isPassedPawn = false;
+          break;
+        } if (pawnFile < 7 && hasPawnOnFile(rank * 8 + pawnFile + 1, opponentPawns)) {
+          isPassedPawn = false;
+          break;
+        }
+      } if (isPassedPawn) {
+        passedPawnScore += 25;
+      }
+    } return passedPawnScore;
   }
 
   /**
@@ -174,7 +270,7 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
    * @return       The king castle score.
    */
   private double kingCastled(final Player player) {
-    if (player.getPlayerKing().isCastled()) return 15;
+    if (player.getPlayerKing().isCastled()) return 20;
     return 0;
   }
 
@@ -201,11 +297,11 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
   private double openLines(final Board board, final int kingPosition) {
     final int kingRank = kingPosition / 8;
     final int kingFile = kingPosition % 8;
-    double openLinesScore = 0;
+    double openLineScore = 0;
     for (final Piece piece : board.getAllPieces()) {
       if (piece instanceof Pawn && piece.getPiecePosition() % 8 == kingFile) {
         break;
-      } openLinesScore -= 15;
+      } openLineScore -= 15;
     } for (int offset = -7; offset <= 7; offset++) {
       if (offset != 0) {
         int diagonalSquare = kingPosition + offset;
@@ -220,10 +316,10 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
                 break;
               }
             }
-          } if (openDiagonal) openLinesScore -= 15;
+          } if (openDiagonal) openLineScore -= 15;
         }
       }
-    } return openLinesScore;
+    } return openLineScore;
   }
 
 
@@ -236,14 +332,14 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
    * @return             The pawn shield score.
    */
   private double pawnShield(final Player player, final Board board, final int kingPosition) {
-    double pawnShieldBonus = 0;
+    double pawnShieldScore = 0;
     final int[] pawnShieldSquares = { kingPosition - 8, kingPosition - 9, kingPosition - 7 };
     for (int square: pawnShieldSquares) {
       if (board.getPiece(square) instanceof Pawn &&
           board.getPiece(square).getPieceAllegiance() == player.getAlliance()) {
-        pawnShieldBonus += 1;
+        pawnShieldScore += 1;
       }
-    } if (pawnShieldBonus >= 2) return 5;
+    } if (pawnShieldScore >= 2) return 15;
     return 0;
   }
 
@@ -257,20 +353,20 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
    * @return              The threat score from the specified opponent piece.
    */
   private double kingThreat(final Player player) {
-    double threatTotal = 0;
+    double kingThreatScore = 0;
     for (final Piece opponentPiece: player.getOpponent().getActivePieces()) {
-      int distance = calculateChebyshevDistance(player.getPlayerKing().getPiecePosition(),
-              opponentPiece.getPiecePosition());
+      final int distance = calculateChebyshevDistance(player.getPlayerKing().getPiecePosition(), 
+                                                      opponentPiece.getPiecePosition());
       if (distance == 1) {
-        threatTotal -= (double) opponentPiece.getPieceValue() / 27;
+        kingThreatScore -= (double) opponentPiece.getPieceValue() / 35;
       } else if (distance <= 2) {
-        threatTotal -= (double) opponentPiece.getPieceValue() / 32;
+        kingThreatScore -= (double) opponentPiece.getPieceValue() / 45;
       } else if (distance == 3) {
-        threatTotal -= (double) opponentPiece.getPieceValue() / 37;
+        kingThreatScore -= (double) opponentPiece.getPieceValue() / 60;
       } else if (distance == 4) {
-        threatTotal -= (double) opponentPiece.getPieceValue() / 100;
+        kingThreatScore -= (double) opponentPiece.getPieceValue() / 75;
       }
-    } return threatTotal;
+    } return kingThreatScore;
   }
 
   /**
@@ -324,11 +420,41 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
       if (chebyshevDistance == 0.5) {
         centerPawnBonus += 1;
       } if (centerPawnBonus == 2) {
-        return 20;
+        return 25;
       }
     } if (centerPawnBonus == 1) {
-      return 10;
+      return 15;
     } return 0;
+  }
+
+  /**
+   * Checks if there is a pawn belonging to the player on a given file.
+   *
+   * @param file        The file to check.
+   * @param playerPawns The collection of pawns for the player.
+   * @return            True if there is a pawn on the file, false otherwise.
+   */
+  private boolean hasPawnOnFile(final int file, final List < Piece > playerPawns) {
+    for (final Piece pawn: playerPawns) {
+      if (pawn.getPiecePosition() % 8 == file) {
+        return true;
+      }
+    } return false;
+  }
+
+  /**
+   * Checks if there are adjacent pawns to a given pawn on the same file.
+   *
+   * @param file        The file of the pawn.
+   * @param playerPawns The collection of pawns for the player.
+   * @return            True if there are adjacent pawns, false otherwise.
+   */
+  private boolean hasAdjacentPawns(final int file, final List < Piece > playerPawns) {
+    for (final Piece pawn: playerPawns) {
+      if (Math.abs(pawn.getPiecePosition() % 8 - file) == 1) {
+        return true;
+      }
+    } return false;
   }
 
   /**

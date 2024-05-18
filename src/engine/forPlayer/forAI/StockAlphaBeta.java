@@ -1,5 +1,6 @@
 package engine.forPlayer.forAI;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Ordering;
 import engine.forBoard.Board;
@@ -410,13 +411,20 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     }
   }
 
+  /**
+   * Determines the game state for the current position.
+   *
+   * @param board The board whose game state is to be determined.
+   * @return      The current game state of the board.
+   */
+  @VisibleForTesting
   private BoardEvaluator determineGameState(final Board board) {
-    int boardValue = -20000;
+    int boardValue = 0;
     for (final Piece piece : board.getWhitePieces()) {
       boardValue += piece.getPieceValue();
     } for (final Piece piece : board.getBlackPieces()) {
       boardValue += piece.getPieceValue();
-    } if (boardValue < 7170) {
+    } if (boardValue < 7170 && boardValue >= 2070) {
       return MiddlegameBoardEvaluator.get();
     } else if (boardValue < 2070) {
       return EndgameBoardEvaluator.get();
