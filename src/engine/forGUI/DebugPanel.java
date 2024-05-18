@@ -28,19 +28,21 @@ class DebugPanel extends JPanel implements Observer {
    * The panel provides a space for displaying real-time updates or application-related information.
    */
   public DebugPanel() {
-
     super(new BorderLayout());
     this.jTextArea = new JTextArea();
     add(this.jTextArea);
     setPreferredSize(CHAT_PANEL_DIMENSION);
     validate();
     setVisible(true);
-
   }
 
   /*** Redraws or updates the debug panel. This method can be called to trigger a visual update or to refresh the panel's contents. */
   public void redo() {
     validate();
+  }
+
+  public void addText(final String text) {
+    SwingUtilities.invokeLater(() -> this.jTextArea.setText(text));
   }
 
   /**
@@ -53,7 +55,6 @@ class DebugPanel extends JPanel implements Observer {
   @Override
   public void update(final Observable obs,
     final Object obj) {
-
     SwingUtilities.invokeLater(() -> {
       this.jTextArea.setText(obj.toString().trim());
       redo();

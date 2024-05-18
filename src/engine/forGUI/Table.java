@@ -281,6 +281,16 @@ public final class Table extends Observable {
       System.out.println(playerInfo(chessBoard.currentPlayer().getOpponent()));
     }); optionsMenu.add(legalMovesMenuItem);
 
+    final JMenuItem showBoardValueItem = new JMenuItem("Show board value", KeyEvent.VK_1);
+    showBoardValueItem.addActionListener(e -> {
+      int boardValue = -20000;
+      for (final Piece piece : chessBoard.getWhitePieces()) {
+        boardValue += piece.getPieceValue();
+      } for (final Piece piece : chessBoard.getBlackPieces()) {
+        boardValue += piece.getPieceValue();
+      } debugPanel.addText(Integer.toString(boardValue)); debugPanel.redo();
+    }); optionsMenu.add(showBoardValueItem);
+
     final JMenuItem undoMoveMenuItem = new JMenuItem("Undo last move", KeyEvent.VK_M);
     undoMoveMenuItem.addActionListener(e -> {
       if (Table.get().getMoveLog().size() > 0) {
@@ -293,7 +303,7 @@ public final class Table extends Observable {
       Table.get().getGameSetup().promptUser();
       Table.get().setupUpdate(Table.get().getGameSetup());
     }); optionsMenu.add(setupGameMenuItem);
-    
+
     return optionsMenu;
   }
 
@@ -602,7 +612,7 @@ public final class Table extends Observable {
      *
      * @return The list of moves.
      */
-    public List < Move > getMoves() {
+    public List <Move> getMoves() {
       return this.moves;
     }
 
