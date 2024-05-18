@@ -424,7 +424,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       boardValue += piece.getPieceValue();
     } for (final Piece piece : board.getBlackPieces()) {
       boardValue += piece.getPieceValue();
-    } if (boardValue < 7170 && boardValue >= 2070) {
+    } if (boardValue < 7200 && boardValue >= 2070) {
       return MiddlegameBoardEvaluator.get();
     } else if (boardValue < 2070) {
       return EndgameBoardEvaluator.get();
