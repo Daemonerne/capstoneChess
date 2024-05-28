@@ -13,6 +13,8 @@ import engine.forPlayer.WhitePlayer;
  * attributes associated with each alliance, providing a structured way to handle alliance-specific logic
  * within a chess engine. The class includes methods for retrieving movement directions, pawn promotion checks,
  * choosing player objects based on the alliance, and calculates positional bonuses for different chess pieces.
+ * <br><br>
+ * Note: POSITION BONUS IS CURRENTLY UNDER CONSIDERATION (might be completely removed)
  *
  * @author Aaron Ho
  */
