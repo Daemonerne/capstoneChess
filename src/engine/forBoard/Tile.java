@@ -18,8 +18,10 @@ import java.util.Map;
  */
 public abstract class Tile {
 
+  /*** The coordinate of the tile on the chess board. */
   protected final int tileCoordinate;
-  
+
+  /*** Cache containing all possible empty tiles on the chess board. */
   private static final Map<Integer, EmptyTile> EMPTY_TILES_CACHE = createAllPossibleEmptyTiles();
   
   /**
@@ -28,16 +30,11 @@ public abstract class Tile {
    * @return an ImmutableMap of Integer to EmptyTile
    */
   private static Map<Integer, EmptyTile> createAllPossibleEmptyTiles() {
-  
     final Map<Integer, EmptyTile> emptyTileMap = new HashMap<>();
     for(int i = 0; i < BoardUtils.NUM_TILES; i++) {
-    
       emptyTileMap.put(i, new EmptyTile(i));
-    
     }
-    
     return ImmutableMap.copyOf(emptyTileMap);
-  
   }
   
   /**
@@ -45,9 +42,7 @@ public abstract class Tile {
    * the package private Tile object
    */
   public static Tile createTile(final int tileCoordinate, final Piece piece) {
-  
     return piece != null ? new OccupiedTile(tileCoordinate, piece) : EMPTY_TILES_CACHE.get(tileCoordinate);
-  
   }
   
   /**
@@ -55,9 +50,7 @@ public abstract class Tile {
    * @param tileCoordinate the desired coordinate of the Tile
    */
   private Tile(final int tileCoordinate) {
-  
     this.tileCoordinate = tileCoordinate;
-  
   }
   
   /**
@@ -78,9 +71,7 @@ public abstract class Tile {
    * @return the tile coordinate
    */
   public int getTileCoordinate() {
-  
     return this.tileCoordinate;
-  
   }
   
   /**
@@ -102,9 +93,7 @@ public abstract class Tile {
      * @param coordinate the coordinate of the empty Tile
      */
     private EmptyTile(final int coordinate) {
-    
       super(coordinate);
-    
     }
   
     /**
@@ -114,9 +103,7 @@ public abstract class Tile {
      */
     @Override
     public String toString() {
-    
       return "-";
-    
     }
   
     /**
@@ -125,9 +112,7 @@ public abstract class Tile {
      */
     @Override
     public boolean isTileOccupied() {
-    
       return false;
-      
     }
   
     /**
@@ -136,11 +121,8 @@ public abstract class Tile {
      */
     @Override
     public Piece getPiece() {
-      
       return null;
-      
     }
-  
   }
   
   /**
@@ -155,7 +137,6 @@ public abstract class Tile {
    * @author Aaron Ho
    */
   public static final class OccupiedTile extends Tile {
-  
     private final Piece pieceOnTile;
   
     /**
@@ -164,10 +145,8 @@ public abstract class Tile {
      * @param tileCoordinate the coordinate of the Tile
      */
     private OccupiedTile(final int tileCoordinate, final Piece pieceOnTile) {
-    
       super(tileCoordinate);
       this.pieceOnTile = pieceOnTile;
-    
     }
     
     /**
@@ -177,10 +156,7 @@ public abstract class Tile {
      */
     @Override
     public String toString() {
-    
-      return getPiece().getPieceAllegiance().isBlack() ? getPiece().toString().toLowerCase() :
-             getPiece().toString();
-    
+      return getPiece().getPieceAllegiance().isBlack() ? getPiece().toString().toLowerCase() : getPiece().toString();
     }
   
     /**
@@ -190,9 +166,7 @@ public abstract class Tile {
      */
     @Override
     public boolean isTileOccupied() {
-    
       return true;
-      
     }
   
     /**
@@ -201,11 +175,7 @@ public abstract class Tile {
      */
     @Override
     public Piece getPiece() {
-    
       return this.pieceOnTile;
-    
     }
-  
   }
-
 }
