@@ -27,6 +27,7 @@ public abstract class Tile {
   /**
    * Returns an ImmutableMap of Integer to EmptyTile, that details
    * the positions of all possible EmptyTiles on a chess board
+   *
    * @return an ImmutableMap of Integer to EmptyTile
    */
   private static Map<Integer, EmptyTile> createAllPossibleEmptyTiles() {
@@ -38,8 +39,7 @@ public abstract class Tile {
   }
   
   /**
-   * A factory method that allows the creation of
-   * the package private Tile object
+   * A factory method that allows the creation of the package private Tile object.
    */
   public static Tile createTile(final int tileCoordinate, final Piece piece) {
     return piece != null ? new OccupiedTile(tileCoordinate, piece) : EMPTY_TILES_CACHE.get(tileCoordinate);
@@ -47,6 +47,7 @@ public abstract class Tile {
   
   /**
    * Will create a Tile object on tileCoordinate
+   *
    * @param tileCoordinate the desired coordinate of the Tile
    */
   private Tile(final int tileCoordinate) {
@@ -54,20 +55,23 @@ public abstract class Tile {
   }
   
   /**
-   * Will return if a given Tile is occupied or not
+   * Will return if a given Tile is occupied or not.
+   *
    * @return true or false
    */
   public abstract boolean isTileOccupied();
   
   /**
    * If there is a piece on this Tile will return the Piece.
-   * If not, will return null;
-   * @return the Piece or null
+   * If not, will return null.
+   *
+   * @return the Piece or null.
    */
   public abstract Piece getPiece();
   
   /**
    * Will return the tile coordinate
+   *
    * @return the tile coordinate
    */
   public int getTileCoordinate() {
@@ -142,6 +146,7 @@ public abstract class Tile {
     /**
      * A constructor for an OccupiedTile. Will create a Tile object
      * that is occupied by a Piece
+     *
      * @param tileCoordinate the coordinate of the Tile
      */
     private OccupiedTile(final int tileCoordinate, final Piece pieceOnTile) {
@@ -152,6 +157,7 @@ public abstract class Tile {
     /**
      * A toString method that will allow us
      * to print the Piece that calls this method
+     *
      * @return the Piece in String form
      */
     @Override
@@ -162,6 +168,7 @@ public abstract class Tile {
     /**
      * Returns true, because by default an OccupiedTile
      * is occupied by a Piece
+     *
      * @return true
      */
     @Override
@@ -171,6 +178,7 @@ public abstract class Tile {
   
     /**
      * Returns the piece on the OccupiedTile
+     *
      * @return the piece on the OccupiedTile
      */
     @Override
