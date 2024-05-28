@@ -67,7 +67,8 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
   /**
    * Calculate the score based on piece evaluations for the specified player also give the game stage.
    *
-   * @return The piece evaluation score.
+   * @param playerPieces The collection of pieces for the player.
+   * @return             The piece evaluation score.
    */
   private double pieceEvaluations(final Collection<Piece> playerPieces) {
     double pieceEvaluationScore = 0;
@@ -79,7 +80,7 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
   /**
    * Calculates the score based on the development of pieces for the specified player.
    *
-   * @param playerPieces the collection of player pieces.
+   * @param playerPieces The collection of pieces for the player.
    * @return             The piece development score.
    */
   private double pieceDevelopment(final Collection<Piece> playerPieces) {
@@ -161,7 +162,7 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
    * Counts the number of doubled pawns for the specified player across the entire board.
    *
    * @param playerPawns The collection of pawns for the player.
-   * @return            The penalty score for doubled pawns.
+   * @return The penalty score for doubled pawns.
    */
   private double doubledPawns(final List<Piece> playerPawns) {
     double doubledPawnScore = 0;
