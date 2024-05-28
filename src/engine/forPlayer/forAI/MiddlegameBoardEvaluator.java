@@ -43,6 +43,18 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
     return (score(board.whitePlayer(), board) - score(board.blackPlayer(), board));
   }
 
+  /**
+   * Calculates the overall score of the current board position for a given player.
+   * This method evaluates various factors such as piece evaluations, piece development,
+   * early monarch moves, piece chemistry, doubled pawns, king castling, king safety,
+   * and pawn center control. Each factor contributes to the final score, which reflects
+   * the advantage or disadvantage of the board position for the specified player.
+   * This scoring method is specifically constructed for the middle-game phase of play.
+   *
+   * @param player The player for whom the board position is being evaluated.
+   * @param board  The current state of the chess board.
+   * @return       The evaluation score of the board from the perspective of the specified player.
+   */
   @VisibleForTesting
   private double score(final Player player,
                        final Board board) {
