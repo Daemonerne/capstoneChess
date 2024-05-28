@@ -313,15 +313,21 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   /**
    * Stores a move that was made into the transposition table.
    *
-   * @param board    The board to be recorded
-   * @param score    The score to be recorded
-   * @param depth    The depth to be recorded
-   * @param nodeType The NodeType to be recorded
+   * @param board    The board to be recorded.
+   * @param score    The score to be recorded.
+   * @param depth    The depth to be recorded.
+   * @param nodeType The NodeType to be recorded.
    */
   private void storeTranspositionTableEntry(Board board, double score, int depth, TranspositionTableEntry.NodeType nodeType) {
     transpositionTable.put((long) board.hashCode(), new TranspositionTableEntry(score, depth, nodeType));
   }
 
+  /**
+   * Stores a move that was made into the history heuristic table.
+   *
+   * @param move  The move to be recorded.
+   * @param depth The depth to be recorded.
+   */
   private void updateHistoryHeuristic(Move move, int depth) {
     historyHeuristic[move.getCurrentCoordinate()][move.getDestinationCoordinate()] += depth * depth;
   }
