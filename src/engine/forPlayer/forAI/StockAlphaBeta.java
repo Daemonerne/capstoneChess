@@ -34,23 +34,6 @@ import static engine.forBoard.Move.MoveFactory;
  * the engine with a specified search depth, along with methods for executing the alpha-beta search, calculating
  * quiescence search depth, formatting evaluation scores, and more.
  * <br><br>
- * Iterative Deepening has been implemented to gradually increase the search depth until a maximum depth is reached.
- * <br><br>
- * The engine incorporates the use of a transposition table, a map for storing and retrieving previously evaluated positions to avoid
- * redundant computations. The transposition table is used to store entries with information about the score, depth, and node type,
- * allowing the engine to skip re-evaluating positions it has encountered before.
- * <br><br>
- * Delta pruning is applied in the search algorithm to prune likely unnecessary branches. When the difference between the current
- * highest and lowest values in the search exceeds a specified threshold (DeltaPruningValue), the search can be pruned further,
- * avoiding unnecessary computation.
- * <br><br>
- * Aspiration windows are employed to narrow the search space by considering only moves within a certain range of scores. The window
- * is dynamically adjusted based on the results of previous searches, allowing the algorithm to focus on the most promising moves.
- * <br><br>
- * Late Move Reduction (LMR) is a technique used to reduce the depth of the search for moves that occur later in the move ordering.
- * This reduction in depth helps improve the efficiency of the search, especially in positions where the move order can significantly
- * impact the evaluation.
- * <br><br>
  * A known bug occurs at very low depths (e.g., depth 1), where rapid parallelism may lead to an
  * `ExecutionException` caused by a `StackOverflowError`. This issue minimally impacts engine functionality
  * at such depths, as it is not practical to use an engine at depth 1. Setting the depth to 2 or 3 may provide
@@ -94,6 +77,9 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
 
   /*** The delta pruning value used to prune likely unnecessary branches. */
   private static final double DeltaPruningValue = 5;
+  public double highestSeenValue;
+
+  public double lowestSeenValue;
 
   /*** Enumeration representing different move sorting strategies. */
   private enum MoveSorter {
@@ -135,6 +121,8 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     this.maxDepth = maxDepth;
     this.boardsEvaluated = 0;
     this.quiescenceCount = 0;
+    this.lowestSeenValue = Integer.MAX_VALUE;
+    this.highestSeenValue = Integer.MIN_VALUE;
     this.evaluator = determineGameState(board);
   }
 
@@ -181,16 +169,11 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   public Move execute(final Board board) {
     final long startTime = System.currentTimeMillis();
     Move bestMove = MoveFactory.getNullMove();
-    double highestSeenValue = Integer.MIN_VALUE;
-    double lowestSeenValue = Integer.MAX_VALUE;
     ForkJoinPool forkJoinPool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
     for (int currentDepth = 1; currentDepth <= maxDepth; currentDepth++) {
-      final double aspirationWindow = calculateAspirationWindow(highestSeenValue, lowestSeenValue);
-      RecursiveTask <Move> task = new ParallelSearchTask(board, this, highestSeenValue, lowestSeenValue, currentDepth);
+      RecursiveTask <Move> task = new ParallelSearchTask(board, this, this.highestSeenValue, this.lowestSeenValue, currentDepth);
       bestMove = forkJoinPool.invoke(task);
       updateHistoryHeuristic(bestMove, currentDepth);
-      highestSeenValue = Math.max(highestSeenValue - aspirationWindow, Integer.MIN_VALUE);
-      lowestSeenValue = Math.min(lowestSeenValue + aspirationWindow, Integer.MAX_VALUE);
       final long executionTime = System.currentTimeMillis() - startTime;
       final String result = bestMove +
               " | depth = " + currentDepth +
@@ -201,17 +184,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       setChanged();
       notifyObservers(result);
     } return bestMove;
-  }
-
-  /**
-   * Calculates the dynamic aspiration window based on the previous search results.
-   *
-   * @param highestSeenValue The highest value seen in the search.
-   * @param lowestSeenValue  The lowest value seen in the search.
-   * @return                 The dynamic aspiration window.
-   */
-  private double calculateAspirationWindow(double highestSeenValue, double lowestSeenValue) {
-    return Math.min(Math.abs(highestSeenValue - lowestSeenValue) * 4, 13);
   }
 
   /**
