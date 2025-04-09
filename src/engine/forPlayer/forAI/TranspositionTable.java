@@ -1,3 +1,5 @@
+package engine.forPlayer.forAI;
+
 /**
  * An optimized fixed-size transposition table that uses power-of-2 sizing
  * for fast modulo operations and implements a replacement strategy.
