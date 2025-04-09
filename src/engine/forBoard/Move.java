@@ -26,14 +26,10 @@ import static engine.forBoard.Board.Builder;
  * promotion, with decorators for executed moves and the promoted pawn, providing seamless execution and undoing of promotions.
  * The MoveFactory inner class acts as a factory for creating various types of moves, and its methods aid in move validation,
  * retrieval, and creation.
- * <br><br>
- * A known bug occurs occasionally when `.hashCode()` is called because the searching algorithm occasionally evaluates
- * a `NullMove` object, and a `NullPointerException` is thrown because of the reference to the null object.
  *
  * @author Aaron Ho
  * @author dareTo81
  */
- 
 public abstract class Move {
 
   /*** The current state of the chess board. */
@@ -43,10 +39,10 @@ public abstract class Move {
   protected final int destinationCoordinate;
 
   /*** The piece that is being moved. */
-  protected Piece movedPiece = getMovedPiece();
+  protected final Piece movedPiece;
 
   /*** Indicates whether it's the first move for the piece being moved. */
-  protected boolean isFirstMove = true;
+  protected final boolean isFirstMove;
 
   /**
    * Creates a new Move object with the given board, moved piece, and destination coordinate.
@@ -59,7 +55,7 @@ public abstract class Move {
     this.board = board;
     this.destinationCoordinate = destinationCoordinate;
     this.movedPiece = pieceMoved;
-    this.isFirstMove = pieceMoved.isFirstMove();
+    this.isFirstMove = pieceMoved != null && pieceMoved.isFirstMove();
   }
 
   /**
@@ -71,16 +67,20 @@ public abstract class Move {
   private Move(final Board board, final int destinationCoordinate) {
     this.board = board;
     this.destinationCoordinate = destinationCoordinate;
+    this.movedPiece = null;
+    this.isFirstMove = false;
   }
 
   /**
    * Calculates the hash code of the move.
+   * This implementation safely handles null movedPiece references.
    *
    * @return The calculated hash code.
    */
   @Override
   public int hashCode() {
-    return Objects.hash(destinationCoordinate, movedPiece, movedPiece.getPiecePosition(), isFirstMove);
+    final int currentPosition = (movedPiece != null) ? movedPiece.getPiecePosition() : -1;
+    return Objects.hash(destinationCoordinate, movedPiece, currentPosition, isFirstMove);
   }
 
   /**
@@ -112,7 +112,7 @@ public abstract class Move {
    * @return The current coordinate.
    */
   public int getCurrentCoordinate() {
-    return this.movedPiece.getPiecePosition();
+    return this.movedPiece != null ? this.movedPiece.getPiecePosition() : -1;
   }
 
   /**
@@ -479,7 +479,7 @@ public abstract class Move {
   
   /**
    * The `PawnAttackMove` class represents a pawn attack move in chess. This type of move involves a pawn moving to a new
-   *  destination to coordinate and capturing an opponent's piece.
+   * destination to coordinate and capturing an opponent's piece.
    *
    * @author Aaron Ho
    */
@@ -937,7 +937,17 @@ public abstract class Move {
     public NullMove() {
       super(null, -1);
     }
-  
+    
+    /**
+     * Provides a safe implementation of hashCode for NullMove that doesn't rely on movedPiece
+     * 
+     * @return A constant hash code for NullMove
+     */
+    @Override
+    public int hashCode() {
+      return 0; // Simple constant value for NullMove
+    }
+
     /**
      * Gets the current coordinate, which is set to -1 for a null move.
      *
