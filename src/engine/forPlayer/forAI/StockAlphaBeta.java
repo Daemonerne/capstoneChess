@@ -57,7 +57,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   private int quiescenceCount;
 
   /*** A transposition table that tracks the scores of previously evaluated moves. */
-  private final Map<Long, TranspositionTableEntry> transpositionTable = new ConcurrentHashMap<>(8192);
+  private final TranspositionTable transpositionTable = new TranspositionTable();
 
   /*** An array of previous historically good moves that influences the sorting of moves. */
   private static final int[][] historyHeuristic = new int[64][64];
