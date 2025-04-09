@@ -1,8 +1,9 @@
 package engine.forBoard;
 
+import engine.Alliance;
+import engine.forPiece.Pawn;
 import engine.forPiece.Piece;
 import engine.forPiece.Piece.PieceType;
-import engine.player.Alliance;
 
 import java.util.Random;
 
@@ -28,7 +29,6 @@ public class ZobristHashing {
   /** Random numbers for en passant file. */
   private static final long[] EN_PASSANT_FILE = new long[8];
   
-  /** Static initializer to populate random number tables. */
   static {
     final Random random = new Random(0); // Fixed seed for reproducibility
     for (int alliance = 0; alliance < 2; alliance++) {
@@ -62,13 +62,13 @@ public class ZobristHashing {
       hash ^= getPieceHash(piece);
     } if (board.currentPlayer().getAlliance() == Alliance.BLACK) {
       hash ^= SIDE_TO_MOVE;
-    } if (board.whitePlayer().isKingSideCastleCapable()) {
+    } if (board.whitePlayer().getPlayerKing().isKingSideCastleCapable()) {
       hash ^= CASTLING_RIGHTS[0];
-    } if (board.whitePlayer().isQueenSideCastleCapable()) {
+    } if (board.whitePlayer().getPlayerKing().isQueenSideCastleCapable()) {
       hash ^= CASTLING_RIGHTS[1];
-    } if (board.blackPlayer().isKingSideCastleCapable()) {
+    } if (board.blackPlayer().getPlayerKing().isKingSideCastleCapable()) {
       hash ^= CASTLING_RIGHTS[2];
-    } if (board.blackPlayer().isQueenSideCastleCapable()) {
+    } if (board.blackPlayer().getPlayerKing().isQueenSideCastleCapable()) {
       hash ^= CASTLING_RIGHTS[3];
     } final Pawn enPassantPawn = board.getEnPassantPawn();
     if (enPassantPawn != null) {
@@ -216,14 +216,13 @@ public class ZobristHashing {
    * @return The index for the hash table.
    */
   private static int convertPieceTypeToIndex(final PieceType pieceType) {
-    switch (pieceType) {
-      case PAWN: return 0;
-      case KNIGHT: return 1;
-      case BISHOP: return 2;
-      case ROOK: return 3;
-      case QUEEN: return 4;
-      case KING: return 5;
-      default: throw new RuntimeException("Unknown piece type: " + pieceType);
-    }
+    return switch (pieceType) {
+      case PAWN -> 0;
+      case KNIGHT -> 1;
+      case BISHOP -> 2;
+      case ROOK -> 3;
+      case QUEEN -> 4;
+      case KING -> 5;
+    };
   }
 }

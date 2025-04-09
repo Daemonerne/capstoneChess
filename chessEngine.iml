@@ -42,11 +42,10 @@
         <SOURCES />
       </library>
     </orderEntry>
-    <orderEntry type="library" name="guava-32.1.3-jre" level="project" />
-    <orderEntry type="library" name="slf4j-api-2.0.9" level="project" />
     <orderEntry type="library" name="slf4j-simple-1.6.1" level="application" />
     <orderEntry type="library" name="guava-32.1.2-jre" level="application" />
     <orderEntry type="library" name="guava-31.1-jre" level="application" />
     <orderEntry type="library" name="guava-33.0.0-jre" level="application" />
+    <orderEntry type="library" name="guava-33.4.7-jre" level="project" />
   </component>
 </module>

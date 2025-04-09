@@ -1,7 +1,7 @@
 <component name="libraryTable">
-  <library name="slf4j-api-2.0.9">
+  <library name="guava-33.4.7-jre">
     <CLASSES>
-      <root url="jar://$USER_HOME$/Downloads/slf4j-api-2.0.9.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/guava-33.4.7-jre.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />

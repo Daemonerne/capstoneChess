@@ -6,7 +6,7 @@ package engine.forPlayer.forAI;
  */
 public class TranspositionTable {
   private static final int DEFAULT_SIZE_MB = 256;
-  private static class Entry {
+  static class Entry {
     long key;
     double score;
     short depth;

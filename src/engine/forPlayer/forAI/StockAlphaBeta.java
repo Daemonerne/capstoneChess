@@ -204,16 +204,16 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       this.boardsEvaluated++;
       return this.evaluator.evaluate(board, depth);
     } long zobristHash = (long) board.hashCode();
-    TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
-    if (entry != null && entry.depth() >= depth) {
+    TranspositionTable.Entry entry = transpositionTable.get((long) board.hashCode());
+    if (entry != null && entry.depth >= depth) {
       if (entry.nodeType == TranspositionTable.EXACT) {
-        return entry.score();
+        return entry.score;
       } else if (entry.nodeType == TranspositionTable.LOWERBOUND) {
-        lowest = Math.max(lowest, entry.score());
+        lowest = Math.max(lowest, entry.score);
       } else if (entry.nodeType == TranspositionTable.UPPERBOUND) {
-        highest = Math.min(highest, entry.score());
+        highest = Math.min(highest, entry.score);
       } if (lowest >= highest) {
-        return entry.score();
+        return entry.score;
       }
     } if (depth < FutilityPruningDepth) {
       double futilityValue = this.evaluator.evaluate(board, depth);
@@ -258,15 +258,15 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       this.boardsEvaluated++;
       return this.evaluator.evaluate(board, depth);
     } long zobristHash = (long) board.hashCode();
-    TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
-    if (entry != null && entry.depth() >= depth) {
+    TranspositionTable.Entry entry = transpositionTable.get((long) board.hashCode());
+    if (entry != null && entry.depth >= depth) {
       if (entry.nodeType == TranspositionTable.EXACT) {
-        return entry.score();
+        return entry.score;
       } else if (entry.nodeType == TranspositionTable.LOWERBOUND) {
-        lowest = Math.max(lowest, entry.score());
+        lowest = Math.max(lowest, entry.score);
       } else if (entry.nodeType == TranspositionTable.UPPERBOUND) {
-        highest = Math.min(highest, entry.score());
-      } if (lowest >= highest) return entry.score();
+        highest = Math.min(highest, entry.score);
+      } if (lowest >= highest) return entry.score;
     } if (depth < FutilityPruningDepth) {
       double futilityValue = this.evaluator.evaluate(board, depth);
       if (futilityValue <= lowest) {
@@ -302,12 +302,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
    */
   private void updateHistoryHeuristic(Move move, int depth) {
     historyHeuristic[move.getCurrentCoordinate()][move.getDestinationCoordinate()] += depth * depth;
-  }
-
-  private record TranspositionTableEntry(double score, int depth, StockAlphaBeta.TranspositionTableEntry.NodeType nodeType) {
-    public enum NodeType {
-      EXACT, LOWERBOUND, UPPERBOUND
-    }
   }
 
   /*** A RecursiveTask implementation for parallel alpha-beta search. */
@@ -416,6 +410,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       return MiddlegameBoardEvaluator.get();
     } else if (boardValue < 2070) {
       return EndgameBoardEvaluator.get();
-    } else return OpeningBoardEvaluator.get();
+    } return OpeningGameEvaluator.get();
   }
 }

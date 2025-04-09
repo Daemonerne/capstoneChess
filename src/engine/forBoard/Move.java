@@ -942,17 +942,17 @@ public abstract class Move {
       final boolean isWhite = this.movedPiece.getPieceAllegiance().isWhite();
       // Remove all castling rights for the moving side
       if (isWhite) {
-        if (this.board.whitePlayer().isKingSideCastleCapable()) {
+        if (this.board.whitePlayer().getPlayerKing().isKingSideCastleCapable()) {
           hash = ZobristHashing.updateHashCastlingRight(hash, 0);
         }
-        if (this.board.whitePlayer().isQueenSideCastleCapable()) {
+        if (this.board.whitePlayer().getPlayerKing().isQueenSideCastleCapable()) {
           hash = ZobristHashing.updateHashCastlingRight(hash, 1);
         }
       } else {
-        if (this.board.blackPlayer().isKingSideCastleCapable()) {
+        if (this.board.blackPlayer().getPlayerKing().isKingSideCastleCapable()) {
           hash = ZobristHashing.updateHashCastlingRight(hash, 2);
         }
-        if (this.board.blackPlayer().isQueenSideCastleCapable()) {
+        if (this.board.blackPlayer().getPlayerKing().isQueenSideCastleCapable()) {
           hash = ZobristHashing.updateHashCastlingRight(hash, 3);
         }
       }
@@ -1189,15 +1189,15 @@ public abstract class Move {
         
         // Check if it's a corner rook and update castling rights accordingly
         if (isWhiteRook) {
-          if (rookPosition == 0 && this.board.whitePlayer().isQueenSideCastleCapable()) {
+          if (rookPosition == 0 && this.board.whitePlayer().getPlayerKing().isQueenSideCastleCapable()) {
             hash = ZobristHashing.updateHashCastlingRight(hash, 1);
-          } else if (rookPosition == 7 && this.board.whitePlayer().isKingSideCastleCapable()) {
+          } else if (rookPosition == 7 && this.board.whitePlayer().getPlayerKing().isKingSideCastleCapable()) {
             hash = ZobristHashing.updateHashCastlingRight(hash, 0);
           }
         } else {
-          if (rookPosition == 56 && this.board.blackPlayer().isQueenSideCastleCapable()) {
+          if (rookPosition == 56 && this.board.blackPlayer().getPlayerKing().isQueenSideCastleCapable()) {
             hash = ZobristHashing.updateHashCastlingRight(hash, 3);
-          } else if (rookPosition == 63 && this.board.blackPlayer().isKingSideCastleCapable()) {
+          } else if (rookPosition == 63 && this.board.blackPlayer().getPlayerKing().isKingSideCastleCapable()) {
             hash = ZobristHashing.updateHashCastlingRight(hash, 2);
           }
         }
