@@ -124,6 +124,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     this.lowestSeenValue = Integer.MAX_VALUE;
     this.highestSeenValue = Integer.MIN_VALUE;
     this.evaluator = determineGameState(board);
+    this.transpositionTable.clear();
   }
 
   /**
@@ -170,6 +171,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     final long startTime = System.currentTimeMillis();
     Move bestMove = MoveFactory.getNullMove();
     ForkJoinPool forkJoinPool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
+    this.transpositionTable.incrementAge();
     for (int currentDepth = 1; currentDepth <= maxDepth; currentDepth++) {
       RecursiveTask <Move> task = new ParallelSearchTask(board, this, this.highestSeenValue, this.lowestSeenValue, currentDepth);
       bestMove = forkJoinPool.invoke(task);
@@ -201,13 +203,14 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     if (depth <= 0 || BoardUtils.isEndOfGame(board)) {
       this.boardsEvaluated++;
       return this.evaluator.evaluate(board, depth);
-    } TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
+    } long zobristHash = (long) board.hashCode();
+    TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
     if (entry != null && entry.depth() >= depth) {
-      if (entry.nodeType() == TranspositionTableEntry.NodeType.EXACT) {
+      if (entry.nodeType == TranspositionTable.EXACT) {
         return entry.score();
-      } else if (entry.nodeType() == TranspositionTableEntry.NodeType.LOWERBOUND) {
+      } else if (entry.nodeType == TranspositionTable.LOWERBOUND) {
         lowest = Math.max(lowest, entry.score());
-      } else if (entry.nodeType() == TranspositionTableEntry.NodeType.UPPERBOUND) {
+      } else if (entry.nodeType == TranspositionTable.UPPERBOUND) {
         highest = Math.min(highest, entry.score());
       } if (lowest >= highest) {
         return entry.score();
@@ -224,12 +227,16 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         currentHighest = Math.max(currentHighest, min(toBoard, calculateQuiescenceDepth(toBoard, depth), currentHighest, lowest));
         if (currentHighest >= lowest) {
           if (currentHighest >= lowest + DeltaPruningValue) {
-            storeTranspositionTableEntry(board, currentHighest, depth, TranspositionTableEntry.NodeType.LOWERBOUND);
+            byte nodeType = TranspositionTable.LOWERBOUND;
+            transpositionTable.store(zobristHash, currentHighest, depth, nodeType);
             return lowest;
           }
         }
       }
-    } storeTranspositionTableEntry(board, currentHighest, depth, TranspositionTableEntry.NodeType.EXACT);
+    } byte nodeType = TranspositionTable.EXACT;
+    if (currentHighest <= highest) nodeType = TranspositionTable.UPPERBOUND;
+    else if (currentHighest >= lowest) nodeType = TranspositionTable.LOWERBOUND;
+    transpositionTable.store(zobristHash, currentHighest, depth, nodeType);
     return currentHighest;
   }
 
@@ -250,13 +257,14 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     if (depth <= 0 || BoardUtils.isEndOfGame(board)) {
       this.boardsEvaluated++;
       return this.evaluator.evaluate(board, depth);
-    } TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
+    } long zobristHash = (long) board.hashCode();
+    TranspositionTableEntry entry = transpositionTable.get((long) board.hashCode());
     if (entry != null && entry.depth() >= depth) {
-      if (entry.nodeType() == TranspositionTableEntry.NodeType.EXACT) {
+      if (entry.nodeType == TranspositionTable.EXACT) {
         return entry.score();
-      } else if (entry.nodeType() == TranspositionTableEntry.NodeType.LOWERBOUND) {
+      } else if (entry.nodeType == TranspositionTable.LOWERBOUND) {
         lowest = Math.max(lowest, entry.score());
-      } else if (entry.nodeType() == TranspositionTableEntry.NodeType.UPPERBOUND) {
+      } else if (entry.nodeType == TranspositionTable.UPPERBOUND) {
         highest = Math.min(highest, entry.score());
       } if (lowest >= highest) return entry.score();
     } if (depth < FutilityPruningDepth) {
@@ -273,25 +281,17 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         currentLowest = Math.min(currentLowest, max(toBoard, calculateQuiescenceDepth(toBoard, depth), highest, currentLowest));
         if (currentLowest <= highest) {
           if (currentLowest <= highest - DeltaPruningValue) {
-            storeTranspositionTableEntry(board, currentLowest, depth, TranspositionTableEntry.NodeType.UPPERBOUND);
+            byte nodeType = TranspositionTable.UPPERBOUND;
+            transpositionTable.store(zobristHash, currentLowest, depth, nodeType);
             return highest;
           }
         }
       }
-    } storeTranspositionTableEntry(board, currentLowest, depth, TranspositionTableEntry.NodeType.EXACT);
+    } byte nodeType = TranspositionTable.EXACT;
+    if (currentLowest <= highest) nodeType = TranspositionTable.UPPERBOUND;
+    else if (currentLowest >= lowest) nodeType = TranspositionTable.LOWERBOUND;
+    transpositionTable.store(zobristHash, currentLowest, depth, nodeType);
     return currentLowest;
-  }
-
-  /**
-   * Stores a move that was made into the transposition table.
-   *
-   * @param board    The board to be recorded.
-   * @param score    The score to be recorded.
-   * @param depth    The depth to be recorded.
-   * @param nodeType The NodeType to be recorded.
-   */
-  private void storeTranspositionTableEntry(Board board, double score, int depth, TranspositionTableEntry.NodeType nodeType) {
-    transpositionTable.put((long) board.hashCode(), new TranspositionTableEntry(score, depth, nodeType));
   }
 
   /**
