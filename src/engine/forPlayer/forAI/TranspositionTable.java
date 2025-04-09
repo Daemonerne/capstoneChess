@@ -2,7 +2,7 @@ package engine.forPlayer.forAI;
 
 /**
  * An optimized fixed-size transposition table that uses power-of-2 sizing
- * for fast modulo operations and implements a replacement strategy.
+ * for fast modulo operations and implements an enhanced replacement strategy.
  */
 public class TranspositionTable {
   private static final int DEFAULT_SIZE_MB = 256;
@@ -44,9 +44,9 @@ public class TranspositionTable {
       table[i] = new Entry();
     } System.out.println("Transposition Table created with " + size + 
                          " entries (" + (size * 24 / (1024 * 1024)) + " MB)");
-    }
+  }
     
-  /*** Creates a transposition table with the default size. */
+  /** Creates a transposition table with the default size. */
   public TranspositionTable() {
     this(DEFAULT_SIZE_MB);
   }
@@ -62,7 +62,7 @@ public class TranspositionTable {
     }
   }
     
-  /*** Clears the transposition table. */
+  /** Clears the transposition table. */
   public void clear() {
     for (int i = 0; i < table.length; i++) {
       Entry entry = table[i];
@@ -75,25 +75,32 @@ public class TranspositionTable {
   }
     
   /**
-   * Probe the transposition table to find an entry.
+   * Get an entry from the transposition table.
    * 
    * @param zobristHash The Zobrist hash of the position
-   * @return The entry if found and verified, null otherwise
+   * @return The entry if found, null otherwise
    */
-  public Entry probe(long zobristHash) {
+  public Entry get(long zobristHash) {
     int index = (int) (zobristHash & mask);
     Entry entry = table[index];
     if (entry.key == zobristHash && entry.key != 0) {
+      entry.age = currentAge;
       return entry;
+    } int index2 = (index ^ (int)(zobristHash >>> 32)) & mask;
+    Entry entry2 = table[index2];
+    if (entry2.key == zobristHash && entry2.key != 0) {
+      entry2.age = currentAge;
+      return entry2;
     } return null;
   }
     
   /**
    * Store a position in the transposition table.
-   * Uses a replacement strategy that prefers:
+   * Uses an enhanced replacement strategy:
    * 1. Empty slots
    * 2. Entries with lower depth
    * 3. Older entries
+   * 4. Secondary hash location if primary is occupied
    * 
    * @param zobristHash The Zobrist hash of the position
    * @param score The evaluation score
@@ -103,18 +110,29 @@ public class TranspositionTable {
   public void store(long zobristHash, double score, int depth, byte nodeType) {
     int index = (int) (zobristHash & mask);
     Entry entry = table[index];
-    if (entry.key != 0) {
-      if (entry.depth > depth && entry.age == currentAge) {
-        return;
-      }
-    } entry.key = zobristHash;
-      entry.score = score;
-      entry.depth = (short) depth;
-      entry.nodeType = nodeType;
-      entry.age = currentAge;
+    int index2 = (index ^ (int)(zobristHash >>> 32)) & mask;
+    Entry entry2 = table[index2];
+    boolean useFirst = shouldReplace(entry, entry2, depth);
+    Entry target = useFirst ? entry : entry2;
+    if (target.key == 0 || target.depth <= depth || target.age < currentAge) {
+      target.key = zobristHash;
+      target.score = score;
+      target.depth = (short) depth;
+      target.nodeType = nodeType;
+      target.age = currentAge;
+    }
+  }
+  
+  /*** Helper method to determine which entry to replace. */
+  private boolean shouldReplace(Entry entry1, Entry entry2, int depth) {
+    if (entry1.key == 0) return true;
+    if (entry2.key == 0) return false;
+    if (entry1.depth < entry2.depth) return true;
+    if (entry1.depth > entry2.depth) return false; 
+    return entry1.age <= entry2.age;
   }
     
-  /*** Returns the approximate fill percentage of the table. */
+  /** Returns the approximate fill percentage of the table. */
   public double getUsage() {
     int count = 0;
     int sampleSize = Math.min(1000, table.length);        
@@ -124,4 +142,4 @@ public class TranspositionTable {
       }
     } return (double) count / sampleSize;
   }
-} 
+}
