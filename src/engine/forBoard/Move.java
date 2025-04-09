@@ -171,8 +171,42 @@ public abstract class Move {
     this.board.currentPlayer().getOpponent().getActivePieces().forEach(builder::setPiece);
     builder.setPiece(this.movedPiece.movePiece(this));
     builder.setMoveMaker(this.board.currentPlayer().getOpponent().getAlliance());
-    builder.setMoveTransition(this); 
+    builder.setMoveTransition(this);
+    
+    // Update the Zobrist hash for the new board position
+    long newHash = updateZobristHash(this.board.getZobristHash());
+    builder.setZobristHash(newHash);
+    
     return builder.build();
+  }
+
+  /**
+   * Updates the Zobrist hash for this move.
+   * This default implementation handles standard piece movement.
+   * Subclasses should override this method for special moves.
+   *
+   * @param currentHash The current board hash.
+   * @return The updated hash.
+   */
+  protected long updateZobristHash(final long currentHash) {
+    // Update hash for the piece movement
+    long hash = ZobristHashing.updateHashPieceMove(
+      currentHash, 
+      this.movedPiece,
+      this.getCurrentCoordinate(),
+      this.getDestinationCoordinate()
+    );
+    
+    // Toggle side to move
+    hash = ZobristHashing.updateHashSideToMove(hash);
+    
+    // Clear any previous en passant possibility
+    if (this.board.getEnPassantPawn() != null) {
+      final int enPassantFile = this.board.getEnPassantPawn().getPiecePosition() % 8;
+      hash = ZobristHashing.updateHashEnPassant(hash, enPassantFile);
+    }
+    
+    return hash;
   }
 
   /**
@@ -313,7 +347,40 @@ public abstract class Move {
       builder.setPiece(this.promotionPiece.movePiece(this));
       builder.setMoveMaker(pawnMovedBoard.currentPlayer().getAlliance());
       builder.setMoveTransition(this);
+      
+      // Update Zobrist hash for promotion
+      long newHash = pawnMovedBoard.getZobristHash();
+      newHash = ZobristHashing.updateHashPromotion(
+        newHash,
+        this.promotedPawn,
+        this.promotionPiece,
+        this.getDestinationCoordinate()
+      );
+      builder.setZobristHash(newHash);
+      
       return builder.build();
+    }
+    
+    /**
+     * Updates the Zobrist hash for this pawn promotion move.
+     *
+     * @param currentHash The current board hash.
+     * @return The updated hash.
+     */
+    @Override
+    protected long updateZobristHash(final long currentHash) {
+      // First update for the basic pawn move
+      long hash = super.updateZobristHash(currentHash);
+      
+      // Then update for the promotion
+      hash = ZobristHashing.updateHashPromotion(
+        hash,
+        this.promotedPawn,
+        this.promotionPiece,
+        this.getDestinationCoordinate()
+      );
+      
+      return hash;
     }
   
     /**
@@ -433,9 +500,42 @@ public abstract class Move {
       return movedPiece.getPieceType() + disambiguationFile() + "x" +
         BoardUtils.getPositionAtCoordinate(this.destinationCoordinate);
     }
+    
+    /**
+     * Updates the Zobrist hash for this major attack move.
+     *
+     * @param currentHash The current board hash.
+     * @return The updated hash.
+     */
+    @Override
+    protected long updateZobristHash(final long currentHash) {
+      // First remove the attacked piece from the hash
+      long hash = ZobristHashing.updateHashPieceCapture(
+        currentHash,
+        this.getAttackedPiece()
+      );
+      
+      // Then update for the piece movement and side to move
+      hash = ZobristHashing.updateHashPieceMove(
+        hash,
+        this.movedPiece,
+        this.getCurrentCoordinate(),
+        this.getDestinationCoordinate()
+      );
+      
+      // Toggle side to move
+      hash = ZobristHashing.updateHashSideToMove(hash);
+      
+      // Clear any previous en passant possibility
+      if (this.board.getEnPassantPawn() != null) {
+        final int enPassantFile = this.board.getEnPassantPawn().getPiecePosition() % 8;
+        hash = ZobristHashing.updateHashEnPassant(hash, enPassantFile);
+      }
+      
+      return hash;
+    }
   }
   
-    
   /**
    * The `PawnMove` class represents a basic pawn move in chess. This move involves a pawn advancing to a new destination
    * coordinate without capturing any opponent's piece.
@@ -519,6 +619,40 @@ public abstract class Move {
       return BoardUtils.getPositionAtCoordinate(this.movedPiece.getPiecePosition()).charAt(0) + "x" +
         BoardUtils.getPositionAtCoordinate(this.destinationCoordinate);
     }
+    
+    /**
+     * Updates the Zobrist hash for this pawn attack move.
+     *
+     * @param currentHash The current board hash.
+     * @return The updated hash.
+     */
+    @Override
+    protected long updateZobristHash(final long currentHash) {
+      // First remove the attacked piece from the hash
+      long hash = ZobristHashing.updateHashPieceCapture(
+        currentHash,
+        this.getAttackedPiece()
+      );
+      
+      // Then update for the piece movement and side to move
+      hash = ZobristHashing.updateHashPieceMove(
+        hash,
+        this.movedPiece,
+        this.getCurrentCoordinate(),
+        this.getDestinationCoordinate()
+      );
+      
+      // Toggle side to move
+      hash = ZobristHashing.updateHashSideToMove(hash);
+      
+      // Clear any previous en passant possibility
+      if (this.board.getEnPassantPawn() != null) {
+        final int enPassantFile = this.board.getEnPassantPawn().getPiecePosition() % 8;
+        hash = ZobristHashing.updateHashEnPassant(hash, enPassantFile);
+      }
+      
+      return hash;
+    }
   }
   
   /**
@@ -567,7 +701,30 @@ public abstract class Move {
       builder.setPiece(this.movedPiece.movePiece(this));
       builder.setMoveMaker(this.board.currentPlayer().getOpponent().getAlliance());
       builder.setMoveTransition(this);
+      
+      // Update the Zobrist hash
+      long newHash = updateZobristHash(this.board.getZobristHash());
+      builder.setZobristHash(newHash);
+      
       return builder.build();
+    }
+    
+    /**
+     * Updates the Zobrist hash for this en passant attack move.
+     *
+     * @param currentHash The current board hash.
+     * @return The updated hash.
+     */
+    @Override
+    protected long updateZobristHash(final long currentHash) {
+      // Get the basic attack move hash update
+      long hash = super.updateZobristHash(currentHash);
+      
+      // Clear the en passant possibility
+      final int enPassantFile = this.getAttackedPiece().getPiecePosition() % 8;
+      hash = ZobristHashing.updateHashEnPassant(hash, enPassantFile);
+      
+      return hash;
     }
   
     /**
@@ -630,7 +787,30 @@ public abstract class Move {
       builder.setEnPassantPawn(movedPawn);
       builder.setMoveMaker(this.board.currentPlayer().getOpponent().getAlliance());
       builder.setMoveTransition(this);
+      
+      // Update the Zobrist hash
+      long newHash = updateZobristHash(this.board.getZobristHash());
+      builder.setZobristHash(newHash);
+      
       return builder.build();
+    }
+    
+    /**
+     * Updates the Zobrist hash for this pawn jump move.
+     *
+     * @param currentHash The current board hash.
+     * @return The updated hash.
+     */
+    @Override
+    protected long updateZobristHash(final long currentHash) {
+      // Basic piece movement update
+      long hash = super.updateZobristHash(currentHash);
+      
+      // Add the en passant possibility
+      final int enPassantFile = this.getDestinationCoordinate() % 8;
+      hash = ZobristHashing.updateHashEnPassant(hash, enPassantFile);
+      
+      return hash;
     }
   
     /**
@@ -722,7 +902,62 @@ public abstract class Move {
       builder.setPiece(new Rook(this.castleRook.getPieceAllegiance(), this.castleRookDestination, false, 1));
       builder.setMoveMaker(this.board.currentPlayer().getOpponent().getAlliance());
       builder.setMoveTransition(this);
+      
+      // Update the Zobrist hash
+      long newHash = updateZobristHash(this.board.getZobristHash());
+      builder.setZobristHash(newHash);
+      
       return builder.build();
+    }
+    
+    /**
+     * Updates the Zobrist hash for this castling move.
+     *
+     * @param currentHash The current board hash.
+     * @return The updated hash.
+     */
+    @Override
+    protected long updateZobristHash(final long currentHash) {
+      // Update for both the king and rook movement
+      long hash = ZobristHashing.updateHashCastle(
+        currentHash,
+        this.movedPiece,
+        this.castleRook,
+        this.getCurrentCoordinate(),
+        this.getDestinationCoordinate(),
+        this.castleRookStart,
+        this.castleRookDestination
+      );
+      
+      // Toggle side to move
+      hash = ZobristHashing.updateHashSideToMove(hash);
+      
+      // Clear any previous en passant possibility
+      if (this.board.getEnPassantPawn() != null) {
+        final int enPassantFile = this.board.getEnPassantPawn().getPiecePosition() % 8;
+        hash = ZobristHashing.updateHashEnPassant(hash, enPassantFile);
+      }
+      
+      // Update castling rights
+      final boolean isWhite = this.movedPiece.getPieceAllegiance().isWhite();
+      // Remove all castling rights for the moving side
+      if (isWhite) {
+        if (this.board.whitePlayer().isKingSideCastleCapable()) {
+          hash = ZobristHashing.updateHashCastlingRight(hash, 0);
+        }
+        if (this.board.whitePlayer().isQueenSideCastleCapable()) {
+          hash = ZobristHashing.updateHashCastlingRight(hash, 1);
+        }
+      } else {
+        if (this.board.blackPlayer().isKingSideCastleCapable()) {
+          hash = ZobristHashing.updateHashCastlingRight(hash, 2);
+        }
+        if (this.board.blackPlayer().isQueenSideCastleCapable()) {
+          hash = ZobristHashing.updateHashCastlingRight(hash, 3);
+        }
+      }
+      
+      return hash;
     }
   
     /**
@@ -921,6 +1156,61 @@ public abstract class Move {
     public boolean isAttack() {
       return true;
     }
+    
+    /**
+     * Updates the Zobrist hash for this attack move.
+     *
+     * @param currentHash The current board hash.
+     * @return The updated hash.
+     */
+    @Override
+    protected long updateZobristHash(final long currentHash) {
+      // Remove the attacked piece from the hash
+      long hash = ZobristHashing.updateHashPieceCapture(
+        currentHash,
+        this.attackedPiece
+      );
+      
+      // Update for the piece movement
+      hash = ZobristHashing.updateHashPieceMove(
+        hash,
+        this.movedPiece,
+        this.getCurrentCoordinate(),
+        this.getDestinationCoordinate()
+      );
+      
+      // Toggle side to move
+      hash = ZobristHashing.updateHashSideToMove(hash);
+      
+      // If the attacked piece is a rook, update castling rights
+      if (this.attackedPiece.getPieceType() == Piece.PieceType.ROOK) {
+        final boolean isWhiteRook = this.attackedPiece.getPieceAllegiance().isWhite();
+        final int rookPosition = this.attackedPiece.getPiecePosition();
+        
+        // Check if it's a corner rook and update castling rights accordingly
+        if (isWhiteRook) {
+          if (rookPosition == 0 && this.board.whitePlayer().isQueenSideCastleCapable()) {
+            hash = ZobristHashing.updateHashCastlingRight(hash, 1);
+          } else if (rookPosition == 7 && this.board.whitePlayer().isKingSideCastleCapable()) {
+            hash = ZobristHashing.updateHashCastlingRight(hash, 0);
+          }
+        } else {
+          if (rookPosition == 56 && this.board.blackPlayer().isQueenSideCastleCapable()) {
+            hash = ZobristHashing.updateHashCastlingRight(hash, 3);
+          } else if (rookPosition == 63 && this.board.blackPlayer().isKingSideCastleCapable()) {
+            hash = ZobristHashing.updateHashCastlingRight(hash, 2);
+          }
+        }
+      }
+      
+      // Clear any previous en passant possibility
+      if (this.board.getEnPassantPawn() != null) {
+        final int enPassantFile = this.board.getEnPassantPawn().getPiecePosition() % 8;
+        hash = ZobristHashing.updateHashEnPassant(hash, enPassantFile);
+      }
+      
+      return hash;
+    }
   }
   
    /**
@@ -976,6 +1266,18 @@ public abstract class Move {
     @Override
     public Board execute() {
       throw new RuntimeException("Cannot execute null move!");
+    }
+    
+    /**
+     * Updates the Zobrist hash for a null move.
+     * This is a no-op as null moves should not be executed.
+     *
+     * @param currentHash The current board hash.
+     * @return The unchanged hash.
+     */
+    @Override
+    protected long updateZobristHash(final long currentHash) {
+      return currentHash;
     }
   
     /**
