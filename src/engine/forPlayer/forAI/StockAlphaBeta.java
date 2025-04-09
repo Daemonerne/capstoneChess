@@ -11,7 +11,6 @@ import engine.forPiece.Piece;
 import engine.forPlayer.Player;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveTask;
 
@@ -203,8 +202,8 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     if (depth <= 0 || BoardUtils.isEndOfGame(board)) {
       this.boardsEvaluated++;
       return this.evaluator.evaluate(board, depth);
-    } long zobristHash = (long) board.hashCode();
-    TranspositionTable.Entry entry = transpositionTable.get((long) board.hashCode());
+    } long zobristHash = board.hashCode();
+    TranspositionTable.Entry entry = transpositionTable.get(board.hashCode());
     if (entry != null && entry.depth >= depth) {
       if (entry.nodeType == TranspositionTable.EXACT) {
         return entry.score;
@@ -257,8 +256,8 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     if (depth <= 0 || BoardUtils.isEndOfGame(board)) {
       this.boardsEvaluated++;
       return this.evaluator.evaluate(board, depth);
-    } long zobristHash = (long) board.hashCode();
-    TranspositionTable.Entry entry = transpositionTable.get((long) board.hashCode());
+    } long zobristHash = board.hashCode();
+    TranspositionTable.Entry entry = transpositionTable.get(board.hashCode());
     if (entry != null && entry.depth >= depth) {
       if (entry.nodeType == TranspositionTable.EXACT) {
         return entry.score;
