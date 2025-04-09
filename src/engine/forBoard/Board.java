@@ -49,6 +49,9 @@ public final class Board {
   /*** The move that resulted in the current board position. If no move transition has occurred,
    * this value will be the null move. */
   private final Move transitionMove;
+  
+  /*** The Zobrist hash value for this board position. */
+  private final long zobristHash;
 
   /*** A pre-constructed standard chess board configuration representing the starting position.
    * This is a constant instance shared across all instances of the Board class. */
@@ -70,8 +73,9 @@ public final class Board {
     this.blackPlayer = new BlackPlayer(this, whiteStandardMoves, blackStandardMoves);
     this.currentPlayer = builder.nextMoveMaker.choosePlayerByAlliance(this.whitePlayer, this.blackPlayer);
     this.transitionMove = builder.transitionMove != null ? builder.transitionMove : getNullMove();
+    this.zobristHash = builder.zobristHash != 0 ? builder.zobristHash : 
+                       ZobristHashing.calculateBoardHash(this);
   }
-  
   
   /**
    * Returns a string representation of the board, including piece configurations.
@@ -194,6 +198,25 @@ public final class Board {
   }
   
   /**
+   * Gets the Zobrist hash value for this board position.
+   *
+   * @return The 64-bit Zobrist hash.
+   */
+  public long getZobristHash() {
+    return this.zobristHash;
+  }
+  
+  /**
+   * Returns the hash code for this board, using the Zobrist hash value.
+   *
+   * @return The hash code.
+   */
+  @Override
+  public int hashCode() {
+    return (int) this.zobristHash;
+  }
+  
+  /**
    * Returns a standard chess board configuration representing the starting position.
    *
    * @return A standard chess board.
@@ -278,16 +301,17 @@ public final class Board {
     } return activePieces;
   }
   
-  
   /*** A builder class for constructing instances of the Board class with specific configurations. */
   public static class Builder {
     private final Map<Integer, Piece> BoardConfigurations;
     private Alliance nextMoveMaker;
     private Pawn enPassantPawn;
     private Move transitionMove;
+    private long zobristHash;
     
     public Builder() {
       this.BoardConfigurations = new HashMap<>(32, 1.0f);
+      this.zobristHash = 0;
     }
     
     /**
@@ -327,9 +351,22 @@ public final class Board {
      * Sets the move transition for the board configuration.
      *
      * @param transitionMove The move that represents the transition between the previous and current board states.
+     * @return The current builder instance to continue configuring the board.
      */
-    public void setMoveTransition(final Move transitionMove) {
+    public Builder setMoveTransition(final Move transitionMove) {
       this.transitionMove = transitionMove;
+      return this;
+    }
+    
+    /**
+     * Sets the Zobrist hash value for the board being built.
+     *
+     * @param zobristHash The Zobrist hash value.
+     * @return The current builder instance to continue configuring the board.
+     */
+    public Builder setZobristHash(final long zobristHash) {
+      this.zobristHash = zobristHash;
+      return this;
     }
 
     /**
@@ -342,4 +379,3 @@ public final class Board {
     }
   }
 }
-
