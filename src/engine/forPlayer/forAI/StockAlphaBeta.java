@@ -410,6 +410,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       return MiddlegameBoardEvaluator.get();
     } else if (boardValue < 2070) {
       return EndgameBoardEvaluator.get();
-    } return OpeningGameEvaluator.get();
+    } else return OpeningGameEvaluator.get();
   }
 }
