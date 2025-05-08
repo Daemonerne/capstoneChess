@@ -46,6 +46,6 @@
     <orderEntry type="library" name="guava-32.1.2-jre" level="application" />
     <orderEntry type="library" name="guava-31.1-jre" level="application" />
     <orderEntry type="library" name="guava-33.0.0-jre" level="application" />
-    <orderEntry type="library" name="guava-33.4.7-jre" level="project" />
+    <orderEntry type="library" name="google.guava" level="project" />
   </component>
 </module>
