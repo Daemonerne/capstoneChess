@@ -4,13 +4,12 @@ import engine.Alliance;
 import engine.forBoard.Board;
 import engine.forBoard.BoardUtils;
 import engine.forBoard.Move;
+import engine.forBoard.MovePool;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-
-import static engine.forBoard.Move.*;
 
 /**
  * The `Pawn` class represents a pawn chess piece. It extends the Piece class and defines the specific properties and behaviors
@@ -98,16 +97,21 @@ public final class Pawn extends Piece {
       if (currentCandidateOffset == 8 && board.getPiece(candidateDestinationCoordinate) == null) {
         // Handles pawn promotion move when reaching the last rank
         if (this.pieceAlliance.isPawnPromotionSquare(candidateDestinationCoordinate)) {
-          legalMoves.add(new PawnPromotion(
-                  new PawnMove(board, this, candidateDestinationCoordinate), PieceUtils.Instance.getMovedQueen(this.pieceAlliance, candidateDestinationCoordinate)));
-          legalMoves.add(new PawnPromotion(
-                  new PawnMove(board, this, candidateDestinationCoordinate), PieceUtils.Instance.getMovedRook(this.pieceAlliance, candidateDestinationCoordinate)));
-          legalMoves.add(new PawnPromotion(
-                  new PawnMove(board, this, candidateDestinationCoordinate), PieceUtils.Instance.getMovedBishop(this.pieceAlliance, candidateDestinationCoordinate)));
-          legalMoves.add(new PawnPromotion(
-                  new PawnMove(board, this, candidateDestinationCoordinate), PieceUtils.Instance.getMovedKnight(this.pieceAlliance, candidateDestinationCoordinate)));
+          // Create the base move using the MovePool
+          Move pawnMove = MovePool.INSTANCE.getPawnMove(board, this, candidateDestinationCoordinate);
+
+          // Create promotion moves for each piece type
+          legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
+                  pawnMove, PieceUtils.Instance.getMovedQueen(this.pieceAlliance, candidateDestinationCoordinate)));
+          legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
+                  pawnMove, PieceUtils.Instance.getMovedRook(this.pieceAlliance, candidateDestinationCoordinate)));
+          legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
+                  pawnMove, PieceUtils.Instance.getMovedBishop(this.pieceAlliance, candidateDestinationCoordinate)));
+          legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
+                  pawnMove, PieceUtils.Instance.getMovedKnight(this.pieceAlliance, candidateDestinationCoordinate)));
         } else {
-          legalMoves.add(new PawnMove(board, this, candidateDestinationCoordinate));
+          // Regular pawn move
+          legalMoves.add(MovePool.INSTANCE.getPawnMove(board, this, candidateDestinationCoordinate));
         }
       }
       // Handles pawn jump (pawn can move two squares on its first move)
@@ -118,7 +122,8 @@ public final class Pawn extends Piece {
                 this.piecePosition + (this.pieceAlliance.getDirection() * 8);
         if (board.getPiece(candidateDestinationCoordinate) == null &&
                 board.getPiece(behindCandidateDestinationCoordinate) == null) {
-          legalMoves.add(new PawnJump(board, this, candidateDestinationCoordinate));
+          // Pawn jump
+          legalMoves.add(MovePool.INSTANCE.getPawnJump(board, this, candidateDestinationCoordinate));
         }
       }
       // Handles pawn capturing moves
@@ -129,26 +134,29 @@ public final class Pawn extends Piece {
           final Piece pieceOnCandidate = board.getPiece(candidateDestinationCoordinate);
           if (this.pieceAlliance != pieceOnCandidate.getPieceAllegiance()) {
             if (this.pieceAlliance.isPawnPromotionSquare(candidateDestinationCoordinate)) {
-              legalMoves.add(new PawnPromotion(
-                      new PawnAttackMove(board, this, candidateDestinationCoordinate, pieceOnCandidate), PieceUtils.Instance.getMovedQueen(this.pieceAlliance, candidateDestinationCoordinate)));
-              legalMoves.add(new PawnPromotion(
-                      new PawnAttackMove(board, this, candidateDestinationCoordinate, pieceOnCandidate), PieceUtils.Instance.getMovedRook(this.pieceAlliance, candidateDestinationCoordinate)));
-              legalMoves.add(new PawnPromotion(
-                      new PawnAttackMove(board, this, candidateDestinationCoordinate, pieceOnCandidate), PieceUtils.Instance.getMovedBishop(this.pieceAlliance, candidateDestinationCoordinate)));
-              legalMoves.add(new PawnPromotion(
-                      new PawnAttackMove(board, this, candidateDestinationCoordinate, pieceOnCandidate), PieceUtils.Instance.getMovedKnight(this.pieceAlliance, candidateDestinationCoordinate)));
+              // Create the base move using the MovePool
+              Move pawnAttackMove = MovePool.INSTANCE.getPawnAttackMove(board, this, candidateDestinationCoordinate, pieceOnCandidate);
+
+              // Create promotion moves for each piece type
+              legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
+                      pawnAttackMove, PieceUtils.Instance.getMovedQueen(this.pieceAlliance, candidateDestinationCoordinate)));
+              legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
+                      pawnAttackMove, PieceUtils.Instance.getMovedRook(this.pieceAlliance, candidateDestinationCoordinate)));
+              legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
+                      pawnAttackMove, PieceUtils.Instance.getMovedBishop(this.pieceAlliance, candidateDestinationCoordinate)));
+              legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
+                      pawnAttackMove, PieceUtils.Instance.getMovedKnight(this.pieceAlliance, candidateDestinationCoordinate)));
             } else {
-              legalMoves.add(
-                      new PawnAttackMove(board, this, candidateDestinationCoordinate, pieceOnCandidate));
+              // Regular pawn attack
+              legalMoves.add(MovePool.INSTANCE.getPawnAttackMove(board, this, candidateDestinationCoordinate, pieceOnCandidate));
             }
           }
         } else if (board.getEnPassantPawn() != null && board.getEnPassantPawn().getPiecePosition() ==
                 (this.piecePosition + (this.pieceAlliance.getOppositeDirection()))) {
           final Piece pieceOnCandidate = board.getEnPassantPawn();
           if (this.pieceAlliance != pieceOnCandidate.getPieceAllegiance()) {
-            legalMoves.add(
-                    new PawnEnPassantAttack(board, this, candidateDestinationCoordinate, pieceOnCandidate));
-
+            // En passant attack
+            legalMoves.add(MovePool.INSTANCE.getPawnEnPassantAttack(board, this, candidateDestinationCoordinate, pieceOnCandidate));
           }
         }
       }
@@ -161,30 +169,31 @@ public final class Pawn extends Piece {
                   board.getPiece(candidateDestinationCoordinate).getPieceAllegiance()) {
             // Handles pawn promotion move after capturing
             if (this.pieceAlliance.isPawnPromotionSquare(candidateDestinationCoordinate)) {
-              legalMoves.add(new PawnPromotion(
-                      new PawnAttackMove(board, this, candidateDestinationCoordinate,
-                              board.getPiece(candidateDestinationCoordinate)), PieceUtils.Instance.getMovedQueen(this.pieceAlliance, candidateDestinationCoordinate)));
-              legalMoves.add(new PawnPromotion(
-                      new PawnAttackMove(board, this, candidateDestinationCoordinate,
-                              board.getPiece(candidateDestinationCoordinate)), PieceUtils.Instance.getMovedRook(this.pieceAlliance, candidateDestinationCoordinate)));
-              legalMoves.add(new PawnPromotion(
-                      new PawnAttackMove(board, this, candidateDestinationCoordinate,
-                              board.getPiece(candidateDestinationCoordinate)), PieceUtils.Instance.getMovedBishop(this.pieceAlliance, candidateDestinationCoordinate)));
-              legalMoves.add(new PawnPromotion(
-                      new PawnAttackMove(board, this, candidateDestinationCoordinate,
-                              board.getPiece(candidateDestinationCoordinate)), PieceUtils.Instance.getMovedKnight(this.pieceAlliance, candidateDestinationCoordinate)));
+              // Create the base move using the MovePool
+              Move pawnAttackMove = MovePool.INSTANCE.getPawnAttackMove(board, this, candidateDestinationCoordinate,
+                      board.getPiece(candidateDestinationCoordinate));
+
+              // Create promotion moves for each piece type
+              legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
+                      pawnAttackMove, PieceUtils.Instance.getMovedQueen(this.pieceAlliance, candidateDestinationCoordinate)));
+              legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
+                      pawnAttackMove, PieceUtils.Instance.getMovedRook(this.pieceAlliance, candidateDestinationCoordinate)));
+              legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
+                      pawnAttackMove, PieceUtils.Instance.getMovedBishop(this.pieceAlliance, candidateDestinationCoordinate)));
+              legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
+                      pawnAttackMove, PieceUtils.Instance.getMovedKnight(this.pieceAlliance, candidateDestinationCoordinate)));
             } else {
-              legalMoves.add(
-                      new PawnAttackMove(board, this, candidateDestinationCoordinate,
-                              board.getPiece(candidateDestinationCoordinate)));
+              // Regular pawn attack
+              legalMoves.add(MovePool.INSTANCE.getPawnAttackMove(board, this, candidateDestinationCoordinate,
+                      board.getPiece(candidateDestinationCoordinate)));
             }
           }
         } else if (board.getEnPassantPawn() != null && board.getEnPassantPawn().getPiecePosition() ==
                 (this.piecePosition - (this.pieceAlliance.getOppositeDirection()))) {
           final Piece pieceOnCandidate = board.getEnPassantPawn();
           if (this.pieceAlliance != pieceOnCandidate.getPieceAllegiance()) {
-            legalMoves.add(new PawnEnPassantAttack(board, this, candidateDestinationCoordinate, pieceOnCandidate));
-
+            // En passant attack
+            legalMoves.add(MovePool.INSTANCE.getPawnEnPassantAttack(board, this, candidateDestinationCoordinate, pieceOnCandidate));
           }
         }
       }

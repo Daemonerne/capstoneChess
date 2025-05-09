@@ -4,6 +4,7 @@ import engine.Alliance;
 import engine.forBoard.Board;
 import engine.forBoard.BoardUtils;
 import engine.forBoard.Move;
+import engine.forBoard.MovePool;
 import engine.forBoard.MoveUtils;
 
 import java.util.*;
@@ -89,11 +90,13 @@ public final class Queen extends Piece {
       for (final int candidateDestinationCoordinate : line.getLineCoordinates()) {
         final Piece pieceAtDestination = board.getPiece(candidateDestinationCoordinate);
         if (pieceAtDestination == null) {
-          legalMoves.add(new Move.MajorMove(board, this, candidateDestinationCoordinate));
+          // Use MovePool instead of creating new Move instances
+          legalMoves.add(MovePool.INSTANCE.getMajorMove(board, this, candidateDestinationCoordinate));
         } else {
           final Alliance pieceAlliance = pieceAtDestination.getPieceAllegiance();
           if (this.pieceAlliance != pieceAlliance) {
-            legalMoves.add(new Move.MajorAttackMove(board, this, candidateDestinationCoordinate, pieceAtDestination));
+            // Use MovePool instead of creating new Move instances
+            legalMoves.add(MovePool.INSTANCE.getMajorAttackMove(board, this, candidateDestinationCoordinate, pieceAtDestination));
           }
           break;
         }

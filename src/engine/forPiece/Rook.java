@@ -4,12 +4,11 @@ import engine.Alliance;
 import engine.forBoard.Board;
 import engine.forBoard.BoardUtils;
 import engine.forBoard.Move;
+import engine.forBoard.MovePool;
 
 import java.util.*;
 
 import static engine.forBoard.BoardUtils.isValidTileCoordinate;
-import static engine.forBoard.Move.MajorAttackMove;
-import static engine.forBoard.Move.MajorMove;
 import static engine.forBoard.MoveUtils.Line;
 
 /**
@@ -97,11 +96,13 @@ public final class Rook extends Piece {
       for (final int candidateDestinationCoordinate : line.getLineCoordinates()) {
         final Piece pieceAtDestination = board.getPiece(candidateDestinationCoordinate);
         if (pieceAtDestination == null) {
-          legalMoves.add(new MajorMove(board, this, candidateDestinationCoordinate));
+          // Use MovePool instead of creating new Move instances
+          legalMoves.add(MovePool.INSTANCE.getMajorMove(board, this, candidateDestinationCoordinate));
         } else {
           final Alliance pieceAlliance = pieceAtDestination.getPieceAllegiance();
           if (this.pieceAlliance != pieceAlliance) {
-            legalMoves.add(new MajorAttackMove(board, this, candidateDestinationCoordinate, pieceAtDestination));
+            // Use MovePool instead of creating new Move instances
+            legalMoves.add(MovePool.INSTANCE.getMajorAttackMove(board, this, candidateDestinationCoordinate, pieceAtDestination));
           }
           break;
         }
