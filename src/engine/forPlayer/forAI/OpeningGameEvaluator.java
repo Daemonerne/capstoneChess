@@ -1,6 +1,7 @@
 package engine.forPlayer.forAI;
 
 import com.google.common.annotations.VisibleForTesting;
+import engine.Alliance;
 import engine.forBoard.Board;
 import engine.forBoard.Move;
 import engine.forPiece.*;
@@ -35,31 +36,52 @@ public class OpeningGameEvaluator implements BoardEvaluator {
    */
   @Override
   public double evaluate(final Board board, final int depth) {
-    return (score(board.whitePlayer(), board) - score(board.blackPlayer(), board));
+    return (score(board.whitePlayer(), board, depth) - score(board.blackPlayer(), board, depth));
   }
 
   /**
-   * Calculates the overall score of the current board position for a given player.
-   * This method incorporates modern engine evaluation principles for the opening phase.
+   * Calculates the overall score of the current board position for a given player
+   * focusing specifically on opening principles.
    *
    * @param player The player for whom the board position is being evaluated.
    * @param board  The current state of the chess board.
+   * @param depth  The current search depth (higher depths may use different weights)
    * @return       The evaluation score of the board from the perspective of the specified player.
    */
   @VisibleForTesting
-  private double score(final Player player, final Board board) {
-    return materialScore(player.getActivePieces()) +
-            developmentScore(player, board) +
-            centerControlScore(player, board) +
-            kingSecurityScore(player, board) +
-            pawnStructureScore(player, board) +
-            spaceAndMobilityScore(player, board) +
-            pieceCoordinationScore(player, board) +
-            tempoScore(player, board);
+  private double score(final Player player, final Board board, final int depth) {
+    // Material has lower weight in opening
+    double materialScore = materialScore(player.getActivePieces()) * 0.7;
+
+    // Development is critical in opening - heavily weighted
+    double developmentScore = developmentScore(player, board) * 3.0;
+
+    // Center control is fundamental in opening
+    double centerControlScore = centerControlScore(player, board) * 2.5;
+
+    // King safety is essential
+    double kingSafetyScore = kingSafetyScore(player, board) * 2.2;
+
+    // Pawn structure affects long-term position
+    double pawnStructureScore = pawnStructureScore(player, board);
+
+    // Space and mobility become more important as pieces develop
+    double mobilityScore = mobilityScore(player, board) * 0.8;
+
+    // Piece coordination and harmony
+    double pieceCoordinationScore = pieceCoordinationScore(player, board) * 1.2;
+
+    // Tempo is crucial in opening
+    double tempoScore = tempoScore(player, board, depth) * 1.5;
+
+    return materialScore + developmentScore + centerControlScore +
+            kingSafetyScore + pawnStructureScore + mobilityScore +
+            pieceCoordinationScore + tempoScore;
   }
 
   /**
-   * Calculates the material score based on piece values.
+   * Evaluates material with lower weight during opening.
+   * Some material sacrifices are common in openings for initiative.
    */
   private double materialScore(final Collection<Piece> playerPieces) {
     double materialValue = 0;
@@ -70,350 +92,366 @@ public class OpeningGameEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates piece development with higher penalties for undeveloped pieces
-   * and bonuses for harmonious development.
+   * Evaluates development of pieces - a critical opening consideration.
    */
   private double developmentScore(final Player player, final Board board) {
     double score = 0;
     Collection<Piece> playerPieces = player.getActivePieces();
-    boolean isWhite = player.getAlliance().isWhite();
+    Alliance alliance = player.getAlliance();
+    boolean isWhite = alliance.isWhite();
 
-    // Base development score - pieces off starting rank
-    for (final Piece piece : playerPieces) {
+    // Count developed minor pieces
+    int developedMinorPieces = 0;
+    boolean queenMoved = false;
+    boolean castled = player.isCastled();
+
+    // Points for developed knights and bishops
+    for (Piece piece : playerPieces) {
+      // Check if piece is not on its starting rank
+      final int pieceRank = piece.getPiecePosition() / 8;
+
       if (piece.getPieceType() == Piece.PieceType.KNIGHT ||
               piece.getPieceType() == Piece.PieceType.BISHOP) {
 
-        // Check if minor piece has moved from starting rank
-        final int pieceRank = piece.getPiecePosition() / 8;
+        boolean developedPosition = false;
+        // Check if piece is moved from starting position
         if ((isWhite && pieceRank != 7) || (!isWhite && pieceRank != 0)) {
-          score += 20;
+          // Basic development bonus
+          score += 40;
+          developedMinorPieces++;
+          developedPosition = true;
 
-          // Extra bonus for development to active squares
-          if (isActiveDevelopmentSquare(piece.getPiecePosition(), piece.getPieceType(), isWhite)) {
-            score += 10;
+          // Extra bonus for centralized pieces
+          if (isCentralPosition(piece.getPiecePosition(), piece.getPieceType())) {
+            score += 20;
           }
         } else {
-          // Penalty for undeveloped minor pieces (higher than before)
-          score -= 30;
+          // Heavy penalty for undeveloped minor pieces
+          score -= 60;
+        }
+
+        // Extra bonus for piece mobility
+        if (developedPosition) {
+          Collection<Move> pieceMoves = piece.calculateLegalMoves(board);
+          score += pieceMoves.size() * 2;
         }
       }
-    }
 
-    // Development harmony - penalize disharmonious development
-    if (isDevelopmentImbalanced(playerPieces, isWhite)) {
-      score -= 15;
-    }
-
-    // Penalize early queen development even more
-    for (final Piece piece : playerPieces) {
+      // Check if queen moved early (often a mistake)
       if (piece.getPieceType() == Piece.PieceType.QUEEN && !piece.isFirstMove()) {
-        final int queenRank = piece.getPiecePosition() / 8;
+        queenMoved = true;
+        int queenRank = piece.getPiecePosition() / 8;
+        int queenFile = piece.getPiecePosition() % 8;
 
-        // Extra penalty for deep queen excursions
-        if ((isWhite && queenRank < 5) || (!isWhite && queenRank > 2)) {
-          score -= 35;
+        // Severe penalty for queen moves that enter opponent's territory too early
+        if ((isWhite && queenRank < 4) || (!isWhite && queenRank > 3)) {
+          score -= 100;
+        }
+
+        // Penalty for central queen development blocking minor pieces
+        if (queenFile >= 2 && queenFile <= 5) {
+          score -= 60;
         } else {
-          score -= 25;
+          // General penalty for early queen moves
+          score -= 50;
         }
       }
     }
 
-    // Bonus for completed development and castling
-    if (isMinorPiecesDeveloped(playerPieces, isWhite) &&
-            player.isCastled() &&
-            !hasEarlyQueenMove(playerPieces)) {
-      score += 40; // Significant bonus for completing development correctly
+    // Strong bonus for castling
+    if (castled) {
+      score += 100;
+    } else if (canCastle(player)) {
+      // Small bonus for preserving castling rights
+      score += 25;
+    } else if (!canCastle(player)) {
+      // Penalty for losing castling rights without castling
+      score -= 60;
+    }
+
+    // Development harmony - all minor pieces should be developed before major pieces
+    if (developedMinorPieces >= 3 && castled && !queenMoved) {
+      score += 50; // Harmony bonus for following development principles
     }
 
     return score;
   }
 
   /**
-   * Checks if a square is an active development square for the given piece type.
+   * Checks if the position is centralized (good development square for minor piece)
    */
-  private boolean isActiveDevelopmentSquare(final int position, final Piece.PieceType pieceType, final boolean isWhite) {
-    // Central knights
+  private boolean isCentralPosition(int position, Piece.PieceType pieceType) {
+    int file = position % 8;
+    int rank = position / 8;
+
+    // Central area plus extended center
+    boolean isExtendedCenter = (file >= 2 && file <= 5 && rank >= 2 && rank <= 5);
+
+    // Ideal central outposts
     if (pieceType == Piece.PieceType.KNIGHT) {
-      if (isWhite) {
-        return position == 18 || position == 21 || position == 33 || position == 36;
-      } else {
-        return position == 27 || position == 30 || position == 42 || position == 45;
-      }
+      // Knights ideal on e4, d4, e5, d5 and surrounding squares
+      return (file >= 2 && file <= 5 && rank >= 2 && rank <= 5);
+    } else if (pieceType == Piece.PieceType.BISHOP) {
+      // Bishops controlling long diagonals or fianchetto positions
+      return isExtendedCenter ||
+              // Fianchetto positions
+              position == 16 || position == 23 || // g2, b2
+              position == 40 || position == 47;  // g7, b7
     }
-    // Fianchetto or active diagonals for bishops
-    else if (pieceType == Piece.PieceType.BISHOP) {
-      if (isWhite) {
-        return position == 16 || position == 23 || position == 17 || position == 22 ||
-                position == 40 || position == 45;
-      } else {
-        return position == 40 || position == 47 || position == 41 || position == 46 ||
-                position == 16 || position == 21;
-      }
-    }
-    return false;
+
+    return isExtendedCenter;
   }
 
   /**
-   * Detects imbalanced development (e.g., developing only one flank).
+   * Checks if player can still castle (has castling rights)
    */
-  private boolean isDevelopmentImbalanced(Collection<Piece> pieces, boolean isWhite) {
-    int kingsideDeveloped = 0;
-    int queensideDeveloped = 0;
-
-    for (Piece piece : pieces) {
-      if ((piece.getPieceType() == Piece.PieceType.KNIGHT ||
-              piece.getPieceType() == Piece.PieceType.BISHOP) &&
-              !piece.isFirstMove()) {
-
-        int file = piece.getPiecePosition() % 8;
-        if (file < 4) {
-          queensideDeveloped++;
-        } else {
-          kingsideDeveloped++;
-        }
-      }
-    }
-
-    // Development is imbalanced if one side has 2+ pieces developed and the other has none
-    return (kingsideDeveloped >= 2 && queensideDeveloped == 0) ||
-            (queensideDeveloped >= 2 && kingsideDeveloped == 0);
+  private boolean canCastle(Player player) {
+    return player.getPlayerKing().isKingSideCastleCapable() ||
+            player.getPlayerKing().isQueenSideCastleCapable();
   }
 
   /**
-   * Checks if all minor pieces are developed.
-   */
-  private boolean isMinorPiecesDeveloped(Collection<Piece> pieces, boolean isWhite) {
-    int developedMinorPieces = 0;
-
-    for (Piece piece : pieces) {
-      if ((piece.getPieceType() == Piece.PieceType.KNIGHT ||
-              piece.getPieceType() == Piece.PieceType.BISHOP) &&
-              !piece.isFirstMove()) {
-
-        int rank = piece.getPiecePosition() / 8;
-        if ((isWhite && rank != 7) || (!isWhite && rank != 0)) {
-          developedMinorPieces++;
-        }
-      }
-    }
-
-    return developedMinorPieces >= 4; // All 4 minor pieces developed
-  }
-
-  /**
-   * Checks if the queen has moved early.
-   */
-  private boolean hasEarlyQueenMove(Collection<Piece> pieces) {
-    for (Piece piece : pieces) {
-      if (piece.getPieceType() == Piece.PieceType.QUEEN && !piece.isFirstMove()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Evaluates center control using a more sophisticated approach that considers:
-   * - Direct center occupation (d4, e4, d5, e5)
-   * - Extended center control (c3-f3-c6-f6)
-   * - Attacks on center squares
-   * - Potential to occupy center in the future
+   * Evaluates center control - critical in opening theory
+   * Rewards:
+   * - Pawns in or controlling the center
+   * - Pieces controlling central squares
+   * - Moves that attack center squares
    */
   private double centerControlScore(final Player player, final Board board) {
     double score = 0;
     Collection<Piece> playerPieces = player.getActivePieces();
     Collection<Move> playerMoves = player.getLegalMoves();
 
-    // Center squares: d4(28), e4(29), d5(36), e5(37)
-    final int[] centerSquares = {28, 29, 36, 37};
+    // Central squares: d4(28), e4(29), d5(36), e5(37)
+    final int[] centralSquares = {28, 29, 36, 37};
 
-    // Extended center
+    // Extended center: c3-f3-c6-f6 area
     final int[] extendedCenterSquares = {
-            20, 21, 22, 23, // Rank 3
-            28, 29, 30, 31, // Rank 4
-            36, 37, 38, 39, // Rank 5
-            44, 45, 46, 47  // Rank 6
+            18, 19, 20, 21, 22, 23,  // Rank 3
+            26, 27, 28, 29, 30, 31,  // Rank 4
+            34, 35, 36, 37, 38, 39,  // Rank 5
+            42, 43, 44, 45, 46, 47   // Rank 6
     };
 
     // Direct center occupation
     for (Piece piece : playerPieces) {
       int position = piece.getPiecePosition();
 
-      // Center squares
-      for (int centerSquare : centerSquares) {
-        if (position == centerSquare) {
-          // Pawn in center is especially valuable
+      // Center squares occupation
+      for (int centralSquare : centralSquares) {
+        if (position == centralSquare) {
+          // Pawn in center is extremely valuable
           if (piece.getPieceType() == Piece.PieceType.PAWN) {
-            score += 30;
-          } else {
+            score += 80;
+          }
+          // Minor pieces in center also good
+          else if (piece.getPieceType() == Piece.PieceType.KNIGHT ||
+                  piece.getPieceType() == Piece.PieceType.BISHOP) {
+            score += 40;
+          }
+          // Other pieces
+          else {
             score += 20;
           }
         }
       }
 
-      // Extended center squares
+      // Extended center occupation
       for (int extendedSquare : extendedCenterSquares) {
         if (position == extendedSquare) {
           if (piece.getPieceType() == Piece.PieceType.PAWN) {
-            score += 15;
+            score += 30;
           } else {
-            score += 10;
+            score += 15;
           }
         }
       }
     }
 
-    // Center control (pieces attacking center)
+    // Control of center - count moves to center
+    Map<Integer, Integer> controlledSquares = new HashMap<>();
+
     for (Move move : playerMoves) {
       int destination = move.getDestinationCoordinate();
+      controlledSquares.put(destination,
+              controlledSquares.getOrDefault(destination, 0) + 1);
+    }
 
-      for (int centerSquare : centerSquares) {
-        if (destination == centerSquare) {
-          score += 7;
+    // Score central control
+    for (int centralSquare : centralSquares) {
+      score += controlledSquares.getOrDefault(centralSquare, 0) * 15;
+    }
+
+    // Score extended center control
+    for (int extendedSquare : extendedCenterSquares) {
+      score += controlledSquares.getOrDefault(extendedSquare, 0) * 5;
+    }
+
+    // Pawn structure supporting center
+    int centerPawns = 0;
+    boolean hasDPawn = false;
+    boolean hasEPawn = false;
+
+    for (Piece piece : playerPieces) {
+      if (piece.getPieceType() == Piece.PieceType.PAWN) {
+        int file = piece.getPiecePosition() % 8;
+        if (file == 3 || file == 4) {
+          centerPawns++;
+          if (file == 3) hasDPawn = true;
+          if (file == 4) hasEPawn = true;
         }
       }
     }
 
-    // Potential future center control - pawn advances toward center
-    List<Piece> pawns = playerPieces.stream()
-            .filter(p -> p.getPieceType() == Piece.PieceType.PAWN)
-            .toList();
-
-    for (Piece pawn : pawns) {
-      int pawnFile = pawn.getPiecePosition() % 8;
-
-      // Pawns on d and e files that can advance to center
-      if (pawnFile == 3 || pawnFile == 4) {
-        score += 5;
-      }
-      // Pawns on c and f files that can influence center
-      else if (pawnFile == 2 || pawnFile == 5) {
-        score += 3;
-      }
+    // Bonus for having both central pawns
+    if (hasDPawn && hasEPawn) {
+      score += 50;
     }
 
     return score;
   }
 
   /**
-   * Evaluates king security in the opening, focusing on:
-   * - Castling status
-   * - Pawn shield integrity
-   * - Potential for opponent attacks
-   * - Piece proximity to king
+   * Evaluates king safety - critical in opening
    */
-  private double kingSecurityScore(final Player player, final Board board) {
+  private double kingSafetyScore(final Player player, final Board board) {
     double score = 0;
     final King playerKing = player.getPlayerKing();
     final int kingPosition = playerKing.getPiecePosition();
 
-    // Major bonus for castling
-    if (playerKing.isCastled()) {
-      score += 60;
+    // Check if king is castled
+    if (player.isCastled()) {
+      score += 120; // Major bonus for castling
 
-      // Additional bonus for intact pawn shield after castling
-      score += evaluatePawnShield(playerKing, player.getActivePieces());
+      // Check pawn shield integrity
+      score += evaluatePawnShield(player, kingPosition);
     }
     else {
-      // Bonus for castling availability
-      if (playerKing.isKingSideCastleCapable()) {
-        score += 20;
-      }
-      if (playerKing.isQueenSideCastleCapable()) {
-        score += 15; // Slightly less as queenside castling is slower
+      // King in center is dangerous
+      int file = kingPosition % 8;
+      int rank = kingPosition / 8;
+
+      boolean inCenter = (file >= 2 && file <= 5);
+      if (inCenter) {
+        score -= 80; // Very dangerous
       }
 
-      // Penalty for moving king in opening without castling
+      // Penalty for moving king without castling
       if (!playerKing.isFirstMove()) {
-        score -= 40;
+        score -= 70;
       }
     }
 
-    // Penalty for opponent pieces near king
-    score -= evaluateKingAttackPotential(kingPosition, player.getOpponent().getActivePieces());
-
-    // Penalty for open lines toward king
-    score -= evaluateOpenLinesNearKing(kingPosition, board);
+    // Check opponent threats near king
+    score -= evaluateKingAttackPotential(kingPosition, player.getOpponent());
 
     return score;
   }
 
   /**
-   * Evaluates the integrity of the pawn shield around a castled king.
+   * Evaluates the pawn shield protecting the king
    */
-  private double evaluatePawnShield(final King king, final Collection<Piece> playerPieces) {
+  private double evaluatePawnShield(Player player, int kingPosition) {
     double score = 0;
-    final int kingPosition = king.getPiecePosition();
-    final boolean isKingSideCastled = (kingPosition == 62 || kingPosition == 6);
+    Collection<Piece> playerPieces = player.getActivePieces();
+    List<Piece> pawns = playerPieces.stream()
+            .filter(p -> p.getPieceType() == Piece.PieceType.PAWN)
+            .toList();
 
-    // Identify pawn shield squares based on castling side
-    List<Integer> pawnShieldSquares = new ArrayList<>();
+    // Determine king side (kingside vs queenside castle)
+    int kingFile = kingPosition % 8;
+    int kingRank = kingPosition / 8;
+    boolean isKingSide = (kingFile >= 5);
 
-    if (isKingSideCastled) {
-      // King side pawn shield squares
-      if (king.getPieceAllegiance().isWhite()) {
-        pawnShieldSquares.addAll(Arrays.asList(46, 47, 48));
+    // Define pawn shield squares
+    List<Integer> shieldSquares = new ArrayList<>();
+    if (isKingSide) {
+      // King side castle shield
+      if (player.getAlliance().isWhite()) {
+        // White kingside shield (f2, g2, h2)
+        shieldSquares.add(kingPosition - 9);  // Upper left
+        shieldSquares.add(kingPosition - 8);  // Upper center
+        shieldSquares.add(kingPosition - 7);  // Upper right
       } else {
-        pawnShieldSquares.addAll(Arrays.asList(14, 15, 16));
+        // Black kingside shield (f7, g7, h7)
+        shieldSquares.add(kingPosition + 7);  // Lower left
+        shieldSquares.add(kingPosition + 8);  // Lower center
+        shieldSquares.add(kingPosition + 9);  // Lower right
       }
     } else {
-      // Queen side pawn shield squares
-      if (king.getPieceAllegiance().isWhite()) {
-        pawnShieldSquares.addAll(Arrays.asList(48, 49, 50));
+      // Queen side castle shield
+      if (player.getAlliance().isWhite()) {
+        // White queenside shield (a2, b2, c2)
+        shieldSquares.add(kingPosition - 9);  // Upper left
+        shieldSquares.add(kingPosition - 8);  // Upper center
+        shieldSquares.add(kingPosition - 7);  // Upper right
       } else {
-        pawnShieldSquares.addAll(Arrays.asList(8, 9, 10));
+        // Black queenside shield (a7, b7, c7)
+        shieldSquares.add(kingPosition + 7);  // Lower left
+        shieldSquares.add(kingPosition + 8);  // Lower center
+        shieldSquares.add(kingPosition + 9);  // Lower right
       }
     }
 
-    // Count pawns on shield squares
+    // Count pawns in shield positions
     int pawnsInShield = 0;
-    for (Piece piece : playerPieces) {
-      if (piece.getPieceType() == Piece.PieceType.PAWN &&
-              pawnShieldSquares.contains(piece.getPiecePosition())) {
-        pawnsInShield++;
+    for (Integer shieldSquare : shieldSquares) {
+      if (shieldSquare >= 0 && shieldSquare < 64) { // Valid square check
+        for (Piece pawn : pawns) {
+          if (pawn.getPiecePosition() == shieldSquare) {
+            pawnsInShield++;
+            break;
+          }
+        }
       }
     }
 
-    // Score based on pawn shield integrity
+    // Score based on shield integrity
     if (pawnsInShield == 3) {
-      score += 30; // Perfect shield
+      score += 60; // Perfect shield
     } else if (pawnsInShield == 2) {
-      score += 15; // Good shield
+      score += 30; // Good shield
     } else if (pawnsInShield == 1) {
-      score += 5;  // Partial shield
+      score += 10;  // Weak shield
+    } else {
+      score -= 40;  // No shield - vulnerable
     }
 
     return score;
   }
 
   /**
-   * Evaluates potential attacks against the king.
+   * Evaluates potential king attack threats
    */
-  private double evaluateKingAttackPotential(final int kingPosition, final Collection<Piece> opponentPieces) {
+  private double evaluateKingAttackPotential(int kingPosition, Player opponent) {
     double attackPotential = 0;
+    Collection<Piece> opponentPieces = opponent.getActivePieces();
 
+    // Calculate distance to king for each opponent piece
     for (Piece piece : opponentPieces) {
-      // Calculate distance to king
-      int rankDistance = Math.abs((kingPosition / 8) - (piece.getPiecePosition() / 8));
-      int fileDistance = Math.abs((kingPosition % 8) - (piece.getPiecePosition() % 8));
+      int piecePos = piece.getPiecePosition();
+      int rankDistance = Math.abs((kingPosition / 8) - (piecePos / 8));
+      int fileDistance = Math.abs((kingPosition % 8) - (piecePos % 8));
       int distance = Math.max(rankDistance, fileDistance);
 
-      // The closer the piece, the higher the threat
+      // Evaluate attack potential based on piece type and distance
       if (distance <= 2) {
-        // Weight by piece type - more dangerous pieces are weighted higher
         switch (piece.getPieceType()) {
           case QUEEN:
-            attackPotential += (3 - distance) * 8;
+            attackPotential += (3 - distance) * 40;
             break;
           case ROOK:
-            attackPotential += (3 - distance) * 5;
+            attackPotential += (3 - distance) * 25;
             break;
           case BISHOP:
-          case KNIGHT:
-            attackPotential += (3 - distance) * 3;
+            attackPotential += (3 - distance) * 15;
             break;
-          default:
-            attackPotential += (3 - distance);
+          case KNIGHT:
+            attackPotential += (3 - distance) * 20;
+            break;
+          case PAWN:
+            attackPotential += (3 - distance) * 5;
+            break;
         }
       }
     }
@@ -422,158 +460,88 @@ public class OpeningGameEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates open lines (files and diagonals) near the king.
-   */
-  private double evaluateOpenLinesNearKing(final int kingPosition, final Board board) {
-    double openLinesPenalty = 0;
-    final int kingFile = kingPosition % 8;
-
-    // Check for open files near king
-    for (int file = Math.max(0, kingFile - 1); file <= Math.min(7, kingFile + 1); file++) {
-      boolean isFileOpen = true;
-
-      // Check if there are pawns on this file
-      for (int rank = 0; rank < 8; rank++) {
-        final int square = rank * 8 + file;
-        final Piece piece = board.getPiece(square);
-
-        if (piece != null && piece.getPieceType() == Piece.PieceType.PAWN) {
-          isFileOpen = false;
-          break;
-        }
-      }
-
-      if (isFileOpen) {
-        openLinesPenalty += 15;
-      }
-    }
-
-    return openLinesPenalty;
-  }
-
-  /**
-   * Evaluates pawn structure specifically for the opening phase, considering:
-   * - Center pawns
-   * - Doubled pawns
-   * - Isolated pawns
-   * - Pawn chains
-   * - Pawn advances
+   * Evaluates pawn structure - important for long-term position
    */
   private double pawnStructureScore(final Player player, final Board board) {
     double score = 0;
-    List<Piece> pawns = player.getActivePieces().stream()
-            .filter(p -> p.getPieceType() == Piece.PieceType.PAWN)
-            .collect(Collectors.toList());
+    Alliance alliance = player.getAlliance();
+    List<Piece> pawns = getPawns(player);
+    List<Piece> opponentPawns = getPawns(player.getOpponent());
 
-    boolean isWhite = player.getAlliance().isWhite();
+    // Evaluate center pawns
+    score += evaluateCenterPawns(pawns, alliance);
 
-    // Center pawn structure
-    score += evaluateCenterPawns(pawns, isWhite);
-
-    // Pawn chains
-    score += evaluatePawnChains(pawns);
-
-    // Doubled pawns (penalty)
+    // Penalize doubled pawns (more severe in opening)
     score += evaluateDoubledPawns(pawns);
 
-    // Isolated pawns (penalty)
+    // Penalize isolated pawns
     score += evaluateIsolatedPawns(pawns);
 
-    // Early pawn advances
-    score += evaluatePawnAdvances(pawns, isWhite);
+    // Evaluate pawn chains (positive in opening)
+    score += evaluatePawnChains(pawns);
+
+    // Penalize excessive pawn moves/advances in opening
+    score += evaluatePawnAdvances(pawns, alliance);
 
     return score;
   }
 
   /**
-   * Evaluates center pawns structure.
+   * Evaluates central pawn structure
    */
-  private double evaluateCenterPawns(final List<Piece> pawns, final boolean isWhite) {
+  private double evaluateCenterPawns(final List<Piece> pawns, final Alliance alliance) {
     double score = 0;
 
-    // Center files (d and e files)
+    // Check for center pawn presence
     boolean hasDPawn = false;
     boolean hasEPawn = false;
     boolean hasCPawn = false;
     boolean hasFPawn = false;
 
     for (Piece pawn : pawns) {
-      int pawnFile = pawn.getPiecePosition() % 8;
-      int pawnRank = pawn.getPiecePosition() / 8;
+      int position = pawn.getPiecePosition();
+      int file = position % 8;
 
       // Identify pawn files
-      if (pawnFile == 3) hasDPawn = true;
-      if (pawnFile == 4) hasEPawn = true;
-      if (pawnFile == 2) hasCPawn = true;
-      if (pawnFile == 5) hasFPawn = true;
-
-      // Bonus for center pawns on 4th/5th rank
-      if ((pawnFile == 3 || pawnFile == 4) &&
-              ((isWhite && (pawnRank == 3 || pawnRank == 4)) ||
-                      (!isWhite && (pawnRank == 3 || pawnRank == 4)))) {
-        score += 25;
+      switch (file) {
+        case 2: hasCPawn = true; break; // c-file
+        case 3: hasDPawn = true; break; // d-file
+        case 4: hasEPawn = true; break; // e-file
+        case 5: hasFPawn = true; break; // f-file
       }
     }
 
-    // Bonus for having both center pawns
+    // Strong bonus for controlling the center with pawns
     if (hasDPawn && hasEPawn) {
-      score += 25;
+      score += 60; // Very strong center control
+    } else if (hasDPawn || hasEPawn) {
+      score += 30; // Partial center control
     }
 
-    // Bonus for protecting center with c and f pawns
+    // Bonus for supporting center pawns
     if ((hasDPawn && hasCPawn) || (hasEPawn && hasFPawn)) {
-      score += 15;
+      score += 20; // Supported center pawns
     }
 
     return score;
   }
 
   /**
-   * Evaluates pawn chains for mobility and piece support.
-   */
-  private double evaluatePawnChains(final List<Piece> pawns) {
-    double score = 0;
-    Map<Integer, List<Piece>> pawnsByFile = new HashMap<>();
-
-    // Group pawns by file
-    for (Piece pawn : pawns) {
-      int file = pawn.getPiecePosition() % 8;
-      pawnsByFile.computeIfAbsent(file, k -> new ArrayList<>()).add(pawn);
-    }
-
-    // Check for pawn chains (adjacent files)
-    for (int file = 0; file < 7; file++) {
-      if (pawnsByFile.containsKey(file) && pawnsByFile.containsKey(file + 1)) {
-        // Found pawns on adjacent files
-        score += 8;
-
-        // Extra bonus for longer chains
-        if (file > 0 && pawnsByFile.containsKey(file - 1)) {
-          score += 5;
-        }
-      }
-    }
-
-    return score;
-  }
-
-  /**
-   * Evaluates doubled pawns (penalty).
+   * Evaluates doubled pawns (penalty)
    */
   private double evaluateDoubledPawns(final List<Piece> pawns) {
     double score = 0;
-    Map<Integer, Integer> pawnCountByFile = new HashMap<>();
 
     // Count pawns on each file
+    int[] pawnsPerFile = new int[8];
     for (Piece pawn : pawns) {
-      int file = pawn.getPiecePosition() % 8;
-      pawnCountByFile.put(file, pawnCountByFile.getOrDefault(file, 0) + 1);
+      pawnsPerFile[pawn.getPiecePosition() % 8]++;
     }
 
-    // Penalize doubled pawns
-    for (int count : pawnCountByFile.values()) {
+    // Severe penalty for doubled pawns in the opening
+    for (int count : pawnsPerFile) {
       if (count > 1) {
-        score -= 25 * (count - 1);
+        score -= (count - 1) * 35;
       }
     }
 
@@ -581,30 +549,34 @@ public class OpeningGameEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates isolated pawns (penalty).
+   * Evaluates isolated pawns (penalty)
    */
   private double evaluateIsolatedPawns(final List<Piece> pawns) {
     double score = 0;
-    Set<Integer> pawnFiles = new HashSet<>();
 
-    // Collect all files with pawns
+    // Mark files with pawns
+    boolean[] filesWithPawns = new boolean[8];
     for (Piece pawn : pawns) {
-      pawnFiles.add(pawn.getPiecePosition() % 8);
+      filesWithPawns[pawn.getPiecePosition() % 8] = true;
     }
 
     // Check for isolated pawns
-    for (int file : pawnFiles) {
-      boolean hasAdjacentFile = pawnFiles.contains(file - 1) || pawnFiles.contains(file + 1);
+    for (Piece pawn : pawns) {
+      int file = pawn.getPiecePosition() % 8;
+      boolean isIsolated = file <= 0 || !filesWithPawns[file - 1];
 
-      if (!hasAdjacentFile) {
-        // Count pawns on this isolated file (each isolated pawn counts)
-        int isolatedCount = 0;
-        for (Piece pawn : pawns) {
-          if (pawn.getPiecePosition() % 8 == file) {
-            isolatedCount++;
-          }
+      // Check adjacent files
+      if (file < 7 && filesWithPawns[file + 1]) {
+        isIsolated = false;
+      }
+
+      if (isIsolated) {
+        // Higher penalty for isolated center pawns
+        if (file == 3 || file == 4) {
+          score -= 40; // Center isolated pawns
+        } else {
+          score -= 25; // Other isolated pawns
         }
-        score -= 20 * isolatedCount;
       }
     }
 
@@ -612,37 +584,79 @@ public class OpeningGameEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates pawn advances in the opening.
+   * Evaluates pawn chains (bonus)
    */
-  private double evaluatePawnAdvances(final List<Piece> pawns, final boolean isWhite) {
+  private double evaluatePawnChains(final List<Piece> pawns) {
+    double score = 0;
+
+    // Group pawns by file
+    Map<Integer, List<Piece>> pawnsByFile = new HashMap<>();
+    for (Piece pawn : pawns) {
+      int file = pawn.getPiecePosition() % 8;
+      if (!pawnsByFile.containsKey(file)) {
+        pawnsByFile.put(file, new ArrayList<>());
+      }
+      pawnsByFile.get(file).add(pawn);
+    }
+
+    // Check for adjacent files with pawns
+    int chainLength = 0;
+    for (int file = 0; file < 7; file++) {
+      if (pawnsByFile.containsKey(file) && pawnsByFile.containsKey(file + 1)) {
+        chainLength++;
+      } else if (chainLength > 0) {
+        // Score based on chain length
+        score += 10 * chainLength;
+        chainLength = 0;
+      }
+    }
+
+    // Account for chain at the end of the loop
+    if (chainLength > 0) {
+      score += 10 * chainLength;
+    }
+
+    return score;
+  }
+
+  /**
+   * Evaluates pawn advances (penalty for excessive advances)
+   */
+  private double evaluatePawnAdvances(final List<Piece> pawns, final Alliance alliance) {
     double score = 0;
 
     for (Piece pawn : pawns) {
-      int pawnRank = pawn.getPiecePosition() / 8;
-      int pawnFile = pawn.getPiecePosition() % 8;
+      int position = pawn.getPiecePosition();
+      int rank = position / 8;
+      int file = position % 8;
 
-      // Penalize excessive pawn advances in the opening
-      // For white: rank 0 is the 8th rank, 7 is the 1st rank
-      // For black: rank 7 is the 8th rank, 0 is the 1st rank
+      // Calculate distance from starting rank
+      int advanceLevel = alliance.isWhite() ?
+              (6 - rank) : (rank - 1);
 
-      // Center files can advance more
-      if (pawnFile == 3 || pawnFile == 4) {  // d and e files
-        if ((isWhite && pawnRank < 4) || (!isWhite && pawnRank > 3)) {
-          // Center pawns should generally not advance beyond the 4th/5th rank in opening
-          score -= 5;
+      // Penalize excessive pawn advances in opening
+      if (advanceLevel > 2) {
+        // Center pawns can advance more
+        if (file == 3 || file == 4) {
+          if (advanceLevel > 3) {
+            score -= (advanceLevel - 3) * 15;
+          }
+        } else {
+          // Wing pawns should stay back
+          score -= (advanceLevel - 2) * 20;
         }
-      } else {
-        // Wing pawns should be more conservative
-        if ((isWhite && pawnRank < 5) || (!isWhite && pawnRank > 2)) {
-          // Non-center pawns should generally not advance beyond the 3rd rank in opening
-          score -= 10;
-        }
+      }
 
-        // Extra penalty for rook pawns advances (weakens castle position)
-        if ((pawnFile == 0 || pawnFile == 7) &&
-                ((isWhite && pawnRank < 6) || (!isWhite && pawnRank > 1))) {
-          score -= 15;
-        }
+      // Special penalty for moving wing pawns too early
+      if ((file == 0 || file == 7) && advanceLevel > 0) {
+        score -= 15;
+      }
+
+      // Special penalty for weakening king's position with pawn advances
+      if (advanceLevel > 0 &&
+              ((alliance.isWhite() && rank <= 6 && (file >= 5 || file <= 2)) ||
+                      (!alliance.isWhite() && rank >= 1 && (file >= 5 || file <= 2)))) {
+        score -= 15; // Weakening potential castle position
       }
     }
 
@@ -650,162 +664,125 @@ public class OpeningGameEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates piece mobility and space control:
-   * - Knight mobility
-   * - Bishop mobility
-   * - Space advantage
-   * - Control of key squares
+   * Evaluates mobility - important but weighted less in opening
+   * Movement potential of pieces is relevant but secondary to development
    */
-  private double spaceAndMobilityScore(final Player player, final Board board) {
+  private double mobilityScore(final Player player, final Board board) {
     double score = 0;
     Collection<Move> playerMoves = player.getLegalMoves();
-    Collection<Piece> playerPieces = player.getActivePieces();
-    boolean isWhite = player.getAlliance().isWhite();
+    Collection<Move> opponentMoves = player.getOpponent().getLegalMoves();
 
-    // Count moves for each piece type
-    Map<Piece.PieceType, Integer> movesByPieceType = new HashMap<>();
-    for (Move move : playerMoves) {
-      Piece piece = move.getMovedPiece();
-      movesByPieceType.put(piece.getPieceType(),
-              movesByPieceType.getOrDefault(piece.getPieceType(), 0) + 1);
-    }
+    // Basic mobility score - piece movement potential
+    score += playerMoves.size() * 1.5;
 
-    // Mobility bonuses by piece type
-    if (movesByPieceType.containsKey(Piece.PieceType.KNIGHT)) {
-      score += movesByPieceType.get(Piece.PieceType.KNIGHT) * 2.5;
-    }
-
-    if (movesByPieceType.containsKey(Piece.PieceType.BISHOP)) {
-      score += movesByPieceType.get(Piece.PieceType.BISHOP) * 2.0;
-    }
-
-    if (movesByPieceType.containsKey(Piece.PieceType.ROOK)) {
-      score += movesByPieceType.get(Piece.PieceType.ROOK) * 1.0;
-    }
-
-    // Queen mobility - less important in the opening, can even be negative if too early
-    if (movesByPieceType.containsKey(Piece.PieceType.QUEEN)) {
-      boolean earlyQueenMove = false;
-      for (Piece piece : playerPieces) {
-        if (piece.getPieceType() == Piece.PieceType.QUEEN && !piece.isFirstMove()) {
-          earlyQueenMove = true;
-          break;
-        }
+    // Knight mobility is especially important early
+    for (Piece piece : player.getActivePieces()) {
+      if (piece.getPieceType() == Piece.PieceType.KNIGHT) {
+        Collection<Move> knightMoves = piece.calculateLegalMoves(board);
+        score += knightMoves.size() * 3;
       }
-
-      if (earlyQueenMove) {
-        // Discount queen mobility if moved too early
-        score += movesByPieceType.get(Piece.PieceType.QUEEN) * 0.5;
-      } else {
-        // Normal queen mobility if still on starting square
-        score += movesByPieceType.get(Piece.PieceType.QUEEN) * 0.8;
+      else if (piece.getPieceType() == Piece.PieceType.BISHOP) {
+        Collection<Move> bishopMoves = piece.calculateLegalMoves(board);
+        score += bishopMoves.size() * 2.5;
       }
     }
 
-    // Space advantage - control of opponent's half
-    int spaceCount = 0;
-    for (Move move : playerMoves) {
-      int destRank = move.getDestinationCoordinate() / 8;
-
-      // Count moves to opponent's half of the board
-      if ((isWhite && destRank < 4) || (!isWhite && destRank > 3)) {
-        spaceCount++;
-      }
-    }
-
-    // Space bonus
-    score += Math.min(spaceCount, 15) * 1.5;
+    // Relative mobility (compared to opponent) is strategically important
+    int mobilityDifference = playerMoves.size() - opponentMoves.size();
+    score += mobilityDifference * 2;
 
     return score;
   }
 
   /**
-   * Evaluates piece coordination:
-   * - Bishop pair bonus
-   * - Knights supporting each other
-   * - Rooks connected or on same file
-   * - Pieces protecting each other
+   * Evaluates piece coordination and harmony
+   * Rewards:
+   * - Pieces supporting each other
+   * - Pieces protecting important squares
+   * - Good piece placement patterns
    */
   private double pieceCoordinationScore(final Player player, final Board board) {
     double score = 0;
     Collection<Piece> playerPieces = player.getActivePieces();
     Collection<Move> playerMoves = player.getLegalMoves();
 
-    // Check for bishop pair
-    long bishopCount = playerPieces.stream()
-            .filter(p -> p.getPieceType() == Piece.PieceType.BISHOP)
-            .count();
+    // Find protected pieces
+    Map<Integer, Integer> protectedSquares = new HashMap<>();
 
-    if (bishopCount >= 2) {
-      score += 30; // Bishop pair bonus
-    }
-
-    // Check for connected/doubled rooks
-    List<Piece> rooks = playerPieces.stream()
-            .filter(p -> p.getPieceType() == Piece.PieceType.ROOK)
-            .toList();
-
-    if (rooks.size() >= 2) {
-      // Check if rooks are on the same file
-      boolean rooksOnSameFile = false;
-      for (int i = 0; i < rooks.size(); i++) {
-        for (int j = i + 1; j < rooks.size(); j++) {
-          if (rooks.get(i).getPiecePosition() % 8 == rooks.get(j).getPiecePosition() % 8) {
-            rooksOnSameFile = true;
-            break;
-          }
-        }
-      }
-
-      if (rooksOnSameFile) {
-        score += 15; // Rooks doubled on a file
-      }
-
-      // Check for rook connection (one rook protects another)
-      boolean rooksConnected = false;
-      for (Move move : playerMoves) {
-        if (move.getMovedPiece().getPieceType() == Piece.PieceType.ROOK) {
-          for (Piece rook : rooks) {
-            if (move.getDestinationCoordinate() == rook.getPiecePosition() &&
-                    !move.getMovedPiece().equals(rook)) {
-              rooksConnected = true;
-              break;
-            }
-          }
-        }
-      }
-
-      if (rooksConnected) {
-        score += 10; // Rooks can protect each other
-      }
-    }
-
-    // Piece protection analysis
-    Map<Integer, Integer> protectionCount = new HashMap<>();
+    // Count protective moves to pieces
     for (Move move : playerMoves) {
-      if (move.isAttack() &&
-              move.getAttackedPiece().getPieceAllegiance() != player.getAlliance()) {
-        continue; // Skip attacks on opponent pieces
-      }
-
-      // Count how many pieces protect each square
-      protectionCount.put(move.getDestinationCoordinate(),
-              protectionCount.getOrDefault(move.getDestinationCoordinate(), 0) + 1);
+      int destination = move.getDestinationCoordinate();
+      protectedSquares.put(destination,
+              protectedSquares.getOrDefault(destination, 0) + 1);
     }
 
-    // Bonus for pieces that are protected
+    // Score for protected pieces (especially minor pieces)
     for (Piece piece : playerPieces) {
-      if (protectionCount.getOrDefault(piece.getPiecePosition(), 0) > 0) {
-        score += 5; // Piece is protected
+      int position = piece.getPiecePosition();
+      if (protectedSquares.getOrDefault(position, 0) > 0) {
+        // Protected piece bonus
+        score += 10;
 
-        // Extra bonus for protected knights in opponent's half
-        if (piece.getPieceType() == Piece.PieceType.KNIGHT) {
-          int rank = piece.getPiecePosition() / 8;
-          boolean inOpponentHalf = (player.getAlliance().isWhite() && rank < 4) ||
-                  (!player.getAlliance().isWhite() && rank > 3);
-          if (inOpponentHalf) {
-            score += 10;
-          }
+        // Extra for protected minor pieces
+        if (piece.getPieceType() == Piece.PieceType.KNIGHT ||
+                piece.getPieceType() == Piece.PieceType.BISHOP) {
+          score += 15;
+        }
+      }
+    }
+
+    // Look for specific good development patterns
+    score += evaluateDevelopmentPatterns(player, board);
+
+    return score;
+  }
+
+  /**
+   * Evaluates specific good development patterns in opening
+   */
+  private double evaluateDevelopmentPatterns(Player player, Board board) {
+    double score = 0;
+    Collection<Piece> pieces = player.getActivePieces();
+    Alliance alliance = player.getAlliance();
+
+    // Check for bishop fianchetto (good pattern)
+    boolean kingsideFianchetto = false;
+    boolean queensideFianchetto = false;
+
+    // Check for bishop control of diagonals
+    for (Piece piece : pieces) {
+      if (piece.getPieceType() == Piece.PieceType.BISHOP) {
+        int position = piece.getPiecePosition();
+
+        // Check for fianchetto positions
+        if (alliance.isWhite()) {
+          if (position == 16) queensideFianchetto = true; // b3
+          if (position == 23) kingsideFianchetto = true;  // g3
+        } else {
+          if (position == 40) queensideFianchetto = true; // b6
+          if (position == 47) kingsideFianchetto = true;  // g6
+        }
+      }
+    }
+
+    // Bonus for fianchetto development
+    if (kingsideFianchetto) score += 25;
+    if (queensideFianchetto) score += 20;
+
+    // Connected rooks
+    boolean rooksConnected = areRooksConnected(pieces);
+    if (rooksConnected) score += 30;
+
+    // Penalty for poorly placed knights
+    for (Piece piece : pieces) {
+      if (piece.getPieceType() == Piece.PieceType.KNIGHT) {
+        int position = piece.getPiecePosition();
+        int file = position % 8;
+        int rank = position / 8;
+
+        // Knights on rim are dim
+        if (file == 0 || file == 7 || rank == 0 || rank == 7) {
+          score -= 30;
         }
       }
     }
@@ -814,132 +791,197 @@ public class OpeningGameEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates tempo and initiative in the opening.
+   * Checks if rooks are connected (on same rank)
    */
-  private double tempoScore(final Player player, final Board board) {
+  private boolean areRooksConnected(Collection<Piece> pieces) {
+    List<Piece> rooks = pieces.stream()
+            .filter(p -> p.getPieceType() == Piece.PieceType.ROOK)
+            .toList();
+
+    if (rooks.size() >= 2) {
+      int firstRookRank = rooks.get(0).getPiecePosition() / 8;
+
+      for (int i = 1; i < rooks.size(); i++) {
+        int rookRank = rooks.get(i).getPiecePosition() / 8;
+        if (rookRank == firstRookRank) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Evaluates tempo and initiative
+   * Rewards:
+   * - Faster development
+   * - Active threats
+   * - Move efficiency
+   */
+  private double tempoScore(final Player player, final Board board, final int depth) {
     double score = 0;
     Collection<Move> playerMoves = player.getLegalMoves();
-    boolean isWhite = player.getAlliance().isWhite();
+    Collection<Piece> playerPieces = player.getActivePieces();
+    Collection<Piece> opponentPieces = player.getOpponent().getActivePieces();
 
     // Count attacking moves
     int attackingMoves = 0;
     for (Move move : playerMoves) {
       if (move.isAttack()) {
         attackingMoves++;
-      }
-    }
 
-    // Initiative bonus based on attacking moves
-    score += Math.min(attackingMoves, 10) * 2;
-
-    // Bonus for pinning opponent pieces
-    score += evaluatePins(player, board);
-
-    // Tempo evaluation based on move number
-    // Since this is for opening evaluation, we assume we're in the opening
-
-    // The side to move has tempo
-    score += 10;
-
-    // By tracking the transition move, we could reconstruct move number
-    // but for simplicity, we'll just use the number of pieces developed
-
-    int developedPieces = (int)player.getActivePieces().stream()
-            .filter(p -> (p.getPieceType() == Piece.PieceType.KNIGHT ||
-                    p.getPieceType() == Piece.PieceType.BISHOP) &&
-                    !p.isFirstMove())
-            .count();
-
-    int opponentDevelopedPieces = (int)player.getOpponent().getActivePieces().stream()
-            .filter(p -> (p.getPieceType() == Piece.PieceType.KNIGHT ||
-                    p.getPieceType() == Piece.PieceType.BISHOP) &&
-                    !p.isFirstMove())
-            .count();
-
-    // Development lead bonus (each piece ahead is worth tempo)
-    if (developedPieces > opponentDevelopedPieces) {
-      score += (developedPieces - opponentDevelopedPieces) * 15;
-    }
-
-    return score;
-  }
-
-  /**
-   * Evaluates pins against opponent pieces.
-   */
-  private double evaluatePins(final Player player, final Board board) {
-    double score = 0;
-    Collection<Move> playerMoves = player.getLegalMoves();
-    Collection<Piece> opponentPieces = player.getOpponent().getActivePieces();
-    King opponentKing = player.getOpponent().getPlayerKing();
-
-    // Check for each opponent piece if it's potentially pinned
-    for (Piece opponentPiece : opponentPieces) {
-      if (opponentPiece.getPieceType() == Piece.PieceType.KING) {
-        continue; // Skip the king
-      }
-
-      // Check if this piece is between our slider and their king
-      boolean isPinned = isPiecePinned(opponentPiece, opponentKing, playerMoves, board);
-
-      if (isPinned) {
-        // Bonus varies by piece value - pinning more valuable pieces is better
-        score += opponentPiece.getPieceValue() / 20.0;
-      }
-    }
-
-    return score;
-  }
-
-  /**
-   * Checks if a piece is pinned to its king.
-   * This is a simplified check - a full engine would analyze rays between pieces.
-   */
-  private boolean isPiecePinned(Piece piece, King king, Collection<Move> attackerMoves, Board board) {
-    // Direction from king to piece
-    int kingPos = king.getPiecePosition();
-    int piecePos = piece.getPiecePosition();
-
-    int rankDiff = (piecePos / 8) - (kingPos / 8);
-    int fileDiff = (piecePos % 8) - (kingPos % 8);
-
-    // If not on same rank, file, or diagonal, can't be pinned
-    if (rankDiff != 0 && fileDiff != 0 && Math.abs(rankDiff) != Math.abs(fileDiff)) {
-      return false;
-    }
-
-    // Normalize direction
-    int rankDir = (rankDiff == 0) ? 0 : rankDiff / Math.abs(rankDiff);
-    int fileDir = (fileDiff == 0) ? 0 : fileDiff / Math.abs(fileDiff);
-
-    // Check if there's a piece that could pin in the opposite direction
-    int checkPos = piecePos + rankDir * 8 + fileDir;
-    while (checkPos >= 0 && checkPos < 64) {
-      // Ensure we're still on the same line
-      if ((checkPos % 8) - (piecePos % 8) != fileDir * ((checkPos - piecePos) / (rankDir * 8 + fileDir))) {
-        break; // Wrapped to next/prev row
-      }
-
-      Piece potentialPinner = board.getPiece(checkPos);
-      if (potentialPinner != null) {
-        // Found a piece - is it an appropriate attacker?
-        if (potentialPinner.getPieceAllegiance() != piece.getPieceAllegiance()) {
-          if ((rankDir == 0 || fileDir == 0) &&
-                  (potentialPinner.getPieceType() == Piece.PieceType.ROOK ||
-                          potentialPinner.getPieceType() == Piece.PieceType.QUEEN)) {
-            return true; // Pinned by rook or queen on rank or file
-          } else if (rankDir != 0 && fileDir != 0 &&
-                  (potentialPinner.getPieceType() == Piece.PieceType.BISHOP ||
-                          potentialPinner.getPieceType() == Piece.PieceType.QUEEN)) {
-            return true; // Pinned by bishop or queen on diagonal
-          }
+        // Extra for attacks on undefended pieces
+        Piece attackedPiece = move.getAttackedPiece();
+        if (attackedPiece != null &&
+                !isPieceDefended(attackedPiece, player.getOpponent(), board)) {
+          score += 15;
         }
-        break; // Any other piece blocks the pin
       }
+    }
 
-      checkPos += rankDir * 8 + fileDir;
+    // Initiative bonus based on attacking potential
+    score += Math.min(attackingMoves, 10) * 3;
+
+    // Development advantage/tempo
+    int developedMinorPieces = countDevelopedMinorPieces(playerPieces, player.getAlliance());
+    int opponentDevelopedMinorPieces = countDevelopedMinorPieces(opponentPieces, player.getOpponent().getAlliance());
+
+    // Bonus for development lead
+    if (developedMinorPieces > opponentDevelopedMinorPieces) {
+      score += (developedMinorPieces - opponentDevelopedMinorPieces) * 30;
+    }
+
+    // Depth-based tempo considerations
+    // At higher depths, consider longer-term tempo factors
+    if (depth > 5) {
+      // Initiative for the position
+      score += evaluateInitiative(player, board);
+    }
+
+    return score;
+  }
+
+  /**
+   * Checks if a piece is defended by another piece
+   */
+  private boolean isPieceDefended(Piece piece, Player owner, Board board) {
+    int position = piece.getPiecePosition();
+
+    for (Move move : owner.getLegalMoves()) {
+      if (move.getDestinationCoordinate() == position) {
+        return true; // Piece is defended
+      }
     }
 
     return false;
+  }
+
+  /**
+   * Counts developed minor pieces
+   */
+  private int countDevelopedMinorPieces(Collection<Piece> pieces, Alliance alliance) {
+    int count = 0;
+
+    for (Piece piece : pieces) {
+      if ((piece.getPieceType() == Piece.PieceType.KNIGHT ||
+              piece.getPieceType() == Piece.PieceType.BISHOP) &&
+              !piece.isFirstMove()) {
+
+        // Check if it's moved from starting rank
+        int rank = piece.getPiecePosition() / 8;
+        if ((alliance.isWhite() && rank != 7) ||
+                (!alliance.isWhite() && rank != 0)) {
+          count++;
+        }
+      }
+    }
+
+    return count;
+  }
+
+  /**
+   * Evaluates initiative factors
+   */
+  private double evaluateInitiative(Player player, Board board) {
+    double score = 0;
+
+    // Space advantage is good for initiative
+    score += evaluateSpaceAdvantage(player, board);
+
+    // Free piece movement is good for initiative
+    score += evaluatePieceActivity(player, board);
+
+    return score;
+  }
+
+  /**
+   * Evaluates space advantage
+   */
+  private double evaluateSpaceAdvantage(Player player, Board board) {
+    double score = 0;
+    Alliance alliance = player.getAlliance();
+    Collection<Move> moves = player.getLegalMoves();
+
+    // Count moves to opponent's half of the board
+    int advancedMoves = 0;
+    for (Move move : moves) {
+      int destRank = move.getDestinationCoordinate() / 8;
+
+      if ((alliance.isWhite() && destRank < 4) ||
+              (!alliance.isWhite() && destRank > 3)) {
+        advancedMoves++;
+      }
+    }
+
+    // Space advantage score
+    score += Math.min(advancedMoves, 10) * 2;
+
+    return score;
+  }
+
+  /**
+   * Evaluates piece activity
+   */
+  private double evaluatePieceActivity(Player player, Board board) {
+    double score = 0;
+    Collection<Piece> pieces = player.getActivePieces();
+
+    for (Piece piece : pieces) {
+      // Ignore king and pawns for this evaluation
+      if (piece.getPieceType() == Piece.PieceType.KING ||
+              piece.getPieceType() == Piece.PieceType.PAWN) {
+        continue;
+      }
+
+      Collection<Move> pieceMoves = piece.calculateLegalMoves(board);
+
+      // Activity bonus based on piece type
+      switch (piece.getPieceType()) {
+        case KNIGHT:
+          score += pieceMoves.size() * 2;
+          break;
+        case BISHOP:
+          score += pieceMoves.size() * 1.5;
+          break;
+        case ROOK:
+          score += pieceMoves.size();
+          break;
+        case QUEEN:
+          score += pieceMoves.size() * 0.5; // Less important for queen early
+          break;
+      }
+    }
+
+    return score;
+  }
+
+  /**
+   * Utility method to get pawns for a player
+   */
+  private List<Piece> getPawns(final Player player) {
+    return player.getActivePieces().stream()
+            .filter(piece -> piece.getPieceType() == Piece.PieceType.PAWN)
+            .collect(Collectors.toList());
   }
 }

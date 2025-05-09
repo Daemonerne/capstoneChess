@@ -282,18 +282,13 @@ public abstract class Move {
      * @param promotionPiece   The piece to which the pawn is promoted (queen, rook, bishop, or knight).
      */
     public PawnPromotion(final Move decoratedMove, final Piece promotionPiece) {
-      super(decoratedMove.getBoard(), decoratedMove.getMovedPiece(), decoratedMove.getDestinationCoordinate());
+      super(decoratedMove != null ? decoratedMove.getBoard() : null,
+              decoratedMove != null ? decoratedMove.getMovedPiece() : null,
+              decoratedMove != null ? decoratedMove.getDestinationCoordinate() : -1);
       this.decoratedMove = decoratedMove;
-      this.promotedPawn = (Pawn) decoratedMove.getMovedPiece();
+      this.promotedPawn = (decoratedMove != null && decoratedMove.getMovedPiece() instanceof Pawn) ?
+              (Pawn) decoratedMove.getMovedPiece() : null;
       this.promotionPiece = promotionPiece;
-    }
-
-    /**
-     * Reset method for object pooling.
-     */
-    @Override
-    protected Move reset() {
-      return this;
     }
 
     /**
@@ -747,14 +742,6 @@ public abstract class Move {
      */
     public PawnEnPassantAttack(final Board board, final Piece pieceMoved, final int destinationCoordinate, final Piece pieceAttacked) {
       super(board, pieceMoved, destinationCoordinate, pieceAttacked);
-    }
-
-    /**
-     * Reset method for object pooling.
-     */
-    @Override
-    protected Move reset() {
-      return this;
     }
 
     /**
