@@ -60,7 +60,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
           new Move[2][MAX_SEARCH_DEPTH]);
 
   /** The maximum number of quiescence searches allowed. */
-  private static final int MAX_QUIESCENCE = 100000;
+  private static final int MAX_QUIESCENCE = 300000;
 
   /** Maximum search depth for data structures. */
   private static final int MAX_SEARCH_DEPTH = 100;
@@ -69,7 +69,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   private static final int FUTILITY_PRUNING_DEPTH = 2;
 
   /** A depth threshold that when crossed initiates a LMR (Late Move Reduction) in depth. */
-  private static final int LMR_THRESHOLD = 7;
+  private static final int LMR_THRESHOLD = 9;
 
   /** The reduction scale used in a Late Move Reduction. */
   private static final double LMR_SCALE = 0.9;
@@ -627,7 +627,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
    */
   @VisibleForTesting
   private BoardEvaluator determineGameState(final Board board) {
-    return TaperedEvaluator.get();
+    return GameStateDetector.get().determineEvaluator(board);
   }
 
   /**
