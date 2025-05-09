@@ -4,11 +4,9 @@ import engine.Alliance;
 import engine.forBoard.Board;
 import engine.forBoard.BoardUtils;
 import engine.forBoard.Move;
+import engine.forBoard.MovePool;
 
 import java.util.*;
-
-import static engine.forBoard.Move.MajorAttackMove;
-import static engine.forBoard.Move.MajorMove;
 
 /**
  * The Knight class represents a knight chess piece. It extends the Piece class and defines the specific properties and behaviors
@@ -98,11 +96,13 @@ public final class Knight extends Piece {
     for (final int candidateDestinationCoordinate: PRECOMPUTED_CANDIDATES.get(this.piecePosition)) {
       final Piece pieceAtDestination = board.getPiece(candidateDestinationCoordinate);
       if (pieceAtDestination == null) {
-        legalMoves.add(new MajorMove(board, this, candidateDestinationCoordinate));
+        // Use MovePool instead of creating new Move instances
+        legalMoves.add(MovePool.INSTANCE.getMajorMove(board, this, candidateDestinationCoordinate));
       } else {
         final Alliance pieceAtDestinationAllegiance = pieceAtDestination.getPieceAllegiance();
         if (this.pieceAlliance != pieceAtDestinationAllegiance) {
-          legalMoves.add(new MajorAttackMove(board, this, candidateDestinationCoordinate,
+          // Use MovePool instead of creating new Move instances
+          legalMoves.add(MovePool.INSTANCE.getMajorAttackMove(board, this, candidateDestinationCoordinate,
                   pieceAtDestination));
         }
       }
