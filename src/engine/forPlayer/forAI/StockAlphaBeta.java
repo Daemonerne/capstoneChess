@@ -2,7 +2,6 @@ package engine.forPlayer.forAI;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ComparisonChain;
-import com.google.common.collect.Ordering;
 import engine.forBoard.Board;
 import engine.forBoard.BoardUtils;
 import engine.forBoard.Move;
@@ -128,10 +127,16 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
           if (!isKiller1 && isKiller2) return 1;
 
           // Check if either move is a countermove to the last move
-          boolean isCounter1 = lastMove != null &&
-                  move1.equals(engine.counterMoves[lastMove.getCurrentCoordinate()][lastMove.getDestinationCoordinate()]);
-          boolean isCounter2 = lastMove != null &&
-                  move2.equals(engine.counterMoves[lastMove.getCurrentCoordinate()][lastMove.getDestinationCoordinate()]);
+          boolean isCounter1 = false;
+          boolean isCounter2 = false;
+
+          // Add bounds checking for lastMove
+          if (lastMove != null && lastMove != MoveFactory.getNullMove() &&
+                  lastMove.getCurrentCoordinate() >= 0 && lastMove.getDestinationCoordinate() >= 0 &&
+                  lastMove.getCurrentCoordinate() < 64 && lastMove.getDestinationCoordinate() < 64) {
+            isCounter1 = move1.equals(engine.counterMoves[lastMove.getCurrentCoordinate()][lastMove.getDestinationCoordinate()]);
+            isCounter2 = move2.equals(engine.counterMoves[lastMove.getCurrentCoordinate()][lastMove.getDestinationCoordinate()]);
+          }
 
           if (isCounter1 && !isCounter2) return -1;
           if (!isCounter1 && isCounter2) return 1;
@@ -156,9 +161,21 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
             return seeScores.getOrDefault(move2, 0) > 0 ? 1 : -1;
           }
 
-          // Then use history heuristic
-          int score1 = historyHeuristic[move1.getCurrentCoordinate()][move1.getDestinationCoordinate()];
-          int score2 = historyHeuristic[move2.getCurrentCoordinate()][move2.getDestinationCoordinate()];
+          // Then use history heuristic with proper bounds checking
+          int score1 = 0;
+          int score2 = 0;
+
+          // Add bounds checking for move1 and move2
+          if (move1.getCurrentCoordinate() >= 0 && move1.getDestinationCoordinate() >= 0 &&
+                  move1.getCurrentCoordinate() < 64 && move1.getDestinationCoordinate() < 64) {
+            score1 = historyHeuristic[move1.getCurrentCoordinate()][move1.getDestinationCoordinate()];
+          }
+
+          if (move2.getCurrentCoordinate() >= 0 && move2.getDestinationCoordinate() >= 0 &&
+                  move2.getCurrentCoordinate() < 64 && move2.getDestinationCoordinate() < 64) {
+            score2 = historyHeuristic[move2.getCurrentCoordinate()][move2.getDestinationCoordinate()];
+          }
+
           return Integer.compare(score2, score1);
         });
         return sortedMoves;
@@ -188,13 +205,22 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
                         move1.isAttack() ? seeScores.getOrDefault(move1, 0) : -1000,
                         move2.isAttack() ? seeScores.getOrDefault(move2, 0) : -1000
                 )
-                // Also consider history for non-captures
+                // Also consider history for non-captures with bounds checking
                 .compare(
-                        historyHeuristic[move1.getCurrentCoordinate()][move1.getDestinationCoordinate()],
-                        historyHeuristic[move2.getCurrentCoordinate()][move2.getDestinationCoordinate()]
+                        isValidPosition(move1) ?
+                                historyHeuristic[move1.getCurrentCoordinate()][move1.getDestinationCoordinate()] : 0,
+                        isValidPosition(move2) ?
+                                historyHeuristic[move2.getCurrentCoordinate()][move2.getDestinationCoordinate()] : 0
                 )
                 .result());
         return sortedMoves;
+      }
+
+      // Helper method to check if a move has valid coordinates for historyHeuristic
+      private boolean isValidPosition(Move move) {
+        int current = move.getCurrentCoordinate();
+        int dest = move.getDestinationCoordinate();
+        return current >= 0 && current < 64 && dest >= 0 && dest < 64;
       }
     };
 
