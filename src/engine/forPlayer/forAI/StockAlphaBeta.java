@@ -268,6 +268,9 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     this.boardsEvaluated.set(0);
     this.transpositionTable.incrementAge();
 
+    // Reset evaluation cache stats for new search
+    EvaluationCache.get().clear();
+
     try {
       // For each iterative deepening depth
       for (int currentDepth = 1; currentDepth <= maxDepth && !searchStopped; currentDepth++) {
@@ -285,10 +288,11 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         final long evaluatedPositions = this.boardsEvaluated.get();
         final long executionTime = System.currentTimeMillis() - startTime;
         final String result = String.format(
-                "%s | depth = %d | boards evaluated = %d | time = %.2f sec | nps = %.2f M",
+                "%s | depth = %d | boards evaluated = %d | time = %.2f sec | nps = %.2f M | %s",
                 bestMove, currentDepth, evaluatedPositions,
                 executionTime / 1000.0,
-                (evaluatedPositions / (executionTime / 1000.0)) / 1_000_000.0);
+                (evaluatedPositions / (executionTime / 1000.0)) / 1_000_000.0,
+                EvaluationCache.get().getStats());
 
         System.out.println(result);
         setChanged();
@@ -299,6 +303,22 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     }
 
     return bestMove;
+  }
+
+  /**
+   * Gets a cached evaluation or computes a new one if not in cache.
+   */
+  private double getCachedEvaluation(Board board, int depth) {
+    // Try to get from cache first
+    Double cachedScore = EvaluationCache.get().probe(board, depth);
+    if (cachedScore != null) {
+      return cachedScore;
+    }
+
+    // Not in cache, calculate and store
+    double score = this.evaluator.evaluate(board, depth);
+    EvaluationCache.get().store(board, depth, score);
+    return score;
   }
 
   /**
@@ -518,7 +538,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     // Terminal node check
     if (depth <= 0 || BoardUtils.isEndOfGame(board) || searchStopped) {
       return depth <= 0 ? quiescenceSearch(board, alpha, beta, ply, true) :
-              this.evaluator.evaluate(board, depth);
+              getCachedEvaluation(board, depth);
     }
 
     // Transposition table lookup
@@ -539,7 +559,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
 
     // Razoring
     if (depth == 1) {
-      double eval = this.evaluator.evaluate(board, depth);
+      double eval = getCachedEvaluation(board, depth);
       if (eval + RAZOR_MARGIN < alpha) {
         return quiescenceSearch(board, alpha, beta, ply, true);
       }
@@ -547,7 +567,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
 
     // Futility pruning
     if (depth < FUTILITY_PRUNING_DEPTH && !board.currentPlayer().isInCheck()) {
-      double eval = this.evaluator.evaluate(board, depth);
+      double eval = getCachedEvaluation(board, depth);
       if (eval >= beta + (depth * 100)) {
         return eval;
       }
@@ -702,7 +722,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     // Terminal node check
     if (depth <= 0 || BoardUtils.isEndOfGame(board) || searchStopped) {
       return depth <= 0 ? quiescenceSearch(board, alpha, beta, ply, false) :
-              this.evaluator.evaluate(board, depth);
+              getCachedEvaluation(board, depth);
     }
 
     // Transposition table lookup
@@ -723,7 +743,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
 
     // Razoring
     if (depth == 1) {
-      double eval = this.evaluator.evaluate(board, depth);
+      double eval = getCachedEvaluation(board, depth);
       if (eval - RAZOR_MARGIN > beta) {
         return quiescenceSearch(board, alpha, beta, ply, false);
       }
@@ -731,7 +751,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
 
     // Futility pruning
     if (depth < FUTILITY_PRUNING_DEPTH && !board.currentPlayer().isInCheck()) {
-      double eval = this.evaluator.evaluate(board, depth);
+      double eval = getCachedEvaluation(board, depth);
       if (eval <= alpha - (depth * 100)) {
         return eval;
       }
@@ -884,11 +904,11 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
 
     // Handle terminal positions
     if (BoardUtils.isEndOfGame(board) || searchStopped) {
-      return this.evaluator.evaluate(board, 0);
+      return getCachedEvaluation(board, 0);
     }
 
     // Stand-pat score
-    double standPat = this.evaluator.evaluate(board, 0);
+    double standPat = getCachedEvaluation(board, 0);
 
     // Beta/alpha cutoff for maximizing/minimizing player
     if (maximizing) {
