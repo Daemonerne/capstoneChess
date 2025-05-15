@@ -112,19 +112,34 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
 
         // Create a map of SEE scores for capture moves
         Map<Move, Integer> seeScores = new HashMap<>();
+        Map<Move, Boolean> isUndefendedMap = new HashMap<>();
+
         for (Move move : sortedMoves) {
           if (move.isAttack()) {
             seeScores.put(move, engine.seeEvaluator.evaluate(board, move));
+            // Pre-calculate this to avoid inconsistent results during comparison
+            Piece attackedPiece = move.getAttackedPiece();
+            isUndefendedMap.put(move, attackedPiece != null &&
+                    !engine.seeEvaluator.isPieceDefended(attackedPiece, board));
           }
         }
 
         sortedMoves.sort((move1, move2) -> {
-          // First check if either move is a killer move
+          // First prioritize captures of undefended pieces (hanging pieces)
+          boolean isUndefendedCapture1 = move1.isAttack() && isUndefendedMap.getOrDefault(move1, false);
+          boolean isUndefendedCapture2 = move2.isAttack() && isUndefendedMap.getOrDefault(move2, false);
+
+          if (isUndefendedCapture1 != isUndefendedCapture2) {
+            return isUndefendedCapture1 ? -1 : 1;
+          }
+
+          // Next check if either move is a killer move
           boolean isKiller1 = move1.equals(killers[0][ply]) || move1.equals(killers[1][ply]);
           boolean isKiller2 = move2.equals(killers[0][ply]) || move2.equals(killers[1][ply]);
 
-          if (isKiller1 && !isKiller2) return -1;
-          if (!isKiller1 && isKiller2) return 1;
+          if (isKiller1 != isKiller2) {
+            return isKiller1 ? -1 : 1;
+          }
 
           // Check if either move is a countermove to the last move
           boolean isCounter1 = false;
@@ -138,27 +153,30 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
             isCounter2 = move2.equals(engine.counterMoves[lastMove.getCurrentCoordinate()][lastMove.getDestinationCoordinate()]);
           }
 
-          if (isCounter1 && !isCounter2) return -1;
-          if (!isCounter1 && isCounter2) return 1;
+          if (isCounter1 != isCounter2) {
+            return isCounter1 ? -1 : 1;
+          }
 
           // For captures, use SEE scores
           boolean isCapture1 = move1.isAttack();
           boolean isCapture2 = move2.isAttack();
 
           if (isCapture1 && isCapture2) {
-            // Compare the SEE scores
-            return Integer.compare(seeScores.getOrDefault(move2, 0),
-                    seeScores.getOrDefault(move1, 0));
-          }
-
-          if (isCapture1 && !isCapture2) {
-            // Only try positive SEE captures before non-captures
-            return seeScores.getOrDefault(move1, 0) > 0 ? -1 : 1;
-          }
-
-          if (!isCapture1 && isCapture2) {
-            // Only try positive SEE captures before non-captures
-            return seeScores.getOrDefault(move2, 0) > 0 ? 1 : -1;
+            // Compare the SEE scores directly
+            int score1 = seeScores.getOrDefault(move1, 0);
+            int score2 = seeScores.getOrDefault(move2, 0);
+            int comparison = Integer.compare(score2, score1);
+            if (comparison != 0) {
+              return comparison;
+            }
+          } else if (isCapture1 != isCapture2) {
+            // One is a capture, the other isn't
+            if (isCapture1) {
+              // Only prioritize positive SEE captures
+              return seeScores.getOrDefault(move1, 0) >= 0 ? -1 : 1;
+            } else {
+              return seeScores.getOrDefault(move2, 0) >= 0 ? 1 : -1;
+            }
           }
 
           // Then use history heuristic with proper bounds checking
@@ -166,19 +184,25 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
           int score2 = 0;
 
           // Add bounds checking for move1 and move2
-          if (move1.getCurrentCoordinate() >= 0 && move1.getDestinationCoordinate() >= 0 &&
-                  move1.getCurrentCoordinate() < 64 && move1.getDestinationCoordinate() < 64) {
+          if (isValidPosition(move1)) {
             score1 = historyHeuristic[move1.getCurrentCoordinate()][move1.getDestinationCoordinate()];
           }
 
-          if (move2.getCurrentCoordinate() >= 0 && move2.getDestinationCoordinate() >= 0 &&
-                  move2.getCurrentCoordinate() < 64 && move2.getDestinationCoordinate() < 64) {
+          if (isValidPosition(move2)) {
             score2 = historyHeuristic[move2.getCurrentCoordinate()][move2.getDestinationCoordinate()];
           }
 
           return Integer.compare(score2, score1);
         });
         return sortedMoves;
+      }
+
+      // Helper method to check if a move has valid coordinates for historyHeuristic
+      private boolean isValidPosition(Move move) {
+        if (move == null) return false;
+        int current = move.getCurrentCoordinate();
+        int dest = move.getDestinationCoordinate();
+        return current >= 0 && current < 64 && dest >= 0 && dest < 64;
       }
     },
 
@@ -935,6 +959,18 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     List<Move> captures = board.currentPlayer().getLegalMoves().stream()
             .filter(Move::isAttack)
             .sorted((m1, m2) -> {
+              // Pre-compute values to ensure consistency
+              boolean isM1Undefended = m1.isAttack() && m1.getAttackedPiece() != null &&
+                      !seeEvaluator.isPieceDefended(m1.getAttackedPiece(), board);
+              boolean isM2Undefended = m2.isAttack() && m2.getAttackedPiece() != null &&
+                      !seeEvaluator.isPieceDefended(m2.getAttackedPiece(), board);
+
+              // First compare undefended status
+              if (isM1Undefended != isM2Undefended) {
+                return isM1Undefended ? -1 : 1;
+              }
+
+              // Then use SEE for normal ordering
               int see1 = seeEvaluator.evaluate(board, m1);
               int see2 = seeEvaluator.evaluate(board, m2);
               return Integer.compare(see2, see1); // Best captures first
@@ -943,9 +979,26 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
 
     // Search captures
     for (Move move : captures) {
-      // SEE pruning - skip bad captures
+      // SEE pruning - but allow negative SEE captures that lead to check
       int seeScore = seeEvaluator.evaluate(board, move);
-      if (seeScore < 0) continue;
+
+      // Modified SEE pruning - allow some negative captures
+      // 1. Allow captures of undefended pieces regardless of SEE
+      boolean isUndefendedCapture = !seeEvaluator.isPieceDefended(move.getAttackedPiece(), board);
+
+      // 2. Skip only very bad captures that aren't checkers
+      if (seeScore < SEE_PRUNING_THRESHOLD && !isUndefendedCapture) {
+        // Make the move to check if it gives check
+        final MoveTransition moveTransition = board.currentPlayer().makeMove(move);
+        if (moveTransition.moveStatus().isDone()) {
+          boolean givesCheck = moveTransition.toBoard().currentPlayer().isInCheck();
+          if (!givesCheck) {
+            continue; // Skip only if not giving check
+          }
+        } else {
+          continue; // Skip if move is illegal
+        }
+      }
 
       final MoveTransition moveTransition = board.currentPlayer().makeMove(move);
       if (moveTransition.moveStatus().isDone()) {

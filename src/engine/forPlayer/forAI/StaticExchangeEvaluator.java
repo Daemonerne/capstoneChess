@@ -65,11 +65,16 @@ public class StaticExchangeEvaluator {
       return SEE_PIECE_VALUES[0]; // Pawn value
     }
 
+    // Check if piece is undefended for fast path
+    if (!isPieceDefended(capturedPiece, board)) {
+      return capturedValue; // Just return the value of the captured piece
+    }
+
     // For normal captures, we need to find all attackers to the square
     final Alliance sideToMove = board.currentPlayer().getAlliance();
     final Alliance opponentSide = board.currentPlayer().getOpponent().getAlliance();
 
-    // Create attack bitboards for square
+    // Create attack maps for square
     final List<Piece> attackers = findAttackers(board, targetSquare);
 
     // Make the initial capture
@@ -113,12 +118,39 @@ public class StaticExchangeEvaluator {
       side = side.equals(Alliance.WHITE) ? Alliance.BLACK : Alliance.WHITE;
     }
 
-    return capturedValue - attackerValue + gain;
+    // FIX: Just return the gain from the exchange sequence
+    return gain;
+  }
+
+  /**
+   * Checks if a piece is defended by any other piece of the same alliance.
+   * More efficient than full attackers calculation for a simple check.
+   */
+  public boolean isPieceDefended(final Piece piece, final Board board) {
+    if (piece == null) return false;
+
+    final int piecePosition = piece.getPiecePosition();
+    final Alliance pieceAlliance = piece.getPieceAllegiance();
+
+    // Check if any piece of the same alliance can attack the position
+    for (Piece otherPiece : board.getAllPieces()) {
+      if (otherPiece.getPieceAllegiance() == pieceAlliance &&
+              !otherPiece.equals(piece)) {
+
+        Collection<Move> moves = otherPiece.calculateLegalMoves(board);
+        for (Move move : moves) {
+          if (move.getDestinationCoordinate() == piecePosition) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
   }
 
   /**
    * Finds all pieces that can attack a specific square.
-   * This is a simplified approach that could be optimized further with attack bitboards.
    */
   private List<Piece> findAttackers(final Board board, final int targetSquare) {
     List<Piece> attackers = new ArrayList<>();
