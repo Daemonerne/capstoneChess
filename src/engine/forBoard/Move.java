@@ -4,6 +4,7 @@ import engine.forPiece.Pawn;
 import engine.forPiece.Piece;
 import engine.forPiece.Rook;
 
+import java.util.Collection;
 import java.util.Objects;
 
 import static engine.forBoard.Board.Builder;
@@ -154,8 +155,20 @@ public abstract class Move {
    */
   public Board execute() {
     final Board.Builder builder = new Builder();
-    this.board.currentPlayer().getActivePieces().stream().filter(piece -> !this.movedPiece.equals(piece)).forEach(builder::setPiece);
-    this.board.currentPlayer().getOpponent().getActivePieces().forEach(builder::setPiece);
+    Collection<Piece> currentPlayerPieces = this.board.currentPlayer().getActivePieces();
+    for (Piece piece : currentPlayerPieces) {
+      // Use reference equality first (faster and safer), then object equality if needed
+      if (piece != this.movedPiece) {
+        builder.setPiece(piece);
+      }
+    }
+
+    // Add all opponent pieces (no filtering needed)
+    for (Piece piece : this.board.currentPlayer().getOpponent().getActivePieces()) {
+      builder.setPiece(piece);
+    }
+
+    // Add the moved piece at its new position
     builder.setPiece(this.movedPiece.movePiece(this));
     builder.setMoveMaker(this.board.currentPlayer().getOpponent().getAlliance());
     builder.setMoveTransition(this);
@@ -342,8 +355,19 @@ public abstract class Move {
     public Board execute() {
       final Board pawnMovedBoard = this.decoratedMove.execute();
       final Board.Builder builder = new Builder();
-      pawnMovedBoard.currentPlayer().getActivePieces().stream().filter(piece -> !this.promotedPawn.equals(piece)).forEach(builder::setPiece);
-      pawnMovedBoard.currentPlayer().getOpponent().getActivePieces().forEach(builder::setPiece);
+
+      // Use for loop instead of stream
+      for (Piece piece : pawnMovedBoard.currentPlayer().getActivePieces()) {
+        if (piece != this.promotedPawn) {
+          builder.setPiece(piece);
+        }
+      }
+
+      // Add opponent pieces
+      for (Piece piece : pawnMovedBoard.currentPlayer().getOpponent().getActivePieces()) {
+        builder.setPiece(piece);
+      }
+
       builder.setPiece(this.promotionPiece.movePiece(this));
       builder.setMoveMaker(pawnMovedBoard.currentPlayer().getAlliance());
       builder.setMoveTransition(this);
@@ -776,8 +800,20 @@ public abstract class Move {
     @Override
     public Board execute() {
       final Board.Builder builder = new Builder();
-      this.board.currentPlayer().getActivePieces().stream().filter(piece -> !this.movedPiece.equals(piece)).forEach(builder::setPiece);
-      this.board.currentPlayer().getOpponent().getActivePieces().stream().filter(piece -> !piece.equals(this.getAttackedPiece())).forEach(builder::setPiece);
+
+      // Use for loops instead of streams
+      for (Piece piece : this.board.currentPlayer().getActivePieces()) {
+        if (piece != this.movedPiece) {
+          builder.setPiece(piece);
+        }
+      }
+
+      for (Piece piece : this.board.currentPlayer().getOpponent().getActivePieces()) {
+        if (piece != this.getAttackedPiece()) {
+          builder.setPiece(piece);
+        }
+      }
+
       builder.setPiece(this.movedPiece.movePiece(this));
       builder.setMoveMaker(this.board.currentPlayer().getOpponent().getAlliance());
       builder.setMoveTransition(this);
@@ -877,8 +913,19 @@ public abstract class Move {
     @Override
     public Board execute() {
       final Board.Builder builder = new Builder();
-      this.board.currentPlayer().getActivePieces().stream().filter(piece -> !this.movedPiece.equals(piece)).forEach(builder::setPiece);
-      this.board.currentPlayer().getOpponent().getActivePieces().forEach(builder::setPiece);
+
+      // Use for loops instead of streams
+      for (Piece piece : this.board.currentPlayer().getActivePieces()) {
+        if (piece != this.movedPiece) {
+          builder.setPiece(piece);
+        }
+      }
+
+      // Add opponent pieces
+      for (Piece piece : this.board.currentPlayer().getOpponent().getActivePieces()) {
+        builder.setPiece(piece);
+      }
+
       final Pawn movedPawn = (Pawn) this.movedPiece.movePiece(this);
       builder.setPiece(movedPawn);
       builder.setEnPassantPawn(movedPawn);
@@ -986,8 +1033,10 @@ public abstract class Move {
     @Override
     public Board execute() {
       final Board.Builder builder = new Builder();
+
+      // Add all pieces except moved king and castle rook
       for (final Piece piece: this.board.getAllPieces()) {
-        if (!this.movedPiece.equals(piece) && !this.castleRook.equals(piece)) {
+        if (piece != this.movedPiece && piece != this.castleRook) {
           builder.setPiece(piece);
         }
       }

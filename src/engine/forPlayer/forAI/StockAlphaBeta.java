@@ -110,48 +110,56 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         Move[][] killers = engine.killerMoves.get();
         Move lastMove = board.getTransitionMove();
 
-        // Create a map of SEE scores for capture moves
+        // Pre-calculate all values that will be used in comparisons
+        // This ensures consistency in the comparator
         Map<Move, Integer> seeScores = new HashMap<>();
         Map<Move, Boolean> isUndefendedMap = new HashMap<>();
+        Map<Move, Boolean> isKillerMap = new HashMap<>();
+        Map<Move, Boolean> isCounterMap = new HashMap<>();
 
         for (Move move : sortedMoves) {
+          // Pre-calculate SEE scores and undefended status
           if (move.isAttack()) {
             seeScores.put(move, engine.seeEvaluator.evaluate(board, move));
-            // Pre-calculate this to avoid inconsistent results during comparison
+            // Pre-calculate before comparison to ensure consistency
             Piece attackedPiece = move.getAttackedPiece();
             isUndefendedMap.put(move, attackedPiece != null &&
                     !engine.seeEvaluator.isPieceDefended(attackedPiece, board));
           }
+
+          // Pre-calculate killer move status
+          isKillerMap.put(move, move.equals(killers[0][ply]) || move.equals(killers[1][ply]));
+
+          // Pre-calculate counter move status
+          boolean isCounter = false;
+          if (lastMove != null && lastMove != MoveFactory.getNullMove() &&
+                  lastMove.getCurrentCoordinate() >= 0 && lastMove.getDestinationCoordinate() >= 0 &&
+                  lastMove.getCurrentCoordinate() < 64 && lastMove.getDestinationCoordinate() < 64) {
+            isCounter = move.equals(engine.counterMoves[lastMove.getCurrentCoordinate()][lastMove.getDestinationCoordinate()]);
+          }
+          isCounterMap.put(move, isCounter);
         }
 
         sortedMoves.sort((move1, move2) -> {
           // First prioritize captures of undefended pieces (hanging pieces)
-          boolean isUndefendedCapture1 = move1.isAttack() && isUndefendedMap.getOrDefault(move1, false);
-          boolean isUndefendedCapture2 = move2.isAttack() && isUndefendedMap.getOrDefault(move2, false);
+          boolean isUndefendedCapture1 = isUndefendedMap.getOrDefault(move1, false);
+          boolean isUndefendedCapture2 = isUndefendedMap.getOrDefault(move2, false);
 
           if (isUndefendedCapture1 != isUndefendedCapture2) {
             return isUndefendedCapture1 ? -1 : 1;
           }
 
           // Next check if either move is a killer move
-          boolean isKiller1 = move1.equals(killers[0][ply]) || move1.equals(killers[1][ply]);
-          boolean isKiller2 = move2.equals(killers[0][ply]) || move2.equals(killers[1][ply]);
+          boolean isKiller1 = isKillerMap.getOrDefault(move1, false);
+          boolean isKiller2 = isKillerMap.getOrDefault(move2, false);
 
           if (isKiller1 != isKiller2) {
             return isKiller1 ? -1 : 1;
           }
 
           // Check if either move is a countermove to the last move
-          boolean isCounter1 = false;
-          boolean isCounter2 = false;
-
-          // Add bounds checking for lastMove
-          if (lastMove != null && lastMove != MoveFactory.getNullMove() &&
-                  lastMove.getCurrentCoordinate() >= 0 && lastMove.getDestinationCoordinate() >= 0 &&
-                  lastMove.getCurrentCoordinate() < 64 && lastMove.getDestinationCoordinate() < 64) {
-            isCounter1 = move1.equals(engine.counterMoves[lastMove.getCurrentCoordinate()][lastMove.getDestinationCoordinate()]);
-            isCounter2 = move2.equals(engine.counterMoves[lastMove.getCurrentCoordinate()][lastMove.getDestinationCoordinate()]);
-          }
+          boolean isCounter1 = isCounterMap.getOrDefault(move1, false);
+          boolean isCounter2 = isCounterMap.getOrDefault(move2, false);
 
           if (isCounter1 != isCounter2) {
             return isCounter1 ? -1 : 1;
@@ -165,17 +173,15 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
             // Compare the SEE scores directly
             int score1 = seeScores.getOrDefault(move1, 0);
             int score2 = seeScores.getOrDefault(move2, 0);
-            int comparison = Integer.compare(score2, score1);
-            if (comparison != 0) {
-              return comparison;
-            }
+            return Integer.compare(score2, score1);
           } else if (isCapture1 != isCapture2) {
-            // One is a capture, the other isn't
+            // Fixed logic for comparing captures vs non-captures
             if (isCapture1) {
-              // Only prioritize positive SEE captures
-              return seeScores.getOrDefault(move1, 0) >= 0 ? -1 : 1;
+              int seeValue = seeScores.getOrDefault(move1, 0);
+              return seeValue >= 0 ? -1 : 1;
             } else {
-              return seeScores.getOrDefault(move2, 0) >= 0 ? 1 : -1;
+              int seeValue = seeScores.getOrDefault(move2, 0);
+              return seeValue >= 0 ? 1 : -1;
             }
           }
 
