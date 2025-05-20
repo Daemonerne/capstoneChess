@@ -7,15 +7,15 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * The `MovePool` class provides object pooling for Move instances to reduce garbage collection
+ * The MovePool class provides object pooling for Move instances to reduce garbage collection
  * pressure and improve performance during chess engine search operations. Each Move type has
  * its own dedicated pool for efficient reuse of objects.
- * <br><br>
+ * <p>
  * Object pooling is particularly important in chess engines where millions of move objects can be
  * created during search, causing significant garbage collection overhead. By reusing existing objects
  * instead of continuously creating new ones, the engine can achieve better performance and reduced
  * memory usage.
- * <br><br>
+ * <p>
  * This class follows the singleton pattern with a static INSTANCE field to ensure only one pool
  * exists throughout the application lifecycle. It provides separate pools for each concrete move type
  * (MajorMove, MajorAttackMove, PawnMove, etc.) and maintains statistics about pool usage.
@@ -24,64 +24,64 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class MovePool {
 
-  /*** Singleton instance for global access to the move pools. */
+  /** Singleton instance for global access to the move pools. */
   public static final MovePool INSTANCE = new MovePool();
 
-  /*** Default initial size for each move type pool. */
+  /** Default initial size for each move type pool. */
   private static final int POOL_SIZE = 1024;
 
-  /*** Counter tracking the number of MajorMove objects created when the pool was empty. */
+  /** Counter tracking the number of MajorMove objects created when the pool was empty. */
   private final AtomicInteger majorMoveCreated = new AtomicInteger();
 
-  /*** Counter tracking the number of MajorAttackMove objects created when the pool was empty. */
+  /** Counter tracking the number of MajorAttackMove objects created when the pool was empty. */
   private final AtomicInteger majorAttackMoveCreated = new AtomicInteger();
 
-  /*** Counter tracking the number of PawnMove objects created when the pool was empty. */
+  /** Counter tracking the number of PawnMove objects created when the pool was empty. */
   private final AtomicInteger pawnMoveCreated = new AtomicInteger();
 
-  /*** Counter tracking the number of PawnAttackMove objects created when the pool was empty. */
+  /** Counter tracking the number of PawnAttackMove objects created when the pool was empty. */
   private final AtomicInteger pawnAttackMoveCreated = new AtomicInteger();
 
-  /*** Counter tracking the number of PawnJump objects created when the pool was empty. */
+  /** Counter tracking the number of PawnJump objects created when the pool was empty. */
   private final AtomicInteger pawnJumpCreated = new AtomicInteger();
 
-  /*** Counter tracking the number of PawnEnPassantAttack objects created when the pool was empty. */
+  /** Counter tracking the number of PawnEnPassantAttack objects created when the pool was empty. */
   private final AtomicInteger pawnEnPassantAttackCreated = new AtomicInteger();
 
-  /*** Counter tracking the number of KingSideCastleMove objects created when the pool was empty. */
+  /** Counter tracking the number of KingSideCastleMove objects created when the pool was empty. */
   private final AtomicInteger kingSideCastleMoveCreated = new AtomicInteger();
 
-  /*** Counter tracking the number of QueenSideCastleMove objects created when the pool was empty. */
+  /** Counter tracking the number of QueenSideCastleMove objects created when the pool was empty. */
   private final AtomicInteger queenSideCastleMoveCreated = new AtomicInteger();
 
-  /*** Counter tracking the number of PawnPromotion objects created when the pool was empty. */
+  /** Counter tracking the number of PawnPromotion objects created when the pool was empty. */
   private final AtomicInteger pawnPromotionCreated = new AtomicInteger();
 
-  /*** Pool of MajorMove objects available for reuse. */
+  /** Pool of MajorMove objects available for reuse. */
   private final ConcurrentLinkedQueue<Move.MajorMove> majorMovePool = new ConcurrentLinkedQueue<>();
 
-  /*** Pool of MajorAttackMove objects available for reuse. */
+  /** Pool of MajorAttackMove objects available for reuse. */
   private final ConcurrentLinkedQueue<Move.MajorAttackMove> majorAttackMovePool = new ConcurrentLinkedQueue<>();
 
-  /*** Pool of PawnMove objects available for reuse. */
+  /** Pool of PawnMove objects available for reuse. */
   private final ConcurrentLinkedQueue<Move.PawnMove> pawnMovePool = new ConcurrentLinkedQueue<>();
 
-  /*** Pool of PawnAttackMove objects available for reuse. */
+  /** Pool of PawnAttackMove objects available for reuse. */
   private final ConcurrentLinkedQueue<Move.PawnAttackMove> pawnAttackMovePool = new ConcurrentLinkedQueue<>();
 
-  /*** Pool of PawnJump objects available for reuse. */
+  /** Pool of PawnJump objects available for reuse. */
   private final ConcurrentLinkedQueue<Move.PawnJump> pawnJumpPool = new ConcurrentLinkedQueue<>();
 
-  /*** Pool of PawnEnPassantAttack objects available for reuse. */
+  /** Pool of PawnEnPassantAttack objects available for reuse. */
   private final ConcurrentLinkedQueue<Move.PawnEnPassantAttack> pawnEnPassantAttackPool = new ConcurrentLinkedQueue<>();
 
-  /*** Pool of KingSideCastleMove objects available for reuse. */
+  /** Pool of KingSideCastleMove objects available for reuse. */
   private final ConcurrentLinkedQueue<Move.KingSideCastleMove> kingSideCastleMovePool = new ConcurrentLinkedQueue<>();
 
-  /*** Pool of QueenSideCastleMove objects available for reuse. */
+  /** Pool of QueenSideCastleMove objects available for reuse. */
   private final ConcurrentLinkedQueue<Move.QueenSideCastleMove> queenSideCastleMovePool = new ConcurrentLinkedQueue<>();
 
-  /*** Pool of PawnPromotion objects available for reuse. */
+  /** Pool of PawnPromotion objects available for reuse. */
   private final ConcurrentLinkedQueue<Move.PawnPromotion> pawnPromotionPool = new ConcurrentLinkedQueue<>();
 
   /**
