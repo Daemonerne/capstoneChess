@@ -132,13 +132,14 @@ public final class Table extends Observable {
     moveLog = new MoveLog();
     this.addObserver(new TableGameAIWatcher());
     this.gameSetup = new GameSetup(gameFrame, true);
-    gameFrame.add(this.boardPanel);
+    JPanel centeringPanel = new JPanel(new GridBagLayout());
+    centeringPanel.add(this.boardPanel);
+    gameFrame.add(centeringPanel, BorderLayout.CENTER);
     gameFrame.add(this.gameHistoryPanel, BorderLayout.EAST);
     gameFrame.add(debugPanel, BorderLayout.SOUTH);
     setDefaultLookAndFeelDecorated(true);
     gameFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-    gameFrame.setSize(OUTER_FRAME_DIMENSION);
-    center(gameFrame);
+    gameFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
     gameFrame.setVisible(true);
   }
 
@@ -822,15 +823,46 @@ public final class Table extends Observable {
       this.removeAll();
       if (board.getPiece(this.tileId) != null) {
         try {
-          final BufferedImage image = ImageIO.read(new File(pieceIconPath +
+          String svgFilePath = pieceIconPath +
                   board.getPiece(this.tileId).getPieceAllegiance().toString().charAt(0) +
                   board.getPiece(this.tileId).toString() +
-                  ".gif"));
+                  ".svg";
+
+          // Load and render the SVG
+          BufferedImage image = renderSvgToImage(new File(svgFilePath), TILE_PANEL_DIMENSION.width);
           add(new JLabel(new ImageIcon(image)));
-        } catch (final IOException e) {
-          System.out.println("Exception in assignTilePieceIcon in Table.java");
+        } catch (final Exception e) {
+          System.out.println("Exception in assignTilePieceIcon in Table.java: " + e.getMessage());
+          e.printStackTrace();
         }
       }
+    }
+
+    // Add this method to render SVG to a BufferedImage
+    private BufferedImage renderSvgToImage(File svgFile, int size) throws Exception {
+      // Create a transcoder that will convert SVG to an image
+      org.apache.batik.transcoder.image.ImageTranscoder transcoder =
+              new org.apache.batik.transcoder.image.PNGTranscoder();
+
+      // Set up transcoding hints
+      org.apache.batik.transcoder.TranscoderInput input =
+              new org.apache.batik.transcoder.TranscoderInput(svgFile.toURI().toString());
+
+      // Create the image
+      BufferedImage img = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+      org.apache.batik.transcoder.TranscoderOutput output =
+              new org.apache.batik.transcoder.TranscoderOutput(
+                      new java.io.ByteArrayOutputStream());
+
+      // Add hints for size
+      transcoder.addTranscodingHint(org.apache.batik.transcoder.SVGAbstractTranscoder.KEY_WIDTH,
+              (float)size);
+      transcoder.addTranscodingHint(org.apache.batik.transcoder.SVGAbstractTranscoder.KEY_HEIGHT,
+              (float)size);
+
+      // Perform the transcoding
+      transcoder.transcode(input, output);
+      return img;
     }
 
     /**
