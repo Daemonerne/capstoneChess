@@ -5,6 +5,7 @@ import engine.forBoard.*;
 import engine.forPiece.Piece;
 import engine.forPlayer.Player;
 import engine.forPlayer.forAI.StockAlphaBeta;
+import org.apache.commons.io.output.ByteArrayOutputStream;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -13,6 +14,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -841,18 +843,18 @@ public final class Table extends Observable {
     // Add this method to render SVG to a BufferedImage
     private BufferedImage renderSvgToImage(File svgFile, int size) throws Exception {
       // Create a transcoder that will convert SVG to an image
-      org.apache.batik.transcoder.image.ImageTranscoder transcoder =
+      org.apache.batik.transcoder.image.PNGTranscoder transcoder =
               new org.apache.batik.transcoder.image.PNGTranscoder();
 
       // Set up transcoding hints
       org.apache.batik.transcoder.TranscoderInput input =
               new org.apache.batik.transcoder.TranscoderInput(svgFile.toURI().toString());
 
-      // Create the image
-      BufferedImage img = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+      // Create a BufferedImage to hold the result
+      BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+      ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
       org.apache.batik.transcoder.TranscoderOutput output =
-              new org.apache.batik.transcoder.TranscoderOutput(
-                      new java.io.ByteArrayOutputStream());
+              new org.apache.batik.transcoder.TranscoderOutput(outputStream);
 
       // Add hints for size
       transcoder.addTranscodingHint(org.apache.batik.transcoder.SVGAbstractTranscoder.KEY_WIDTH,
@@ -862,7 +864,10 @@ public final class Table extends Observable {
 
       // Perform the transcoding
       transcoder.transcode(input, output);
-      return img;
+
+      // Convert the output stream to an image
+      ByteArrayInputStream bis = new ByteArrayInputStream(outputStream.toByteArray());
+      return ImageIO.read(bis);
     }
 
     /**
