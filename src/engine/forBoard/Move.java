@@ -10,21 +10,28 @@ import java.util.Objects;
 import static engine.forBoard.Board.Builder;
 
 /**
- * The `Move` class represents a move in a game of chess.
- * Modified to support object pooling for better memory efficiency.
+ * The Move class represents a move in a game of chess.
+ * This abstract class provides the base functionality for all types of chess moves,
+ * including standard moves, attack moves, castling, en passant, and pawn promotion.
+ * The class has been modified to support object pooling for better memory efficiency.
+ * <p>
+ * Different types of moves are represented by specialized subclasses, each implementing
+ * the specific behavior and rules for that move type.
+ *
+ * @author Aaron Ho
  */
 public abstract class Move {
 
-  /*** The current state of the chess board. */
+  /** The current state of the chess board. */
   protected Board board;
 
-  /*** The destination coordinate of the move. */
+  /** The destination coordinate of the move. */
   protected int destinationCoordinate;
 
-  /*** The piece that is being moved. */
+  /** The piece that is being moved. */
   protected Piece movedPiece;
 
-  /*** Indicates whether it's the first move for the piece being moved. */
+  /** Indicates whether it's the first move for the piece being moved. */
   protected boolean isFirstMove;
 
   /**
@@ -42,7 +49,9 @@ public abstract class Move {
   }
 
   /**
-   * Creates a new Move object with the given board and destination coordinate. This constructor is used for pawn jump moves.
+   * Creates a new Move object with the given board and destination coordinate.
+   * This constructor is used for pawn jump moves and for initializing move objects
+   * that do not have a moved piece.
    *
    * @param board The current state of the chess board.
    * @param destinationCoordinate The destination coordinate of the move.
@@ -56,6 +65,9 @@ public abstract class Move {
 
   /**
    * Reset method for object pooling. Must be overridden by subclasses.
+   * This method allows move objects to be reused to reduce garbage collection pressure.
+   *
+   * @return The reset move object.
    */
   protected abstract Move reset();
 
@@ -73,6 +85,8 @@ public abstract class Move {
 
   /**
    * Compares this move to another object to determine if they are equal.
+   * Moves are considered equal if they have the same current coordinate,
+   * destination coordinate, and moved piece.
    *
    * @param other The other object to compare to.
    * @return True if the moves are equal, false otherwise.
@@ -97,7 +111,7 @@ public abstract class Move {
   /**
    * Gets the current coordinate of the moved piece.
    *
-   * @return The current coordinate.
+   * @return The current coordinate, or -1 if no piece is being moved.
    */
   public int getCurrentCoordinate() {
     return this.movedPiece != null ? this.movedPiece.getPiecePosition() : -1;
@@ -123,6 +137,8 @@ public abstract class Move {
 
   /**
    * Checks if the move is an attack.
+   * This base implementation returns false; subclasses that represent attack moves
+   * should override this method to return true.
    *
    * @return True if the move is an attack, false otherwise.
    */
@@ -132,6 +148,8 @@ public abstract class Move {
 
   /**
    * Checks if the move is a castling move.
+   * This base implementation returns false; subclasses that represent castling moves
+   * should override this method to return true.
    *
    * @return True if the move is a castling move, false otherwise.
    */
@@ -141,8 +159,10 @@ public abstract class Move {
 
   /**
    * Gets the attacked piece in case of an attack move.
+   * This base implementation returns null; subclasses that represent attack moves
+   * should override this method to return the attacked piece.
    *
-   * @return The attacked piece.
+   * @return The attacked piece, or null if this is not an attack move.
    */
   public Piece getAttackedPiece() {
     return null;
@@ -150,6 +170,7 @@ public abstract class Move {
 
   /**
    * Executes the move on the board and returns the resulting board.
+   * This method creates a new board state reflecting the changes from the move.
    *
    * @return The board after executing the move.
    */
@@ -157,23 +178,19 @@ public abstract class Move {
     final Board.Builder builder = new Builder();
     Collection<Piece> currentPlayerPieces = this.board.currentPlayer().getActivePieces();
     for (Piece piece : currentPlayerPieces) {
-      // Use reference equality first (faster and safer), then object equality if needed
       if (piece != this.movedPiece) {
         builder.setPiece(piece);
       }
     }
 
-    // Add all opponent pieces (no filtering needed)
     for (Piece piece : this.board.currentPlayer().getOpponent().getActivePieces()) {
       builder.setPiece(piece);
     }
 
-    // Add the moved piece at its new position
     builder.setPiece(this.movedPiece.movePiece(this));
     builder.setMoveMaker(this.board.currentPlayer().getOpponent().getAlliance());
     builder.setMoveTransition(this);
 
-    // Update the Zobrist hash for the new board position
     long newHash = updateZobristHash(this.board.getZobristHash());
     builder.setZobristHash(newHash);
 
@@ -189,7 +206,6 @@ public abstract class Move {
    * @return The updated hash.
    */
   protected long updateZobristHash(final long currentHash) {
-    // Update hash for the piece movement
     long hash = ZobristHashing.updateHashPieceMove(
             currentHash,
             this.movedPiece,
@@ -197,10 +213,8 @@ public abstract class Move {
             this.getDestinationCoordinate()
     );
 
-    // Toggle side to move
     hash = ZobristHashing.updateHashSideToMove(hash);
 
-    // Clear any previous en passant possibility
     if (this.board.getEnPassantPawn() != null) {
       final int enPassantFile = this.board.getEnPassantPawn().getPiecePosition() % 8;
       hash = ZobristHashing.updateHashEnPassant(hash, enPassantFile);
@@ -211,6 +225,7 @@ public abstract class Move {
 
   /**
    * Undoes the move on the board and returns the resulting board.
+   * This method creates a new board state as it was before the move.
    *
    * @return The board after undoing the move.
    */
@@ -223,8 +238,10 @@ public abstract class Move {
 
   /**
    * Generates disambiguation information for moves involving pieces of the same type.
+   * When multiple pieces of the same type can move to the same destination, this method
+   * provides the file letter to distinguish between them in algebraic notation.
    *
-   * @return The disambiguation file character.
+   * @return The disambiguation file character, or an empty string if disambiguation is not needed.
    */
   String disambiguationFile() {
     for (final Move move: this.board.currentPlayer().getLegalMoves()) {
@@ -236,28 +253,35 @@ public abstract class Move {
   }
 
   /**
-   * Represents the possible outcomes of a chess move, including successful execution, an illegal move, or leaving the player's
-   * king in check. Each status indicates whether a move is considered done or has specific implications on the game state.
+   * Represents the possible outcomes of a chess move, including successful execution,
+   * an illegal move, or leaving the player's king in check. Each status indicates whether
+   * a move is considered done or has specific implications on the game state.
    */
   public enum MoveStatus {
+    /**
+     * Represents a successfully executed move.
+     */
     DONE {
-
       @Override
       public boolean isDone() {
         return true;
       }
     },
 
+    /**
+     * Represents an illegal move that cannot be executed.
+     */
     ILLEGAL_MOVE {
-
       @Override
       public boolean isDone() {
         return false;
       }
     },
 
+    /**
+     * Represents a move that would leave the player's king in check.
+     */
     LEAVES_PLAYER_IN_CHECK {
-
       @Override
       public boolean isDone() {
         return false;
@@ -265,7 +289,7 @@ public abstract class Move {
     };
 
     /**
-     * Checks if the move status indicates that the move is done.
+     * Checks if the move status indicates that the move is done and valid.
      *
      * @return True if the move is done, false otherwise.
      */
@@ -273,9 +297,10 @@ public abstract class Move {
   }
 
   /**
-   * The `PawnPromotion` class represents a special move in chess. When a pawn reaches the opponent's
-   * back rank, it can be promoted to any other chess piece (queen, rook, bishop, or knight). This class extends a
-   * standard `PawnMove` by adding promotion information and handles the execution of the promotion move.
+   * The PawnPromotion class represents a special move in chess. When a pawn reaches
+   * the opponent's back rank, it can be promoted to any other chess piece (queen, rook,
+   * bishop, or knight). This class extends a standard PawnMove by adding promotion information
+   * and handles the execution of the promotion move.
    */
   public static class PawnPromotion extends PawnMove {
 
@@ -289,7 +314,7 @@ public abstract class Move {
     protected Piece promotionPiece;
 
     /**
-     * Constructs a `PawnPromotion` instance.
+     * Constructs a PawnPromotion instance.
      *
      * @param decoratedMove    The decorated move representing the original pawn move.
      * @param promotionPiece   The piece to which the pawn is promoted (queen, rook, bishop, or knight).
@@ -306,6 +331,10 @@ public abstract class Move {
 
     /**
      * Resets the PawnPromotion with new values for object pooling.
+     *
+     * @param decoratedMove The base move to be decorated with promotion.
+     * @param promotionPiece The piece type to which the pawn will be promoted.
+     * @return The reset PawnPromotion instance.
      */
     public PawnPromotion reset(final Move decoratedMove, final Piece promotionPiece) {
       this.decoratedMove = decoratedMove;
@@ -319,10 +348,10 @@ public abstract class Move {
     }
 
     /**
-     * Checks if two `PawnPromotion` instances are equal by comparing their attributes.
+     * Checks if two PawnPromotion instances are equal by comparing their attributes.
      *
-     * @param o The object to compare with this `PawnPromotion`.
-     * @return  `true` if the objects are equal, `false` otherwise.
+     * @param o The object to compare with this PawnPromotion.
+     * @return True if the objects are equal, false otherwise.
      */
     @Override
     public boolean equals(Object o) {
@@ -336,7 +365,7 @@ public abstract class Move {
     }
 
     /**
-     * Generates a hash code for this `PawnPromotion` instance based on its attributes.
+     * Generates a hash code for this PawnPromotion instance based on its attributes.
      *
      * @return The computed hash code.
      */
@@ -346,8 +375,8 @@ public abstract class Move {
     }
 
     /**
-     * Executes the pawn promotion move by first executing the decorated move and then replacing the promoted pawn with
-     * the promoted piece.
+     * Executes the pawn promotion move by first executing the decorated move and then
+     * replacing the promoted pawn with the promoted piece.
      *
      * @return The resulting board after executing the pawn promotion move.
      */
@@ -356,14 +385,12 @@ public abstract class Move {
       final Board pawnMovedBoard = this.decoratedMove.execute();
       final Board.Builder builder = new Builder();
 
-      // Use for loop instead of stream
       for (Piece piece : pawnMovedBoard.currentPlayer().getActivePieces()) {
         if (piece != this.promotedPawn) {
           builder.setPiece(piece);
         }
       }
 
-      // Add opponent pieces
       for (Piece piece : pawnMovedBoard.currentPlayer().getOpponent().getActivePieces()) {
         builder.setPiece(piece);
       }
@@ -372,7 +399,6 @@ public abstract class Move {
       builder.setMoveMaker(pawnMovedBoard.currentPlayer().getAlliance());
       builder.setMoveTransition(this);
 
-      // Update Zobrist hash for promotion
       long newHash = pawnMovedBoard.getZobristHash();
       newHash = ZobristHashing.updateHashPromotion(
               newHash,
@@ -393,10 +419,8 @@ public abstract class Move {
      */
     @Override
     protected long updateZobristHash(final long currentHash) {
-      // First update for the basic pawn move
       long hash = super.updateZobristHash(currentHash);
 
-      // Then update for the promotion
       hash = ZobristHashing.updateHashPromotion(
               hash,
               this.promotedPawn,
@@ -410,7 +434,7 @@ public abstract class Move {
     /**
      * Checks if the pawn promotion move is an attack on an opponent's piece.
      *
-     * @return `true` if it's an attack, `false` otherwise.
+     * @return True if it's an attack, false otherwise.
      */
     @Override
     public boolean isAttack() {
@@ -420,7 +444,7 @@ public abstract class Move {
     /**
      * Gets the piece attacked by this pawn promotion move.
      *
-     * @return The attacked piece, or `null` if it's not an attack move.
+     * @return The attacked piece, or null if it's not an attack move.
      */
     @Override
     public Piece getAttackedPiece() {
@@ -441,16 +465,17 @@ public abstract class Move {
 
 
   /**
-   * The `MajorMove` class represents a standard major move in chess. This move is typically associated with major
-   * pieces (queen, rook, knight, or bishop) and involves the piece moving to a new destination coordinated on the board.
+   * The MajorMove class represents a standard major move in chess. This move is typically
+   * associated with major pieces (queen, rook, knight, or bishop) and involves the piece
+   * moving to a new destination coordinate on the board without capturing any opponent's piece.
    */
   public static class MajorMove extends Move {
 
     /**
-     * Constructs a `MajorMove` instance with the provided board, piece, and destination coordinate.
+     * Constructs a MajorMove instance with the provided board, piece, and destination coordinate.
      *
      * @param board                 The chess board on which the move is made.
-     * @param pieceMoved            The major piece (queen, rook, or bishop) that is moved.
+     * @param pieceMoved            The major piece (queen, rook, bishop, or knight) that is moved.
      * @param destinationCoordinate The coordinate to which the piece is moved.
      */
     public MajorMove(final Board board, final Piece pieceMoved, final int destinationCoordinate) {
@@ -459,6 +484,8 @@ public abstract class Move {
 
     /**
      * Reset method for object pooling.
+     *
+     * @return The reset move object.
      */
     @Override
     protected Move reset() {
@@ -467,6 +494,11 @@ public abstract class Move {
 
     /**
      * Resets the MajorMove with new values for object pooling.
+     *
+     * @param board The chess board for this move.
+     * @param pieceMoved The piece being moved.
+     * @param destinationCoordinate The destination coordinate.
+     * @return The reset MajorMove instance.
      */
     public MajorMove reset(final Board board, final Piece pieceMoved, final int destinationCoordinate) {
       this.board = board;
@@ -477,10 +509,10 @@ public abstract class Move {
     }
 
     /**
-     * Checks if two `MajorMove` instances are equal by comparing their attributes.
+     * Checks if two MajorMove instances are equal by comparing their attributes.
      *
-     * @param other The object to compare with this `MajorMove`.
-     * @return `true` if the objects are equal, `false` otherwise.
+     * @param other The object to compare with this MajorMove.
+     * @return True if the objects are equal, false otherwise.
      */
     @Override
     public boolean equals(final Object other) {
@@ -500,17 +532,18 @@ public abstract class Move {
   }
 
   /**
-   * The `MajorAttackMove` class represents a major attack move in chess. This type of move involves a major piece
-   * (queen, rook, knight, or bishop) moving to a new destination to coordinate and capturing an opponent's piece.
+   * The MajorAttackMove class represents a major attack move in chess. This type of move
+   * involves a major piece (queen, rook, knight, or bishop) moving to a new destination
+   * coordinate and capturing an opponent's piece.
    */
   public static class MajorAttackMove extends AttackMove {
 
     /**
-     * Constructs a `MajorAttackMove` instance with the provided board, moving piece, destination coordinate, and the
-     * attacked piece.
+     * Constructs a MajorAttackMove instance with the provided board, moving piece,
+     * destination coordinate, and the attacked piece.
      *
      * @param board                 The chess board on which the move is made.
-     * @param pieceMoved            The major piece (queen, rook, or bishop) that is moved.
+     * @param pieceMoved            The major piece (queen, rook, bishop, or knight) that is moved.
      * @param destinationCoordinate The coordinate to which the piece is moved.
      * @param pieceAttacked         The opponent's piece that is being attacked and captured.
      */
@@ -520,6 +553,8 @@ public abstract class Move {
 
     /**
      * Reset method for object pooling.
+     *
+     * @return The reset move object.
      */
     @Override
     protected Move reset() {
@@ -528,6 +563,12 @@ public abstract class Move {
 
     /**
      * Resets the MajorAttackMove with new values for object pooling.
+     *
+     * @param board The chess board for this move.
+     * @param pieceMoved The piece being moved.
+     * @param destinationCoordinate The destination coordinate.
+     * @param pieceAttacked The piece being attacked and captured.
+     * @return The reset MajorAttackMove instance.
      */
     public MajorAttackMove reset(final Board board, final Piece pieceMoved, final int destinationCoordinate, final Piece pieceAttacked) {
       this.board = board;
@@ -539,10 +580,10 @@ public abstract class Move {
     }
 
     /**
-     * Checks if two `MajorAttackMove` instances are equal by comparing their attributes.
+     * Checks if two MajorAttackMove instances are equal by comparing their attributes.
      *
-     * @param other The object to compare with this `MajorAttackMove`.
-     * @return `true` if the objects are equal, `false` otherwise.
+     * @param other The object to compare with this MajorAttackMove.
+     * @return True if the objects are equal, false otherwise.
      */
     @Override
     public boolean equals(final Object other) {
@@ -568,13 +609,11 @@ public abstract class Move {
      */
     @Override
     protected long updateZobristHash(final long currentHash) {
-      // First remove the attacked piece from the hash
       long hash = ZobristHashing.updateHashPieceCapture(
               currentHash,
               this.getAttackedPiece()
       );
 
-      // Then update for the piece movement and side to move
       hash = ZobristHashing.updateHashPieceMove(
               hash,
               this.movedPiece,
@@ -582,10 +621,8 @@ public abstract class Move {
               this.getDestinationCoordinate()
       );
 
-      // Toggle side to move
       hash = ZobristHashing.updateHashSideToMove(hash);
 
-      // Clear any previous en passant possibility
       if (this.board.getEnPassantPawn() != null) {
         final int enPassantFile = this.board.getEnPassantPawn().getPiecePosition() % 8;
         hash = ZobristHashing.updateHashEnPassant(hash, enPassantFile);
@@ -596,13 +633,13 @@ public abstract class Move {
   }
 
   /**
-   * The `PawnMove` class represents a basic pawn move in chess. This move involves a pawn advancing to a new destination
-   * coordinate without capturing any opponent's piece.
+   * The PawnMove class represents a basic pawn move in chess. This move involves a pawn
+   * advancing to a new destination coordinate without capturing any opponent's piece.
    */
   public static class PawnMove extends Move {
 
     /**
-     * Constructs a `PawnMove` instance with the provided board, moving piece, and destination coordinate.
+     * Constructs a PawnMove instance with the provided board, moving piece, and destination coordinate.
      *
      * @param board                 The chess board on which the move is made.
      * @param pieceMoved            The pawn piece that is moved.
@@ -614,6 +651,8 @@ public abstract class Move {
 
     /**
      * Reset method for object pooling.
+     *
+     * @return The reset move object.
      */
     @Override
     protected Move reset() {
@@ -622,6 +661,11 @@ public abstract class Move {
 
     /**
      * Resets the PawnMove with new values for object pooling.
+     *
+     * @param board The chess board for this move.
+     * @param pieceMoved The pawn being moved.
+     * @param destinationCoordinate The destination coordinate.
+     * @return The reset PawnMove instance.
      */
     public PawnMove reset(final Board board, final Piece pieceMoved, final int destinationCoordinate) {
       this.board = board;
@@ -632,10 +676,10 @@ public abstract class Move {
     }
 
     /**
-     * Checks if two `PawnMove` instances are equal by comparing their attributes.
+     * Checks if two PawnMove instances are equal by comparing their attributes.
      *
-     * @param other The object to compare with this `PawnMove`.
-     * @return `true` if the objects are equal, `false` otherwise.
+     * @param other The object to compare with this PawnMove.
+     * @return True if the objects are equal, false otherwise.
      */
     @Override
     public boolean equals(final Object other) {
@@ -654,14 +698,14 @@ public abstract class Move {
   }
 
   /**
-   * The `PawnAttackMove` class represents a pawn attack move in chess. This type of move involves a pawn moving to a new
-   * destination to coordinate and capturing an opponent's piece.
+   * The PawnAttackMove class represents a pawn attack move in chess. This type of move
+   * involves a pawn moving to a new destination coordinate and capturing an opponent's piece.
    */
   public static class PawnAttackMove extends AttackMove {
 
     /**
-     * Constructs a `PawnAttackMove` instance with the provided board, moving piece, destination coordinate, and the
-     * attacked piece.
+     * Constructs a PawnAttackMove instance with the provided board, moving piece,
+     * destination coordinate, and the attacked piece.
      *
      * @param board                 The chess board on which the move is made.
      * @param pieceMoved            The pawn piece that is moved.
@@ -674,6 +718,8 @@ public abstract class Move {
 
     /**
      * Reset method for object pooling.
+     *
+     * @return The reset move object.
      */
     @Override
     protected Move reset() {
@@ -682,6 +728,12 @@ public abstract class Move {
 
     /**
      * Resets the PawnAttackMove with new values for object pooling.
+     *
+     * @param board The chess board for this move.
+     * @param pieceMoved The pawn being moved.
+     * @param destinationCoordinate The destination coordinate.
+     * @param pieceAttacked The piece being attacked and captured.
+     * @return The reset PawnAttackMove instance.
      */
     public PawnAttackMove reset(final Board board, final Piece pieceMoved, final int destinationCoordinate, final Piece pieceAttacked) {
       this.board = board;
@@ -693,10 +745,10 @@ public abstract class Move {
     }
 
     /**
-     * Checks if two `PawnAttackMove` instances are equal by comparing their attributes.
+     * Checks if two PawnAttackMove instances are equal by comparing their attributes.
      *
-     * @param other The object to compare with this `PawnAttackMove`.
-     * @return `true` if the objects are equal, `false` otherwise.
+     * @param other The object to compare with this PawnAttackMove.
+     * @return True if the objects are equal, false otherwise.
      */
     @Override
     public boolean equals(final Object other) {
@@ -722,13 +774,11 @@ public abstract class Move {
      */
     @Override
     protected long updateZobristHash(final long currentHash) {
-      // First remove the attacked piece from the hash
       long hash = ZobristHashing.updateHashPieceCapture(
               currentHash,
               this.getAttackedPiece()
       );
 
-      // Then update for the piece movement and side to move
       hash = ZobristHashing.updateHashPieceMove(
               hash,
               this.movedPiece,
@@ -736,10 +786,8 @@ public abstract class Move {
               this.getDestinationCoordinate()
       );
 
-      // Toggle side to move
       hash = ZobristHashing.updateHashSideToMove(hash);
 
-      // Clear any previous en passant possibility
       if (this.board.getEnPassantPawn() != null) {
         final int enPassantFile = this.board.getEnPassantPawn().getPiecePosition() % 8;
         hash = ZobristHashing.updateHashEnPassant(hash, enPassantFile);
@@ -750,14 +798,15 @@ public abstract class Move {
   }
 
   /**
-   * The `PawnEnPassantAttack` class represents a special pawn attack move called "en passant" in chess.
-   * En passant is a situation where a pawn captures an opponent's pawn that has moved two squares forward from its starting position.
+   * The PawnEnPassantAttack class represents a special pawn attack move called "en passant" in chess.
+   * En passant is a situation where a pawn captures an opponent's pawn that has moved two squares
+   * forward from its starting position, as if the opponent's pawn had moved only one square.
    */
   public static class PawnEnPassantAttack extends PawnAttackMove {
 
     /**
-     * Constructs a `PawnEnPassantAttack` instance with the provided board,
-     * moving a piece, destination coordinate, and a piece attacked.
+     * Constructs a PawnEnPassantAttack instance with the provided board,
+     * moving a piece, destination coordinate, and piece attacked.
      *
      * @param board                 The chess board on which the move is made.
      * @param pieceMoved            The pawn piece that is moved.
@@ -770,6 +819,12 @@ public abstract class Move {
 
     /**
      * Resets the PawnEnPassantAttack with new values for object pooling.
+     *
+     * @param board The chess board for this move.
+     * @param pieceMoved The pawn being moved.
+     * @param destinationCoordinate The destination coordinate.
+     * @param pieceAttacked The pawn being captured en passant.
+     * @return The reset PawnEnPassantAttack instance.
      */
     public PawnEnPassantAttack reset(final Board board, final Piece pieceMoved, final int destinationCoordinate, final Piece pieceAttacked) {
       this.board = board;
@@ -781,10 +836,10 @@ public abstract class Move {
     }
 
     /**
-     * Checks if two `PawnEnPassantAttack` instances are equal by comparing their attributes.
+     * Checks if two PawnEnPassantAttack instances are equal by comparing their attributes.
      *
-     * @param other The object to compare with this `PawnEnPassantAttack`.
-     * @return `true` if the objects are equal, `false` otherwise.
+     * @param other The object to compare with this PawnEnPassantAttack.
+     * @return True if the objects are equal, false otherwise.
      */
     @Override
     public boolean equals(final Object other) {
@@ -801,7 +856,6 @@ public abstract class Move {
     public Board execute() {
       final Board.Builder builder = new Builder();
 
-      // Use for loops instead of streams
       for (Piece piece : this.board.currentPlayer().getActivePieces()) {
         if (piece != this.movedPiece) {
           builder.setPiece(piece);
@@ -818,7 +872,6 @@ public abstract class Move {
       builder.setMoveMaker(this.board.currentPlayer().getOpponent().getAlliance());
       builder.setMoveTransition(this);
 
-      // Update the Zobrist hash
       long newHash = updateZobristHash(this.board.getZobristHash());
       builder.setZobristHash(newHash);
 
@@ -833,10 +886,8 @@ public abstract class Move {
      */
     @Override
     protected long updateZobristHash(final long currentHash) {
-      // Get the basic attack move hash update
       long hash = super.updateZobristHash(currentHash);
 
-      // Clear the en passant possibility
       final int enPassantFile = this.getAttackedPiece().getPiecePosition() % 8;
       hash = ZobristHashing.updateHashEnPassant(hash, enPassantFile);
 
@@ -845,6 +896,7 @@ public abstract class Move {
 
     /**
      * Undoes the "en passant" pawn attack move, reverting the board to the state before the capture.
+     * This method restores the captured pawn and resets the board state.
      *
      * @return The board state before the en passant capture.
      */
@@ -859,12 +911,14 @@ public abstract class Move {
   }
 
   /**
-   * The `PawnJump` class represents a pawn move where a pawn advances two squares from its starting position.
+   * The PawnJump class represents a pawn move where a pawn advances two squares from its starting position.
+   * This special move is only available on a pawn's first move and creates an en passant opportunity
+   * for opponent pawns on adjacent files.
    */
   public static class PawnJump extends Move {
 
     /**
-     * Constructs a `PawnJump` instance with the provided board, moving pawn, and destination coordinate.
+     * Constructs a PawnJump instance with the provided board, moving pawn, and destination coordinate.
      *
      * @param board                 The chess board on which the move is made.
      * @param pieceMoved            The pawn piece that is moved.
@@ -876,6 +930,8 @@ public abstract class Move {
 
     /**
      * Reset method for object pooling.
+     *
+     * @return The reset move object.
      */
     @Override
     protected Move reset() {
@@ -884,6 +940,11 @@ public abstract class Move {
 
     /**
      * Resets the PawnJump with new values for object pooling.
+     *
+     * @param board The chess board for this move.
+     * @param pieceMoved The pawn being jumped.
+     * @param destinationCoordinate The destination coordinate.
+     * @return The reset PawnJump instance.
      */
     public PawnJump reset(final Board board, final Piece pieceMoved, final int destinationCoordinate) {
       this.board = board;
@@ -894,10 +955,10 @@ public abstract class Move {
     }
 
     /**
-     * Checks if two `PawnJump` instances are equal by comparing their attributes.
+     * Checks if two PawnJump instances are equal by comparing their attributes.
      *
-     * @param other The object to compare with this `PawnJump`.
-     * @return `true` if the objects are equal, `false` otherwise.
+     * @param other The object to compare with this PawnJump.
+     * @return True if the objects are equal, false otherwise.
      */
     @Override
     public boolean equals(final Object other) {
@@ -905,8 +966,9 @@ public abstract class Move {
     }
 
     /**
-     * Executes the pawn jump move, updating the board accordingly. This method creates a new board with the pawn moved to the destination coordinate,
-     * an en passant pawn set, and the move transition recorded.
+     * Executes the pawn jump move, updating the board accordingly. This method creates
+     * a new board with the pawn moved to the destination coordinate, an en passant pawn set,
+     * and the move transition recorded.
      *
      * @return The resulting board after the pawn jump move.
      */
@@ -914,14 +976,12 @@ public abstract class Move {
     public Board execute() {
       final Board.Builder builder = new Builder();
 
-      // Use for loops instead of streams
       for (Piece piece : this.board.currentPlayer().getActivePieces()) {
         if (piece != this.movedPiece) {
           builder.setPiece(piece);
         }
       }
 
-      // Add opponent pieces
       for (Piece piece : this.board.currentPlayer().getOpponent().getActivePieces()) {
         builder.setPiece(piece);
       }
@@ -932,7 +992,6 @@ public abstract class Move {
       builder.setMoveMaker(this.board.currentPlayer().getOpponent().getAlliance());
       builder.setMoveTransition(this);
 
-      // Update the Zobrist hash
       long newHash = updateZobristHash(this.board.getZobristHash());
       builder.setZobristHash(newHash);
 
@@ -947,10 +1006,8 @@ public abstract class Move {
      */
     @Override
     protected long updateZobristHash(final long currentHash) {
-      // Basic piece movement update
       long hash = super.updateZobristHash(currentHash);
 
-      // Add the en passant possibility
       final int enPassantFile = this.getDestinationCoordinate() % 8;
       hash = ZobristHashing.updateHashEnPassant(hash, enPassantFile);
 
@@ -958,9 +1015,9 @@ public abstract class Move {
     }
 
     /**
-     * Returns a string representation of the `PawnJump` move, showing only the destination coordinate.
+     * Returns a string representation of the PawnJump move, showing only the destination coordinate.
      *
-     * @return A string representing the `PawnJump` move.
+     * @return A string representing the PawnJump move.
      */
     @Override
     public String toString() {
@@ -970,28 +1027,30 @@ public abstract class Move {
 
 
   /**
-   * The `CastleMove` class represents a move that involves castling, which is a special king and rook move.
+   * The CastleMove class represents a move that involves castling, which is a special king and rook move.
+   * This abstract class provides the base functionality for king-side and queen-side castling moves.
    */
   static abstract class CastleMove extends Move {
 
-    /*** The rook involved in the castling move. */
+    /** The rook involved in the castling move. */
     protected Rook castleRook;
 
-    /*** The starting position of the castle rook. */
+    /** The starting position of the castle rook. */
     protected int castleRookStart;
 
-    /*** The destination position of the castle rook. */
+    /** The destination position of the castle rook. */
     protected int castleRookDestination;
 
     /**
-     * Constructs a `CastleMove` instance with the provided board, moving piece, destination coordinate, castle rook, and rook start and destination positions.
+     * Constructs a CastleMove instance with the provided board, moving piece, destination coordinate,
+     * castle rook, and rook start and destination positions.
      *
      * @param board                 The chess board on which the move is made.
      * @param pieceMoved            The piece being moved (usually the king).
      * @param destinationCoordinate The coordinate to which the piece is moved.
      * @param castleRook            The rook involved in the castling move.
      * @param castleRookStart       The starting position of the castle rook.
-     * @param castleRookDestination  The destination position of the castle rook.
+     * @param castleRookDestination The destination position of the castle rook.
      */
     CastleMove(final Board board,
                final Piece pieceMoved,
@@ -1017,7 +1076,7 @@ public abstract class Move {
     /**
      * Checks if this move is a castling move.
      *
-     * @return `true` since it is a castling move.
+     * @return True since it is a castling move.
      */
     @Override
     public boolean isCastlingMove() {
@@ -1025,8 +1084,9 @@ public abstract class Move {
     }
 
     /**
-     * Executes the castling move on the chess board. This method creates a new board with the pieces moved as part of the castling move,
-     * records the move transition, and updates the board state accordingly.
+     * Executes the castling move on the chess board. This method creates a new board with
+     * the pieces moved as part of the castling move, records the move transition, and
+     * updates the board state accordingly.
      *
      * @return The resulting board after the castling move.
      */
@@ -1034,7 +1094,6 @@ public abstract class Move {
     public Board execute() {
       final Board.Builder builder = new Builder();
 
-      // Add all pieces except moved king and castle rook
       for (final Piece piece: this.board.getAllPieces()) {
         if (piece != this.movedPiece && piece != this.castleRook) {
           builder.setPiece(piece);
@@ -1046,7 +1105,6 @@ public abstract class Move {
       builder.setMoveMaker(this.board.currentPlayer().getOpponent().getAlliance());
       builder.setMoveTransition(this);
 
-      // Update the Zobrist hash
       long newHash = updateZobristHash(this.board.getZobristHash());
       builder.setZobristHash(newHash);
 
@@ -1061,7 +1119,6 @@ public abstract class Move {
      */
     @Override
     protected long updateZobristHash(final long currentHash) {
-      // Update for both the king and rook movement
       long hash = ZobristHashing.updateHashCastle(
               currentHash,
               this.movedPiece,
@@ -1072,18 +1129,14 @@ public abstract class Move {
               this.castleRookDestination
       );
 
-      // Toggle side to move
       hash = ZobristHashing.updateHashSideToMove(hash);
 
-      // Clear any previous en passant possibility
       if (this.board.getEnPassantPawn() != null) {
         final int enPassantFile = this.board.getEnPassantPawn().getPiecePosition() % 8;
         hash = ZobristHashing.updateHashEnPassant(hash, enPassantFile);
       }
 
-      // Update castling rights
       final boolean isWhite = this.movedPiece.getPieceAllegiance().isWhite();
-      // Remove all castling rights for the moving side
       if (isWhite) {
         if (this.board.whitePlayer().getPlayerKing().isKingSideCastleCapable()) {
           hash = ZobristHashing.updateHashCastlingRight(hash, 0);
@@ -1114,10 +1167,10 @@ public abstract class Move {
     }
 
     /**
-     * Checks if two `CastleMove` instances are equal by comparing their attributes.
+     * Checks if two CastleMove instances are equal by comparing their attributes.
      *
-     * @param other The object to compare with this `CastleMove`.
-     * @return `true` if the objects are equal, `false` otherwise.
+     * @param other The object to compare with this CastleMove.
+     * @return True if the objects are equal, false otherwise.
      */
     @Override
     public boolean equals(final Object other) {
@@ -1129,12 +1182,14 @@ public abstract class Move {
 
 
   /**
-   * The `KingSideCastleMove` class represents a move for king-side castling in chess.
+   * The KingSideCastleMove class represents a move for king-side castling in chess.
+   * King-side castling involves the king moving two squares towards the h-file (kingside)
+   * and the rook moving to the square the king crossed.
    */
   public static class KingSideCastleMove extends CastleMove {
 
     /**
-     * Constructs a `KingSideCastleMove` instance with the provided board, moving piece, destination coordinate,
+     * Constructs a KingSideCastleMove instance with the provided board, moving piece, destination coordinate,
      * castle rook, and rook start and destination positions.
      *
      * @param board                 The chess board on which the move is made.
@@ -1142,7 +1197,7 @@ public abstract class Move {
      * @param destinationCoordinate The coordinate to which the piece is moved.
      * @param castleRook            The rook involved in the castling move.
      * @param castleRookStart       The starting position of the castle rook.
-     * @param castleRookDestination  The destination position of the castle rook.
+     * @param castleRookDestination The destination position of the castle rook.
      */
     public KingSideCastleMove(final Board board,
                               final Piece pieceMoved,
@@ -1155,6 +1210,8 @@ public abstract class Move {
 
     /**
      * Reset method for object pooling.
+     *
+     * @return The reset move object.
      */
     @Override
     protected Move reset() {
@@ -1163,6 +1220,14 @@ public abstract class Move {
 
     /**
      * Resets the KingSideCastleMove with new values for object pooling.
+     *
+     * @param board The chess board for this move.
+     * @param pieceMoved The king being moved.
+     * @param destinationCoordinate The destination coordinate for the king.
+     * @param castleRook The rook being moved in this castling operation.
+     * @param castleRookStart The starting position of the rook.
+     * @param castleRookDestination The destination position of the rook.
+     * @return The reset KingSideCastleMove instance.
      */
     public KingSideCastleMove reset(final Board board, final Piece pieceMoved, final int destinationCoordinate,
                                     final Rook castleRook, final int castleRookStart, final int castleRookDestination) {
@@ -1177,10 +1242,10 @@ public abstract class Move {
     }
 
     /**
-     * Checks if two `KingSideCastleMove` instances are equal by comparing their attributes.
+     * Checks if two KingSideCastleMove instances are equal by comparing their attributes.
      *
-     * @param other The object to compare with this `KingSideCastleMove`.
-     * @return `true` if the objects are equal, `false` otherwise.
+     * @param other The object to compare with this KingSideCastleMove.
+     * @return True if the objects are equal, false otherwise.
      */
     @Override
     public boolean equals(final Object other) {
@@ -1190,7 +1255,7 @@ public abstract class Move {
     }
 
     /**
-     * Returns a string representation of the `KingSideCastleMove`, indicating king-side castling.
+     * Returns a string representation of the KingSideCastleMove, indicating king-side castling.
      *
      * @return The string "O-O" representing king-side castling.
      */
@@ -1202,12 +1267,14 @@ public abstract class Move {
 
 
   /**
-   * The `QueenSideCastleMove` class represents a move for queen-side castling in chess.
+   * The QueenSideCastleMove class represents a move for queen-side castling in chess.
+   * Queen-side castling involves the king moving two squares towards the a-file (queenside)
+   * and the rook moving to the square the king crossed.
    */
   public static class QueenSideCastleMove extends CastleMove {
 
     /**
-     * Constructs a `QueenSideCastleMove` instance with the provided board, moving piece, destination coordinate,
+     * Constructs a QueenSideCastleMove instance with the provided board, moving piece, destination coordinate,
      * castle rook, and rook start and destination positions.
      *
      * @param board                 The chess board on which the move is made.
@@ -1215,7 +1282,7 @@ public abstract class Move {
      * @param destinationCoordinate The coordinate to which the piece is moved.
      * @param castleRook            The rook involved in the castling move.
      * @param castleRookStart       The starting position of the castle rook.
-     * @param rookCastleDestination  The destination position of the castle rook.
+     * @param rookCastleDestination The destination position of the castle rook.
      */
     public QueenSideCastleMove(final Board board,
                                final Piece pieceMoved,
@@ -1228,6 +1295,8 @@ public abstract class Move {
 
     /**
      * Reset method for object pooling.
+     *
+     * @return The reset move object.
      */
     @Override
     protected Move reset() {
@@ -1236,6 +1305,14 @@ public abstract class Move {
 
     /**
      * Resets the QueenSideCastleMove with new values for object pooling.
+     *
+     * @param board The chess board for this move.
+     * @param pieceMoved The king being moved.
+     * @param destinationCoordinate The destination coordinate for the king.
+     * @param castleRook The rook being moved in this castling operation.
+     * @param castleRookStart The starting position of the rook.
+     * @param castleRookDestination The destination position of the rook.
+     * @return The reset QueenSideCastleMove instance.
      */
     public QueenSideCastleMove reset(final Board board, final Piece pieceMoved, final int destinationCoordinate,
                                      final Rook castleRook, final int castleRookStart, final int castleRookDestination) {
@@ -1250,10 +1327,10 @@ public abstract class Move {
     }
 
     /**
-     * Checks if two `QueenSideCastleMove` instances are equal by comparing their attributes.
+     * Checks if two QueenSideCastleMove instances are equal by comparing their attributes.
      *
-     * @param other The object to compare with this `QueenSideCastleMove`.
-     * @return `true` if the objects are equal, `false` otherwise.
+     * @param other The object to compare with this QueenSideCastleMove.
+     * @return True if the objects are equal, false otherwise.
      */
     @Override
     public boolean equals(final Object other) {
@@ -1263,7 +1340,7 @@ public abstract class Move {
     }
 
     /**
-     * Returns a string representation of the `QueenSideCastleMove`, indicating queen-side castling.
+     * Returns a string representation of the QueenSideCastleMove, indicating queen-side castling.
      *
      * @return The string "O-O-O" representing queen-side castling.
      */
@@ -1274,15 +1351,16 @@ public abstract class Move {
   }
 
   /**
-   * The `AttackMove` class represents a move that results in attacking an opponent's piece in chess.
+   * The AttackMove class represents a move that results in attacking an opponent's piece in chess.
+   * This abstract class provides the base functionality for all types of attack moves.
    */
   static abstract class AttackMove extends Move {
 
-    /*** The piece that is attacked as a result of this move. */
+    /** The piece that is attacked as a result of this move. */
     protected Piece attackedPiece;
 
     /**
-     * Constructs an `AttackMove` instance with the provided board, moving piece, destination coordinate,
+     * Constructs an AttackMove instance with the provided board, moving piece, destination coordinate,
      * and the piece being attacked.
      *
      * @param board                 The chess board on which the move is made.
@@ -1297,9 +1375,9 @@ public abstract class Move {
     }
 
     /**
-     * Calculates a hash code for the `AttackMove` by combining the hash codes of the moving piece and the attacked piece.
+     * Calculates a hash code for the AttackMove by combining the hash codes of the moving piece and the attacked piece.
      *
-     * @return The hash code for this `AttackMove`.
+     * @return The hash code for this AttackMove.
      */
     @Override
     public int hashCode() {
@@ -1307,10 +1385,10 @@ public abstract class Move {
     }
 
     /**
-     * Checks if two `AttackMove` instances are equal by comparing their attributes.
+     * Checks if two AttackMove instances are equal by comparing their attributes.
      *
-     * @param other The object to compare with this `AttackMove`.
-     * @return `true` if the objects are equal, `false` otherwise.
+     * @param other The object to compare with this AttackMove.
+     * @return True if the objects are equal, false otherwise.
      */
     @Override
     public boolean equals(final Object other) {
@@ -1332,7 +1410,7 @@ public abstract class Move {
     /**
      * Indicates whether this move is an attack on an opponent's piece.
      *
-     * @return `true` for an attack move, `false` otherwise.
+     * @return True for an attack move, false otherwise.
      */
     @Override
     public boolean isAttack() {
@@ -1347,13 +1425,11 @@ public abstract class Move {
      */
     @Override
     protected long updateZobristHash(final long currentHash) {
-      // Remove the attacked piece from the hash
       long hash = ZobristHashing.updateHashPieceCapture(
               currentHash,
               this.attackedPiece
       );
 
-      // Update for the piece movement
       hash = ZobristHashing.updateHashPieceMove(
               hash,
               this.movedPiece,
@@ -1361,15 +1437,12 @@ public abstract class Move {
               this.getDestinationCoordinate()
       );
 
-      // Toggle side to move
       hash = ZobristHashing.updateHashSideToMove(hash);
 
-      // If the attacked piece is a rook, update castling rights
       if (this.attackedPiece.getPieceType() == Piece.PieceType.ROOK) {
         final boolean isWhiteRook = this.attackedPiece.getPieceAllegiance().isWhite();
         final int rookPosition = this.attackedPiece.getPiecePosition();
 
-        // Check if it's a corner rook and update castling rights accordingly
         if (isWhiteRook) {
           if (rookPosition == 0 && this.board.whitePlayer().getPlayerKing().isQueenSideCastleCapable()) {
             hash = ZobristHashing.updateHashCastlingRight(hash, 1);
@@ -1385,7 +1458,6 @@ public abstract class Move {
         }
       }
 
-      // Clear any previous en passant possibility
       if (this.board.getEnPassantPawn() != null) {
         final int enPassantFile = this.board.getEnPassantPawn().getPiecePosition() % 8;
         hash = ZobristHashing.updateHashEnPassant(hash, enPassantFile);
@@ -1396,12 +1468,13 @@ public abstract class Move {
   }
 
   /**
-   * The `NullMove` class represents a placeholder for no move in a chess game.
+   * The NullMove class represents a placeholder for no move in a chess game.
+   * It is used as a sentinel value to indicate the absence of a valid move.
    */
   public static class NullMove extends Move {
 
     /**
-     * Constructs a `NullMove` instance. A null move has no board or destination coordinate.
+     * Constructs a NullMove instance. A null move has no board or destination coordinate.
      */
     public NullMove() {
       super(null, -1);
@@ -1409,6 +1482,8 @@ public abstract class Move {
 
     /**
      * Reset method for object pooling.
+     *
+     * @return The reset move object.
      */
     @Override
     protected Move reset() {
@@ -1416,13 +1491,13 @@ public abstract class Move {
     }
 
     /**
-     * Provides a safe implementation of hashCode for NullMove that doesn't rely on movedPiece
+     * Provides a safe implementation of hashCode for NullMove that doesn't rely on movedPiece.
      *
-     * @return A constant hash code for NullMove
+     * @return A constant hash code for NullMove.
      */
     @Override
     public int hashCode() {
-      return 0; // Simple constant value for NullMove
+      return 0;
     }
 
     /**
@@ -1449,6 +1524,7 @@ public abstract class Move {
      * Throws a runtime exception because a null move cannot be executed.
      *
      * @return A runtime exception with the message "cannot execute null move!"
+     * @throws RuntimeException Always thrown when attempting to execute a null move.
      */
     @Override
     public Board execute() {
@@ -1478,16 +1554,24 @@ public abstract class Move {
     }
   }
 
-  /*** Represents a factory for creating moves. */
+  /**
+   * The MoveFactory class provides factory methods for creating different types of moves.
+   * It ensures that moves are created consistently and efficiently.
+   */
   public static class MoveFactory {
 
-    /*** Private constructor to prevent instantiation. */
+    /**
+     * Private constructor to prevent instantiation.
+     *
+     * @throws RuntimeException Always thrown when attempting to instantiate MoveFactory.
+     */
     private MoveFactory() {
       throw new RuntimeException("Not instantiatable!");
     }
 
     /**
      * Creates and returns a null move.
+     * A null move is used as a sentinel value to indicate the absence of a valid move.
      *
      * @return The created null move.
      */
@@ -1497,11 +1581,12 @@ public abstract class Move {
 
     /**
      * Creates a move with the specified current and destination coordinates on the given board.
+     * This method searches through the legal moves on the board to find a matching move.
      *
      * @param board The current state of the chess board.
      * @param currentCoordinate The current coordinate of the moved piece.
      * @param destinationCoordinate The destination coordinate of the move.
-     * @return The created move.
+     * @return The created move, or a null move if no matching legal move is found.
      */
     public static Move createMove(final Board board,
                                   final int currentCoordinate,

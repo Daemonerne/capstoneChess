@@ -10,55 +10,64 @@ import java.util.*;
 
 import static engine.forBoard.Move.MoveFactory.getNullMove;
 
-/** 
- * The Board class represents a chess board containing 64 tiles and thirty-two pieces at the start of the game. 
- * It provides constructors and methods for creating and maintaining the chess board, as well as managing the pieces 
- * and players associated with the board. The class also includes methods for storing and calculating legal moves. 
- * <br><br> 
- * The game board comprises a list of tiles and contains collections of white and black pieces. 
- * It includes two players, whitePlayer and blackPlayer, as well as the current player. 
- * The class provides methods for accessing the players, pieces, and tiles, and for calculating legal moves. 
- * 
- * @author Aaron Ho 
+/**
+ * The Board class represents a chess board containing 64 tiles and chess pieces.
+ * It provides methods for creating and maintaining the chess board state, managing pieces
+ * and players, and calculating legal moves. The board keeps track of white and black pieces,
+ * the current player, en passant opportunities, and the transition move that created the current state.
+ * <p>
+ * This class is immutable - after creation, the board state cannot be modified.
+ * Instead, moves create new Board instances with updated states.
+ *
+ * @author Aaron Ho
  * @author dareTo81
  */
 public final class Board {
-  
-  /*** A map representing the configuration of pieces on the board. The keys are tile coordinates,
-   * and the values are the corresponding pieces placed on those tiles. */
+
+  /**
+   * A map representing the configuration of pieces on the board.
+   * The keys are tile coordinates, and the values are the corresponding pieces.
+   */
   private final Map<Integer, Piece> boardConfig;
-  
-  /*** A collection of white pieces currently present on the board. */
+
+  /** A collection of white pieces currently present on the board. */
   private final Collection<Piece> whitePieces;
-  
-  /*** A collection of black pieces currently present on the board. */
+
+  /** A collection of black pieces currently present on the board. */
   private final Collection<Piece> blackPieces;
-  
-  /*** The player controlling the white pieces on the board. */
+
+  /** The player controlling the white pieces on the board. */
   private final WhitePlayer whitePlayer;
-  
-  /*** The player controlling the black pieces on the board. */
+
+  /** The player controlling the black pieces on the board. */
   private final BlackPlayer blackPlayer;
-  
-  /*** The player whose turn it currently is to make a move. */
+
+  /** The player whose turn it currently is to make a move. */
   public final Player currentPlayer;
-  
-  /*** The pawn that is susceptible to en passant capture in the current position, if any. */
+
+  /**
+   * The pawn that is susceptible to en passant capture in the current position.
+   * Null if no en passant opportunity exists.
+   */
   private final Pawn enPassantPawn;
-  
-  /*** The move that resulted in the current board position. If no move transition has occurred,
-   * this value will be the null move. */
+
+  /**
+   * The move that resulted in the current board position.
+   * Returns a null move if this is the initial board position.
+   */
   private final Move transitionMove;
-  
-  /*** The Zobrist hash value for this board position. */
+
+  /** The Zobrist hash value for this board position, used for position identification. */
   private final long zobristHash;
 
-  /*** A pre-constructed standard chess board configuration representing the starting position.
-   * This is a constant instance shared across all instances of the Board class. */
-  private static final Board STANDARD_BOARD = createStandardBoardImpl();
-  
   /**
-   * Constructs a board from a builder object.
+   * A pre-constructed standard chess board configuration representing the starting position.
+   * This is a constant instance shared across all instances of the Board class.
+   */
+  private static final Board STANDARD_BOARD = createStandardBoardImpl();
+
+  /**
+   * Constructs a board from a builder object containing the board configuration.
    *
    * @param builder The builder object containing board configuration details.
    */
@@ -73,12 +82,13 @@ public final class Board {
     this.blackPlayer = new BlackPlayer(this, whiteStandardMoves, blackStandardMoves);
     this.currentPlayer = builder.nextMoveMaker.choosePlayerByAlliance(this.whitePlayer, this.blackPlayer);
     this.transitionMove = builder.transitionMove != null ? builder.transitionMove : getNullMove();
-    this.zobristHash = builder.zobristHash != 0 ? builder.zobristHash : 
-                       ZobristHashing.calculateBoardHash(this);
+    this.zobristHash = builder.zobristHash != 0 ? builder.zobristHash :
+            ZobristHashing.calculateBoardHash(this);
   }
-  
+
   /**
-   * Returns a string representation of the board, including piece configurations.
+   * Returns a string representation of the board, showing the piece configuration.
+   * The board is displayed as an 8x8 grid with pieces or empty spaces.
    *
    * @return A string representation of the board.
    */
@@ -93,35 +103,43 @@ public final class Board {
     } return builder.toString();
   }
 
+  /**
+   * Converts a piece to a string representation for display.
+   * White pieces are displayed as uppercase letters, black pieces as lowercase.
+   * A dash represents empty tiles.
+   *
+   * @param piece The piece to convert to string.
+   * @return The string representation of the piece.
+   */
   private static String prettyPrint(final Piece piece) {
     if(piece != null) {
-      return piece.getPieceAllegiance().isBlack() ? 
-        piece.toString().toLowerCase() : piece.toString();
+      return piece.getPieceAllegiance().isBlack() ?
+              piece.toString().toLowerCase() : piece.toString();
     } return "-";
   }
-  
+
   /**
-   * Returns a collection of black pieces on the board.
+   * Returns a collection of black pieces currently on the board.
    *
    * @return A collection of black pieces.
    */
   public Collection<Piece> getBlackPieces() {
     return this.blackPieces;
   }
-  
+
   /**
-   * Returns a collection of white pieces on the board.
+   * Returns a collection of white pieces currently on the board.
    *
    * @return A collection of white pieces.
    */
   public Collection<Piece> getWhitePieces() {
     return this.whitePieces;
   }
-  
+
   /**
-   * Returns a collection of all pieces on the board, irrespective of their alliance.
+   * Returns a collection of all pieces on the board, both white and black.
    *
-   * @return A collection of all pieces.
+   * @return A collection of all pieces on the board.
    */
   public Collection<Piece> getAllPieces() {
     final List<Piece> allPieces = new ArrayList<>();
@@ -129,11 +147,12 @@ public final class Board {
     allPieces.addAll(this.blackPieces);
     return allPieces;
   }
-  
+
   /**
-   * Returns a collection of all legal moves that can be made on the current board.
+   * Returns a collection of all legal moves that can be made by both players
+   * on the current board.
    *
-   * @return A collection of legal moves.
+   * @return A collection of all legal moves.
    */
   public Collection<Move> getAllLegalMoves() {
     final List<Move> allLegalMoves = new ArrayList<>();
@@ -141,7 +160,7 @@ public final class Board {
     allLegalMoves.addAll(this.blackPlayer.getLegalMoves());
     return allLegalMoves;
   }
-  
+
   /**
    * Retrieves the white player controlling the white pieces.
    *
@@ -150,7 +169,7 @@ public final class Board {
   public WhitePlayer whitePlayer() {
     return this.whitePlayer;
   }
-  
+
   /**
    * Retrieves the black player controlling the black pieces.
    *
@@ -159,7 +178,7 @@ public final class Board {
   public BlackPlayer blackPlayer() {
     return this.blackPlayer;
   }
-  
+
   /**
    * Retrieves the player whose turn it is to move.
    *
@@ -168,17 +187,17 @@ public final class Board {
   public Player currentPlayer() {
     return this.currentPlayer;
   }
-  
+
   /**
    * Retrieves the piece at the specified coordinate on the board.
    *
-   * @param coordinate The coordinate to check.
+   * @param coordinate The coordinate to check (0-63).
    * @return The piece at the specified coordinate, or null if the tile is empty.
    */
   public Piece getPiece(final int coordinate) {
     return this.boardConfig.get(coordinate);
   }
-  
+
   /**
    * Retrieves the pawn susceptible to en passant capture, if any.
    *
@@ -187,7 +206,7 @@ public final class Board {
   public Pawn getEnPassantPawn() {
     return this.enPassantPawn;
   }
-  
+
   /**
    * Retrieves the move that led to the current board state.
    *
@@ -196,16 +215,17 @@ public final class Board {
   public Move getTransitionMove() {
     return this.transitionMove;
   }
-  
+
   /**
    * Gets the Zobrist hash value for this board position.
+   * This hash is used for efficient position identification and transposition table lookups.
    *
    * @return The 64-bit Zobrist hash.
    */
   public long getZobristHash() {
     return this.zobristHash;
   }
-  
+
   /**
    * Returns the hash code for this board, using the Zobrist hash value.
    *
@@ -215,23 +235,24 @@ public final class Board {
   public int hashCode() {
     return (int) this.zobristHash;
   }
-  
+
   /**
    * Returns a standard chess board configuration representing the starting position.
+   * This method uses a cached instance for better performance.
    *
-   * @return A standard chess board.
+   * @return A standard chess board with pieces in their initial positions.
    */
   public static Board createStandardBoard() {
     return STANDARD_BOARD;
   }
-  
+
   /**
-   * Creates and returns a standard chess board configuration.
+   * Creates and returns a standard chess board configuration with all pieces
+   * in their initial positions.
    *
    * @return A new Board instance with the standard starting positions of pieces.
    */
   private static Board createStandardBoardImpl() {
-	
     final Builder builder = new Builder();
 
     builder.setPiece(new Rook(Alliance.BLACK, 0, 0));
@@ -250,7 +271,7 @@ public final class Board {
     builder.setPiece(new Pawn(Alliance.BLACK, 13, 0));
     builder.setPiece(new Pawn(Alliance.BLACK, 14, 0));
     builder.setPiece(new Pawn(Alliance.BLACK, 15, 0));
-		
+
     builder.setPiece(new Pawn(Alliance.WHITE, 48, 0));
     builder.setPiece(new Pawn(Alliance.WHITE, 49, 0));
     builder.setPiece(new Pawn(Alliance.WHITE, 50, 0));
@@ -271,7 +292,7 @@ public final class Board {
 
     return builder.build();
   }
-  
+
   /**
    * Calculates the legal moves for a collection of pieces on the board.
    *
@@ -284,7 +305,7 @@ public final class Board {
       legalMoves.addAll(piece.calculateLegalMoves(this));
     } return legalMoves;
   }
- 
+
   /**
    * Calculates and returns the active pieces of a specified alliance on the board.
    *
@@ -300,73 +321,76 @@ public final class Board {
       }
     } return activePieces;
   }
-  
-  /*** A builder class for constructing instances of the Board class with specific configurations. */
+
+  /**
+   * A builder class for constructing instances of the Board class with specific configurations.
+   * This class follows the Builder pattern to facilitate the creation of complex Board objects.
+   */
   public static class Builder {
+    /** A map of board coordinates to pieces for the board being built. */
     private final Map<Integer, Piece> BoardConfigurations;
+    /** The player who will make the next move on the board being built. */
     private Alliance nextMoveMaker;
+    /** The pawn that can be captured via en passant, if any. */
     private Pawn enPassantPawn;
+    /** The move that represents the transition to this board state. */
     private Move transitionMove;
+    /** The Zobrist hash value for the board being built. */
     private long zobristHash;
-    
+
+    /**
+     * Constructs a new Builder instance with empty configurations.
+     */
     public Builder() {
       this.BoardConfigurations = new HashMap<>(32, 1.0f);
       this.zobristHash = 0;
     }
-    
+
     /**
-     * Sets the piece configuration for a specific position on the board.
+     * Sets a piece at a specific position on the board being built.
      *
-     * @param piece The piece to be placed on the board at the specified position.
+     * @param piece The piece to be placed on the board at its specified position.
      * @return The current builder instance to continue configuring the board.
      */
     public Builder setPiece(final Piece piece) {
       this.BoardConfigurations.put(piece.getPiecePosition(), piece);
       return this;
     }
-    
+
     /**
-     * Sets the alliance (color) of the player who will make the next move.
+     * Sets the alliance of the player who will make the next move.
      *
      * @param nextMoveMaker The alliance of the player who has the next move.
-     * @return The current builder instance to continue configuring the board.
      */
-    public Builder setMoveMaker(final Alliance nextMoveMaker) {
+    public void setMoveMaker(final Alliance nextMoveMaker) {
       this.nextMoveMaker = nextMoveMaker;
-      return this;
     }
-    
+
     /**
-     * Sets the en passant pawn for the current move.
+     * Sets the en passant pawn for the current board state.
      *
      * @param enPassantPawn The pawn that can be captured en passant in the current move.
-     * @return The current builder instance to continue configuring the board.
      */
-    public Builder setEnPassantPawn(final Pawn enPassantPawn) {
+    public void setEnPassantPawn(final Pawn enPassantPawn) {
       this.enPassantPawn = enPassantPawn;
-      return this;
     }
-    
+
     /**
      * Sets the move transition for the board configuration.
      *
      * @param transitionMove The move that represents the transition between the previous and current board states.
-     * @return The current builder instance to continue configuring the board.
      */
-    public Builder setMoveTransition(final Move transitionMove) {
+    public void setMoveTransition(final Move transitionMove) {
       this.transitionMove = transitionMove;
-      return this;
     }
-    
+
     /**
      * Sets the Zobrist hash value for the board being built.
      *
      * @param zobristHash The Zobrist hash value.
-     * @return The current builder instance to continue configuring the board.
      */
-    public Builder setZobristHash(final long zobristHash) {
+    public void setZobristHash(final long zobristHash) {
       this.zobristHash = zobristHash;
-      return this;
     }
 
     /**
