@@ -33,21 +33,6 @@ import static javax.swing.SwingUtilities.*;
  * initializes and displays the chess board, manages game setup, and controls the overall user experience. It also
  * handles the graphical representation of the chess pieces and their movements during gameplay. The class follows the
  * singleton pattern to ensure only one instance of the Table is created and used throughout the application.
- * <br><br>
- * Known bug:
- * At a very rapid pace of play (1 move in < .1 sec), promoted pawns will incorrectly remain pawns on the back ranks
- * instead of repainting to a queen. Likely due to a bug in the logic in the drawBoard() method, or even in the Pawn class. 
- * There is also a possibility of a runtime error because of the rapid rate of play.
- * <br><br>
- * Known bug:
- * Encountered mysterious bug when attempted to check for three-fold repetition among players. There is no indication as to
- * what is causing the bug, but it is likely a runtime error or a logic error because it is encountered after execution.
- * Most of the code has been deleted, or commented out, as it would likely require an overhaul to implement successfully.
- * <br><br>
- * Known bug:
- * Once a game has started and the computer is thinking, it is possible to make more AI players think in parallel. This
- * Drastically slows down the computation and glitches out the DebugPanel and the StockAlphaBeta class. A lock on selecting
- * the buttons in the "Setup Game" menu might be required to fix this.
  *
  * @author Aaron Ho
  * @author dareTo81
