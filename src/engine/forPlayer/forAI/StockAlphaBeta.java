@@ -17,7 +17,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static engine.forBoard.BoardUtils.mvvlva;
 import static engine.forBoard.Move.MoveFactory;
 
 /**
@@ -68,7 +67,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   private static final int MAX_SEARCH_DEPTH = 100;
 
   /** The futility pruning depth used to prune futile moves. */
-  private static final int FUTILITY_PRUNING_DEPTH = 2;
+  private static final int FUTILITY_PRUNING_DEPTH = 3;
 
   /** A depth threshold that when crossed initiates a LMR (Late Move Reduction) in depth. */
   private static final int LMR_THRESHOLD = 9;
@@ -80,13 +79,13 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   private static final double DELTA_PRUNING_VALUE = 5;
 
   /** Margin for razoring pruning */
-  private static final double RAZOR_MARGIN = 300;
+  private static final double RAZOR_MARGIN = 150;
 
   /** Aspiration window size */
-  private static final double ASPIRATION_WINDOW = 25;
+  private static final double ASPIRATION_WINDOW = 40;
 
   /** Delta material for pruning in quiescence search */
-  private static final double DELTA_MATERIAL = 200;
+  private static final double DELTA_MATERIAL = 100;
 
   /** SEE pruning threshold for quiescence */
   private static final int SEE_PRUNING_THRESHOLD = -20;
