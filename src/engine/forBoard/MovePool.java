@@ -417,35 +417,4 @@ public final class MovePool {
       }
     };
   }
-
-  /**
-   * Provides statistics about pool usage, including the number of objects created
-   * outside the pool and the current availability of objects in each pool.
-   *
-   * @return A formatted string containing pool statistics.
-   */
-  public String getPoolStats() {
-    return String.format(
-            """
-                    MovePool Stats:
-                    MajorMove: %d created, %d available
-                    MajorAttackMove: %d created, %d available
-                    PawnMove: %d created, %d available
-                    PawnAttackMove: %d created, %d available
-                    PawnJump: %d created, %d available
-                    PawnEnPassantAttack: %d created, %d available
-                    KingSideCastleMove: %d created, %d available
-                    QueenSideCastleMove: %d created, %d available
-                    PawnPromotion: %d created, %d available""",
-            majorMoveCreated.get(), majorMovePool.size(),
-            majorAttackMoveCreated.get(), majorAttackMovePool.size(),
-            pawnMoveCreated.get(), pawnMovePool.size(),
-            pawnAttackMoveCreated.get(), pawnAttackMovePool.size(),
-            pawnJumpCreated.get(), pawnJumpPool.size(),
-            pawnEnPassantAttackCreated.get(), pawnEnPassantAttackPool.size(),
-            kingSideCastleMoveCreated.get(), kingSideCastleMovePool.size(),
-            queenSideCastleMoveCreated.get(), queenSideCastleMovePool.size(),
-            pawnPromotionCreated.get(), pawnPromotionPool.size()
-    );
-  }
 }

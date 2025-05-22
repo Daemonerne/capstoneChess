@@ -14,6 +14,8 @@ import static engine.forGUI.Table.*;
 /**
  * Represents a panel that displays the move history of the game in a table format. It keeps track of moves made by both
  * white and black players, indicating if a move leads to check or checkmate for the opposing player.
+ *
+ * @author Aaron Ho
  */
 class GameHistoryPanel extends JPanel {
 
@@ -98,6 +100,7 @@ class GameHistoryPanel extends JPanel {
     /*** The move text for the black player. */
     private String blackMove;
 
+    /*** Constructs a new Row instance. */
     Row() {
     }
 
@@ -142,7 +145,7 @@ class GameHistoryPanel extends JPanel {
   private class DataModel extends DefaultTableModel {
 
     /*** The list of row objects representing data in the move history table. */
-    private final List < Row > values;
+    private final List<Row> values;
 
     /*** The column names for the move history table. */
     private static final String[] NAMES = {
@@ -150,8 +153,9 @@ class GameHistoryPanel extends JPanel {
             "Black"
     };
 
+    /*** Constructs a new DataModel with an empty list of values. */
     DataModel() {
-      this.values = new ArrayList < > ();
+      this.values = new ArrayList<>();
     }
 
     /*** Clears the data model, removing all stored values. */
@@ -206,11 +210,13 @@ class GameHistoryPanel extends JPanel {
       }
     }
 
+    /*** Returns the class type for the specified column. */
     @Override
-    public Class <?> getColumnClass(final int col) {
+    public Class<?> getColumnClass(final int col) {
       return Move.class;
     }
 
+    /*** Returns the name of the specified column. */
     @Override
     public String getColumnName(final int col) {
       return NAMES[col];

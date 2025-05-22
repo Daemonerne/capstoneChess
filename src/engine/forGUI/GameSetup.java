@@ -8,7 +8,7 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * The `GameSetup` class represents a dialog for configuring game setup options using Java Swing.
+ * The GameSetup class represents a dialog for configuring game setup options using Java Swing.
  * This dialog allows users to specify player types (human or computer) for both white and black sides, as well
  * as set the search depth for AI move calculation.
  *
@@ -17,19 +17,29 @@ import java.awt.*;
  */
 class GameSetup extends JDialog {
 
-  /*** The PlayerType representing the current white player. */
+  /**
+   * The PlayerType representing the current white player.
+   */
   private PlayerType whitePlayerType;
 
-  /*** The PlayerType representing the current black player. */
+  /**
+   * The PlayerType representing the current black player.
+   */
   private PlayerType blackPlayerType;
 
-  /*** The search depth selector. */
+  /**
+   * The search depth selector.
+   */
   private final JSpinner searchDepthSpinner;
 
-  /*** String used for representing a human player. */
+  /**
+   * String used for representing a human player.
+   */
   private static final String HUMAN_TEXT = "Human";
 
-  /*** String used for representing a computer player. */
+  /**
+   * String used for representing a computer player.
+   */
   private static final String COMPUTER_TEXT = "Computer";
 
   /**
@@ -46,18 +56,18 @@ class GameSetup extends JDialog {
     final JRadioButton whiteComputerButton = new JRadioButton(COMPUTER_TEXT);
     final JRadioButton blackHumanButton = new JRadioButton(HUMAN_TEXT);
     final JRadioButton blackComputerButton = new JRadioButton(COMPUTER_TEXT);
-    
+
     whiteHumanButton.setActionCommand(HUMAN_TEXT);
     final ButtonGroup whiteGroup = new ButtonGroup();
     whiteGroup.add(whiteHumanButton);
     whiteGroup.add(whiteComputerButton);
     whiteHumanButton.setSelected(true);
-    
+
     final ButtonGroup blackGroup = new ButtonGroup();
     blackGroup.add(blackHumanButton);
     blackGroup.add(blackComputerButton);
     blackHumanButton.setSelected(true);
-    
+
     getContentPane().add(myPanel);
     myPanel.add(new JLabel("White"));
     myPanel.add(whiteHumanButton);
@@ -66,7 +76,7 @@ class GameSetup extends JDialog {
     myPanel.add(blackHumanButton);
     myPanel.add(blackComputerButton);
     myPanel.add(new JLabel("Search"));
-    
+
     this.searchDepthSpinner = addLabeledSpinner(myPanel, new SpinnerNumberModel(6, 0, Integer.MAX_VALUE, 1));
     final JButton cancelButton = new JButton("Cancel");
     final JButton okButton = new JButton("OK");
@@ -86,7 +96,9 @@ class GameSetup extends JDialog {
     setVisible(false);
   }
 
-  /*** Displays the dialog to prompt the user for game setup options. */
+  /**
+   * Displays the dialog to prompt the user for game setup options.
+   */
   void promptUser() {
     setVisible(true);
     repaint();
