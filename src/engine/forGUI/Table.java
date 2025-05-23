@@ -27,81 +27,74 @@ import static javax.swing.JDialog.setDefaultLookAndFeelDecorated;
 import static javax.swing.SwingUtilities.*;
 
 /**
- * The Table class represents the main user interface for the Capstone chess engine. It creates a graphical chess
- * board using Swing components and provides various features such as a menu bar, game history panel, debug panel,
- * taken pieces panel, and the ability to observe the game with an AI watcher. The Table class
- * initializes and displays the chess board, manages game setup, and controls the overall user experience. It also
- * handles the graphical representation of the chess pieces and their movements during gameplay. The class follows the
- * singleton pattern to ensure only one instance of the Table is created and used throughout the application.
+ * The Table class represents the main user interface for the Capstone chess engine.
+ * It creates a graphical chess board using Swing components and provides various features
+ * such as a menu bar, game history panel, debug panel, and AI integration.
+ * The class follows the singleton pattern to ensure only one instance exists.
  *
  * @author Aaron Ho
  * @author dareTo81
  */
-
 public final class Table extends Observable {
 
-  /*** The panel displaying the game's move history. */
+  /** The panel displaying the game's move history. */
   private final GameHistoryPanel gameHistoryPanel;
 
-  /*** The panel for displaying debug information or messages. */
+  /** The panel for displaying debug information or messages. */
   private final DebugPanel debugPanel;
 
-  /*** The panel representing the chess board and its tiles. */
+  /** The panel representing the chess board and its tiles. */
   private final BoardPanel boardPanel;
 
-  /*** The log of moves made in the game. */
+  /** The log of moves made in the game. */
   public static MoveLog moveLog;
 
-  /*** The setup configuration for the current game. */
+  /** The setup configuration for the current game. */
   private final GameSetup gameSetup;
 
-  /*** The current state of the chess board. */
+  /** The current state of the chess board. */
   private Board chessBoard;
 
-  /*** The move made by the computer. */
+  /** The move made by the computer. */
   private Move computerMove;
 
-  /*** The source tile of the piece being moved. */
+  /** The source tile of the piece being moved. */
   private Piece sourceTile;
 
-  /*** The piece moved by the human player. */
+  /** The piece moved by the human player. */
   private Piece humanMovedPiece;
 
-  /*** The direction of the chess board (normal or flipped). */
+  /** The direction of the chess board (normal or flipped). */
   private BoardDirection boardDirection;
 
-  /*** The file path for the icons representing chess pieces. */
+  /** The file path for the icons representing chess pieces. */
   private final String pieceIconPath;
 
-  /*** Indicates whether legal moves should be highlighted on the board. */
+  /** Indicates whether legal moves should be highlighted on the board. */
   private boolean highlightLegalMoves;
 
-  /*** The color of light tiles on the chess board. */
+  /** The color of light tiles on the chess board. */
   private final Color lightTileColor = Color.decode("#FFFACD");
 
-  /*** The color of dark tiles on the chess board. */
+  /** The color of dark tiles on the chess board. */
   private final Color darkTileColor = Color.decode("#593E1A");
 
-  /*** A Dimension that represents the outer frame of the chessboard. */
+  /** The outer frame dimension of the chessboard. */
   private static final Dimension OUTER_FRAME_DIMENSION = Toolkit.getDefaultToolkit().getScreenSize();
 
-  /*** A Dimension that represents the board. */
+  /** The board panel dimension. */
   private static final Dimension BOARD_PANEL_DIMENSION = new Dimension(620, 620);
 
-  /*** A Dimension that represents a tile. */
+  /** The tile panel dimension. */
   private static final Dimension TILE_PANEL_DIMENSION = new Dimension(40, 40);
 
-  /*** The single instance of the Table class (singleton). */
+  /** The single instance of the Table class (singleton). */
   private static final Table Instance = new Table();
 
-
   /**
-   * Constructs an instance of the Table class, creating the main graphical user interface for the Capstone chess engine.
-   * The constructor initializes and configures various components, including the game frame, menu bar, chess board,
-   * game history panel, debug panel, taken pieces panel, and game setup options. It sets up the user interface for
-   * playing chess, including the display of chess pieces, legal move highlighting, and interaction with the user.
-   * The Table class follows the singleton pattern, ensuring that only one instance is created for managing the user
-   * interface of the chess game.
+   * Constructs an instance of the Table class, creating the main graphical user interface.
+   * Initializes and configures various components including the game frame, menu bar,
+   * chess board, game history panel, debug panel, and game setup options.
    */
   private Table() {
     JFrame gameFrame = new JFrame("Capstone Chess");
@@ -131,7 +124,7 @@ public final class Table extends Observable {
   }
 
   /**
-   * Retrieves the singleton instance of the Table class, providing access to the main graphical user interface.
+   * Retrieves the singleton instance of the Table class.
    *
    * @return The singleton instance of the Table class.
    */
@@ -149,7 +142,7 @@ public final class Table extends Observable {
   }
 
   /**
-   * Retrieves the MoveLog object responsible for recording and managing the sequence of moves made during the game.
+   * Retrieves the MoveLog object for tracking the move history.
    *
    * @return The MoveLog object for tracking the move history.
    */
@@ -158,7 +151,7 @@ public final class Table extends Observable {
   }
 
   /**
-   * Retrieves the BoardPanel object responsible for rendering and displaying the graphical chess board.
+   * Retrieves the BoardPanel object for rendering the chess board.
    *
    * @return The BoardPanel object for rendering the chess board.
    */
@@ -167,7 +160,7 @@ public final class Table extends Observable {
   }
 
   /**
-   * Retrieves the GameHistoryPanel object responsible for displaying the sequence of moves and game history.
+   * Retrieves the GameHistoryPanel object for displaying move history.
    *
    * @return The GameHistoryPanel object for displaying move history.
    */
@@ -176,7 +169,7 @@ public final class Table extends Observable {
   }
 
   /**
-   * Retrieves the DebugPanel object responsible for displaying debugging and game-related information.
+   * Retrieves the DebugPanel object for displaying debugging information.
    *
    * @return The DebugPanel object for displaying debugging information.
    */
@@ -185,7 +178,7 @@ public final class Table extends Observable {
   }
 
   /**
-   * Retrieves the GameSetup object responsible for configuring game parameters and setup options.
+   * Retrieves the GameSetup object for configuring game parameters.
    *
    * @return The GameSetup object for configuring game settings.
    */
@@ -196,18 +189,15 @@ public final class Table extends Observable {
   /**
    * Retrieves the current status of legal move highlighting on the chess board.
    *
-   * @return true if legal move highlighting is enabled, false otherwise.
+   * @return True if legal move highlighting is enabled, false otherwise.
    */
   private boolean getHighlightLegalMoves() {
     return this.highlightLegalMoves;
   }
 
   /**
-   * Refreshes and updates the graphical user interface to reflect the current state of the chess game. This method is
-   * responsible for clearing the move log, updating the game history panel, refreshing the taken pieces panel, redrawing
-   * the chess board, and updating the debug panel. The method helps ensure that the user interface accurately reflects
-   * the most recent changes and moves in the chess game. It is typically called after a move has been made to update
-   * the display accordingly.
+   * Refreshes and updates the graphical user interface to reflect the current game state.
+   * Updates the game history panel, redraws the chess board, and updates the debug panel.
    */
   public void show() {
     if (moveLog.size() == 0) {
@@ -245,10 +235,9 @@ public final class Table extends Observable {
   }
 
   /**
-   * This method constructs a JMenu with options to interact with the game, including starting a new game,
-   * evaluating the current board position, inspecting the current game state, undoing the last move, and
-   * setting up the game parameters. Each option is associated with a specific action when selected, such
-   * as undoing a move, displaying evaluation details, or configuring game settings.
+   * Creates a JMenu with options to interact with the game.
+   * Includes starting a new game, evaluating the board, inspecting game state,
+   * undoing moves, and setting up game parameters.
    *
    * @return The JMenu containing gameplay options.
    */
@@ -260,7 +249,7 @@ public final class Table extends Observable {
     final JMenuItem resetMenuItem = new JMenuItem("New Game", KeyEvent.VK_P);
     resetMenuItem.addActionListener(e -> undoAllMoves());
     optionsMenu.add(resetMenuItem);
-  
+
     final JMenuItem legalMovesMenuItem = new JMenuItem("Current State", KeyEvent.VK_L);
     legalMovesMenuItem.addActionListener(e -> {
       System.out.println(chessBoard.getWhitePieces());
@@ -296,9 +285,9 @@ public final class Table extends Observable {
   }
 
   /**
-   * This method constructs a JMenu with options for customizing user preferences and settings related to the
-   * appearance and behavior of the chess game. Users can choose tile colors, chess piece images, highlight legal
-   * moves, and toggle book moves usage.
+   * Creates a JMenu with options for customizing user preferences and settings.
+   * Users can choose tile colors, chess piece images, highlight legal moves,
+   * and toggle book moves usage.
    *
    * @return The JMenu containing user preferences and settings.
    */
@@ -309,8 +298,8 @@ public final class Table extends Observable {
     flipBoardMenuItem.addActionListener(e -> {
       boardDirection = boardDirection.opposite();
       boardPanel.drawBoard(chessBoard);
-    }); 
-    
+    });
+
     preferencesMenu.add(flipBoardMenuItem);
     preferencesMenu.addSeparator();
     final JCheckBoxMenuItem cbLegalMoveHighlighter = new JCheckBoxMenuItem("Highlight Legal Moves", false);
@@ -320,25 +309,23 @@ public final class Table extends Observable {
   }
 
   /**
-   * This method constructs a string containing details about the given player's alliance, legal moves,
-   * check status, checkmate status, and castling status. The generated text provides insights into the current
-   * state of the player in the chess game.
+   * Constructs a string containing details about the given player's alliance, legal moves,
+   * check status, checkmate status, and castling status.
    *
    * @param player The player for which to generate the information.
-   * @return       A string representation of the player's status and legal moves.
+   * @return A string representation of the player's status and legal moves.
    */
   private static String playerInfo(final Player player) {
-    return ("Player is: " + player.getAlliance() + 
+    return ("Player is: " + player.getAlliance() +
             "\nlegal moves (" + player.getLegalMoves().size() + ") = " + player.getLegalMoves() +
-            "\ninCheck = " + player.isInCheck() + 
+            "\ninCheck = " + player.isInCheck() +
             "\nisInCheckMate = " + player.isInCheckMate() +
-            "\nisCastled = " + player.isCastled()) + 
+            "\nisCastled = " + player.isCastled()) +
             "\n";
   }
 
   /**
-   * This method updates the internal state of the chess game's board to match the configuration
-   * of the provided board. It is used to synchronize the displayed game board with the actual game state.
+   * Updates the internal state of the chess game's board to match the provided board.
    *
    * @param board The new board configuration to be applied to the game.
    */
@@ -347,8 +334,7 @@ public final class Table extends Observable {
   }
 
   /**
-   * This method updates the internal state of the computer's chosen move to the specified move.
-   * It is used to keep track of the move selected by the computer player during the game.
+   * Updates the internal state of the computer's chosen move.
    *
    * @param move The move chosen by the computer player.
    */
@@ -357,9 +343,8 @@ public final class Table extends Observable {
   }
 
   /**
-   * This method reverses all moves that have been made in the current game session, effectively
-   * resetting the game to its initial state. It clears the move log, updates the game board and
-   * history, and redraws the board panel to reflect the reset game state.
+   * Reverses all moves that have been made in the current game session.
+   * Effectively resets the game to its initial state.
    */
   private void undoAllMoves() {
     for (int i = Table.get().getMoveLog().size() - 1; i >= 0; i--) {
@@ -374,9 +359,8 @@ public final class Table extends Observable {
   }
 
   /**
-   * This method removes the last move from the move log, updates the game board state,
-   * clears the computer move, and refreshes various components of the user interface to reflect
-   * the changes after undoing the move.
+   * Removes the last move from the move log and updates the game board state.
+   * Clears the computer move and refreshes UI components.
    */
   private void undoLastMove() {
     final Move lastMove = Table.get().getMoveLog().removeMove(Table.get().getMoveLog().size() - 1);
@@ -389,8 +373,7 @@ public final class Table extends Observable {
   }
 
   /**
-   * This method sets the state as changed and notifies registered observers with the
-   * specified player type as an argument.
+   * Sets the state as changed and notifies registered observers with the specified player type.
    *
    * @param playerType The type of player (Human or Computer) who made the move.
    */
@@ -400,8 +383,7 @@ public final class Table extends Observable {
   }
 
   /**
-   * This method sets the state as changed and notifies registered observers with the
-   * provided game setup configuration.
+   * Sets the state as changed and notifies registered observers with the game setup configuration.
    *
    * @param gameSetup The updated game setup configuration.
    */
@@ -411,9 +393,8 @@ public final class Table extends Observable {
   }
 
   /**
-   * A watcher class that observes changes in the game state and triggers AI actions
-   * or displays game-over messages based on certain conditions. Observer is deprecated,
-   * but its use in this class was heavily advised.
+   * The TableGameAIWatcher class observes changes in the game state and triggers AI actions
+   * or displays game-over messages based on certain conditions.
    */
   private static class TableGameAIWatcher implements Observer {
 
@@ -421,8 +402,8 @@ public final class Table extends Observable {
      * Responds to updates from the observed object, triggering AI actions or
      * displaying game-over messages based on the current game state.
      *
-     * @param o   The observable object (not used in this context).
-     * @param arg An argument passed by the observed object (not used in this context).
+     * @param o   The observable object.
+     * @param arg An argument passed by the observed object.
      */
     @Override
     public void update(final Observable o,
@@ -445,21 +426,27 @@ public final class Table extends Observable {
     }
   }
 
-  /*** An enumeration representing the types of players in the chess game: Human and Computer. */
+  /**
+   * The PlayerType enumeration represents the types of players in the chess game.
+   */
   enum PlayerType {
 
-    /*** Represents a human player. */
+    /** Represents a human player. */
     HUMAN,
-    
-    /*** Represents a computer player. */
+
+    /** Represents a computer player. */
     COMPUTER
   }
 
-  /*** An asynchronous worker class responsible for AI move calculation and execution. */
+  /**
+   * The AIThinkTank class is an asynchronous worker responsible for AI move calculation and execution.
+   */
   private static class AIThinkTank extends SwingWorker < Move, String > {
-    private final ExecutorService executorService;  
 
-    /*** Constructs an instance of AIThinkTank. */
+    /** The executor service for managing AI computation threads. */
+    private final ExecutorService executorService;
+
+    /** Constructs an instance of AIThinkTank. */
     private AIThinkTank() {
       this.executorService = Executors.newFixedThreadPool(1);
     }
@@ -478,7 +465,10 @@ public final class Table extends Observable {
       return bestMove;
     }
 
-    /*** Handles the completion of the AI move calculation. */
+    /**
+     * Handles the completion of the AI move calculation.
+     * Updates the game state with the calculated move and refreshes the UI.
+     */
     @Override
     public void done() {
       try {
@@ -500,15 +490,14 @@ public final class Table extends Observable {
   }
 
   /**
-   * Represents a graphical panel displaying the chess board and its tiles.
-   * This panel is used to visualize the current state of the chess game.
+   * The BoardPanel class represents a graphical panel displaying the chess board and its tiles.
    */
   private class BoardPanel extends JPanel {
 
-    /*** List of tile panels representing the individual tiles on the chess board. */
+    /** List of tile panels representing the individual tiles on the chess board. */
     final List <TilePanel> boardTiles;
 
-    /*** Constructs a new BoardPanel and initializes its tile panels. */
+    /** Constructs a new BoardPanel and initializes its tile panels. */
     BoardPanel() {
       super(new GridLayout(8, 8));
       this.boardTiles = new ArrayList < > ();
@@ -516,8 +505,8 @@ public final class Table extends Observable {
         final TilePanel tilePanel = new TilePanel(this, i);
         this.boardTiles.add(tilePanel);
         add(tilePanel);
-      } 
-      
+      }
+
       setPreferredSize(BOARD_PANEL_DIMENSION);
       setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
       setBackground(Color.decode("#8B4726"));
@@ -539,23 +528,25 @@ public final class Table extends Observable {
     }
   }
 
-  /*** An enumeration representing the two possible directions of the chess board display. */
+  /**
+   * The BoardDirection enumeration represents the two possible directions of the chess board display.
+   */
   enum BoardDirection {
 
-    /*** Represents the normal direction of the chess board, where tiles are displayed in their natural order. */
+    /** Represents the normal direction of the chess board. */
     NORMAL {
       @Override
       List <TilePanel> traverse(final List <TilePanel> boardTiles) {
         return boardTiles;
       }
-      
+
       @Override
       BoardDirection opposite() {
         return FLIPPED;
       }
     },
 
-    /*** Represents the flipped direction of the chess board, where tiles are displayed in reverse order. */
+    /** Represents the flipped direction of the chess board. */
     FLIPPED {
       @Override
       List <TilePanel> traverse(final List <TilePanel> boardTiles) {
@@ -572,7 +563,7 @@ public final class Table extends Observable {
      * Traverses the list of tile panels according to the current board direction.
      *
      * @param boardTiles The list of tile panels to traverse.
-     * @return           A list of tile panels in the desired traversal order.
+     * @return A list of tile panels in the desired traversal order.
      */
     abstract List <TilePanel> traverse(final List <TilePanel> boardTiles);
 
@@ -584,13 +575,15 @@ public final class Table extends Observable {
     abstract BoardDirection opposite();
   }
 
-  /*** A class representing a log of moves made during a chess game. */
+  /**
+   * The MoveLog class represents a log of moves made during a chess game.
+   */
   public static class MoveLog {
 
-    /*** A list of moves to be used in the move log. */
+    /** A list of moves to be used in the move log. */
     private final List <Move> moves;
 
-    /*** Constructs a new MoveLog. */
+    /** Constructs a new MoveLog. */
     MoveLog() {
       this.moves = new LinkedList <>();
     }
@@ -633,7 +626,7 @@ public final class Table extends Observable {
      * Removes a move at the specified index from the MoveLog.
      *
      * @param index The index of the move to be removed.
-     * @return      The removed move.
+     * @return The removed move.
      */
     Move removeMove(final int index) {
       return this.moves.remove(index);
@@ -650,13 +643,13 @@ public final class Table extends Observable {
   }
 
   /**
-   * Represents a graphical panel for an individual tile on the chessboard. Each
-   * TilePanel displays a single tile of the chessboard grid along with its
-   * associated piece, legal move highlights, and other visual elements.
+   * The TilePanel class represents a graphical panel for an individual tile on the chessboard.
+   * Each TilePanel displays a single tile with its associated piece, legal move highlights,
+   * and other visual elements.
    */
   private class TilePanel extends JPanel {
 
-    /*** The tile number. */
+    /** The tile number identifier. */
     private final int tileId;
 
     /**
@@ -737,9 +730,6 @@ public final class Table extends Observable {
 
     /**
      * Highlights the border of the tile based on the current state of the game.
-     * The border is colored cyan if the specified humanMovedPiece is the current player's piece
-     * and is positioned on this tile, indicating a possible move source. Otherwise, the border
-     * is colored gray, indicating a regular tile.
      *
      * @param board The current state of the chessboard.
      */
@@ -749,14 +739,12 @@ public final class Table extends Observable {
               humanMovedPiece.getPiecePosition() == this.tileId) {
         setBorder(BorderFactory.createLineBorder(Color.cyan));
       } else {
-        setBorder(BorderFactory.createLineBorder(Color.GRAY));  
+        setBorder(BorderFactory.createLineBorder(Color.GRAY));
       }
     }
 
     /**
      * Highlights the background of the tile if a computer move is available.
-     * The tile is colored pink if it matches the current coordinate of the computer move,
-     * and red if it matches the destination coordinate of the computer move.
      */
     private void highlightAIMove() {
       if (computerMove != null) {
@@ -769,9 +757,7 @@ public final class Table extends Observable {
     }
 
     /**
-     * Highlights legal move destinations on the tile panel, displaying a green dot icon.
-     * Checks if highlighting legal moves is enabled and adds a green dot icon to the tile
-     * if the move's destination coordinate matches the tile's ID.
+     * Highlights legal move destinations on the tile panel.
      *
      * @param board The current state of the chess board.
      */
@@ -790,7 +776,7 @@ public final class Table extends Observable {
     }
 
     /**
-     * Retrieves the collection of legal moves for the currently selected piece on the board.
+     * Retrieves the collection of legal moves for the currently selected piece.
      *
      * @param board The current state of the chess board.
      * @return A collection of legal moves for the selected piece.
@@ -802,7 +788,7 @@ public final class Table extends Observable {
     }
 
     /**
-     * Assigns the appropriate piece icon to the tile on the board based on the current state of the chess board.
+     * Assigns the appropriate piece icon to the tile based on the current board state.
      *
      * @param board The current state of the chess board.
      */
@@ -815,7 +801,6 @@ public final class Table extends Observable {
                   board.getPiece(this.tileId).toString() +
                   ".svg";
 
-          // Load and render the SVG
           BufferedImage image = renderSvgToImage(new File(svgFilePath), TILE_PANEL_DIMENSION.width);
           add(new JLabel(new ImageIcon(image)));
         } catch (final Exception e) {
@@ -825,39 +810,39 @@ public final class Table extends Observable {
       }
     }
 
-    // Add this method to render SVG to a BufferedImage
+    /**
+     * Renders an SVG file to a BufferedImage for display.
+     *
+     * @param svgFile The SVG file to render.
+     * @param size The desired size of the rendered image.
+     * @return A BufferedImage containing the rendered SVG.
+     * @throws Exception If rendering fails.
+     */
     private BufferedImage renderSvgToImage(File svgFile, int size) throws Exception {
-      // Create a transcoder that will convert SVG to an image
       org.apache.batik.transcoder.image.PNGTranscoder transcoder =
               new org.apache.batik.transcoder.image.PNGTranscoder();
 
-      // Set up transcoding hints
       org.apache.batik.transcoder.TranscoderInput input =
               new org.apache.batik.transcoder.TranscoderInput(svgFile.toURI().toString());
 
-      // Create a BufferedImage to hold the result
       BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
       ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
       org.apache.batik.transcoder.TranscoderOutput output =
               new org.apache.batik.transcoder.TranscoderOutput(outputStream);
 
-      // Add hints for size
       transcoder.addTranscodingHint(org.apache.batik.transcoder.SVGAbstractTranscoder.KEY_WIDTH,
               (float)size);
       transcoder.addTranscodingHint(org.apache.batik.transcoder.SVGAbstractTranscoder.KEY_HEIGHT,
               (float)size);
 
-      // Perform the transcoding
       transcoder.transcode(input, output);
 
-      // Convert the output stream to an image
       ByteArrayInputStream bis = new ByteArrayInputStream(outputStream.toByteArray());
       return ImageIO.read(bis);
     }
 
     /**
-     * Assigns the appropriate background color to the tile based on its position on the chess board.
-     * Differentiates between light and dark tiles in alternating rows.
+     * Assigns the appropriate background color to the tile based on its position.
      */
     private void assignTileColor() {
       if (BoardUtils.Instance.FirstRow.get(this.tileId) ||

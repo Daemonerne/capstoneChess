@@ -13,7 +13,7 @@ import java.util.*;
  * of a knight on the chess board. Knights have a unique move pattern, making an L-shaped move that consists of two squares in
  * one direction and one square perpendicular to the first direction. Knights can jump over other pieces, allowing them to
  * control squares that other pieces cannot reach directly.
- * <br><br>
+ * <p>
  * This class provides methods for calculating legal moves for a knight, including standard moves and capturing moves.
  * It also implements the locationBonus method to evaluate a knight's position on the board.
  *
@@ -21,12 +21,14 @@ import java.util.*;
  */
 public final class Knight extends Piece {
 
-  /*** An array of possible candidate move coordinates for a knight in its L-shaped move pattern. */
+  /** An array of possible candidate move coordinates for a knight in its L-shaped move pattern. */
   private final static int[] CANDIDATE_MOVE_COORDINATES = { -17, -15, -10, -6, 6, 10, 15, 17 };
 
-  /*** A map that stores the precomputed legal move offsets for each tile on the board,
-   * taking edge cases into consideration. */
-  private final static Map <Integer, int[]> PRECOMPUTED_CANDIDATES = computeCandidates();
+  /**
+   * A map that stores the precomputed legal move offsets for each tile on the board,
+   * taking edge cases into consideration.
+   */
+  private final static Map<Integer, int[]> PRECOMPUTED_CANDIDATES = computeCandidates();
 
   /**
    * Constructs a new Knight instance with the given alliance, piece position, and number of moves.
@@ -62,8 +64,8 @@ public final class Knight extends Piece {
    *
    * @return A map containing the precomputed legal move offsets for each tile on the board.
    */
-  private static Map <Integer, int[]> computeCandidates() {
-    final Map <Integer, int[]> candidates = new HashMap <>();
+  private static Map<Integer, int[]> computeCandidates() {
+    final Map<Integer, int[]> candidates = new HashMap<>();
     for (int position = 0; position < BoardUtils.NUM_TILES; position++) {
       final int[] legalOffsets = new int[CANDIDATE_MOVE_COORDINATES.length];
       int numLegalMoves = 0;
@@ -91,17 +93,15 @@ public final class Knight extends Piece {
    * @return A collection of legal moves for the knight.
    */
   @Override
-  public Collection <Move> calculateLegalMoves(final Board board) {
-    final List <Move> legalMoves = new ArrayList <>();
+  public Collection<Move> calculateLegalMoves(final Board board) {
+    final List<Move> legalMoves = new ArrayList<>();
     for (final int candidateDestinationCoordinate: PRECOMPUTED_CANDIDATES.get(this.piecePosition)) {
       final Piece pieceAtDestination = board.getPiece(candidateDestinationCoordinate);
       if (pieceAtDestination == null) {
-        // Use MovePool instead of creating new Move instances
         legalMoves.add(MovePool.INSTANCE.getMajorMove(board, this, candidateDestinationCoordinate));
       } else {
         final Alliance pieceAtDestinationAllegiance = pieceAtDestination.getPieceAllegiance();
         if (this.pieceAlliance != pieceAtDestinationAllegiance) {
-          // Use MovePool instead of creating new Move instances
           legalMoves.add(MovePool.INSTANCE.getMajorAttackMove(board, this, candidateDestinationCoordinate,
                   pieceAtDestination));
         }
@@ -113,6 +113,7 @@ public final class Knight extends Piece {
   /**
    * Calculates the location bonus for the knight based on its position on the board.
    *
+   * @param board The current board state.
    * @return The location bonus for the knight.
    */
   @Override

@@ -3,9 +3,12 @@ package engine.forPlayer.forAI;
 import engine.forBoard.Board;
 import engine.forBoard.BoardUtils;
 import engine.forBoard.Move;
-import engine.forPiece.*;
+import engine.forPiece.King;
+import engine.forPiece.Piece;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * GameStateDetector provides precise identification of the current chess game phase

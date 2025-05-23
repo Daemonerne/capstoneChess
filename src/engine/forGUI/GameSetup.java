@@ -8,32 +8,33 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * The `GameSetup` class represents a dialog for configuring game setup options using Java Swing.
- * This dialog allows users to specify player types (human or computer) for both white and black sides, as well
- * as set the search depth for AI move calculation.
+ * The GameSetup class represents a dialog for configuring game setup options using Java Swing.
+ * This dialog allows users to specify player types (human or computer) for both white and black sides,
+ * as well as set the search depth for AI move calculation.
  *
  * @author dareTo81
  * @author Aaron Ho
  */
 class GameSetup extends JDialog {
 
-  /*** The PlayerType representing the current white player. */
+  /** The PlayerType representing the current white player. */
   private PlayerType whitePlayerType;
 
-  /*** The PlayerType representing the current black player. */
+  /** The PlayerType representing the current black player. */
   private PlayerType blackPlayerType;
 
-  /*** The search depth selector. */
+  /** The search depth selector for AI configuration. */
   private final JSpinner searchDepthSpinner;
 
-  /*** String used for representing a human player. */
+  /** String constant used for representing a human player. */
   private static final String HUMAN_TEXT = "Human";
 
-  /*** String used for representing a computer player. */
+  /** String constant used for representing a computer player. */
   private static final String COMPUTER_TEXT = "Computer";
 
   /**
    * Constructs a new GameSetup dialog with the specified parent frame and modality.
+   * Initializes UI components including player type selection and search depth configuration.
    *
    * @param frame The parent frame for the dialog.
    * @param modal Specifies whether the dialog should be modal.
@@ -46,18 +47,18 @@ class GameSetup extends JDialog {
     final JRadioButton whiteComputerButton = new JRadioButton(COMPUTER_TEXT);
     final JRadioButton blackHumanButton = new JRadioButton(HUMAN_TEXT);
     final JRadioButton blackComputerButton = new JRadioButton(COMPUTER_TEXT);
-    
+
     whiteHumanButton.setActionCommand(HUMAN_TEXT);
     final ButtonGroup whiteGroup = new ButtonGroup();
     whiteGroup.add(whiteHumanButton);
     whiteGroup.add(whiteComputerButton);
     whiteHumanButton.setSelected(true);
-    
+
     final ButtonGroup blackGroup = new ButtonGroup();
     blackGroup.add(blackHumanButton);
     blackGroup.add(blackComputerButton);
     blackHumanButton.setSelected(true);
-    
+
     getContentPane().add(myPanel);
     myPanel.add(new JLabel("White"));
     myPanel.add(whiteHumanButton);
@@ -66,7 +67,7 @@ class GameSetup extends JDialog {
     myPanel.add(blackHumanButton);
     myPanel.add(blackComputerButton);
     myPanel.add(new JLabel("Search"));
-    
+
     this.searchDepthSpinner = addLabeledSpinner(myPanel, new SpinnerNumberModel(6, 0, Integer.MAX_VALUE, 1));
     final JButton cancelButton = new JButton("Cancel");
     final JButton okButton = new JButton("OK");
@@ -86,17 +87,19 @@ class GameSetup extends JDialog {
     setVisible(false);
   }
 
-  /*** Displays the dialog to prompt the user for game setup options. */
+  /**
+   * Displays the dialog to prompt the user for game setup options.
+   */
   void promptUser() {
     setVisible(true);
     repaint();
   }
 
   /**
-   * Checks if AI controls the given player on the setup configuration.
+   * Checks if AI controls the given player based on the setup configuration.
    *
    * @param player The player for which to check AI status.
-   * @return       True if the player is AI-controlled, indicating a computer player; false if the player is human-controlled.
+   * @return True if the player is AI-controlled, false if human-controlled.
    */
   boolean isAIPlayer(final Player player) {
     if (player.getAlliance() == Alliance.WHITE) {
@@ -108,7 +111,7 @@ class GameSetup extends JDialog {
   /**
    * Returns the type of player (human or computer) for the white side.
    *
-   * @return The player type for the white side: either human or computer, as configured in the setup dialog.
+   * @return The player type for the white side.
    */
   PlayerType getWhitePlayerType() {
     return this.whitePlayerType;
@@ -117,16 +120,18 @@ class GameSetup extends JDialog {
   /**
    * Returns the type of player (human or computer) for the black side.
    *
-   * @return The player type for the black side: either human or computer, as configured in the setup dialog.
+   * @return The player type for the black side.
    */
   PlayerType getBlackPlayerType() {
     return this.blackPlayerType;
   }
 
   /**
-   * Returns a JSpinner that will represent a customizable option in the GUI.
+   * Creates and adds a labeled spinner to the specified container.
    *
-   * @return a label JSpinner.
+   * @param c The container to add the spinner to.
+   * @param model The spinner model to use.
+   * @return The created JSpinner instance.
    */
   private static JSpinner addLabeledSpinner(final Container c,
                                             final SpinnerModel model) {

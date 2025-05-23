@@ -9,41 +9,46 @@ import engine.forBoard.MovePool;
 import java.util.*;
 
 /**
- * The King class represents a king chess piece. It extends the Piece class and defines the specific properties and behaviors
- * of a king on the chess board. Kings have limited movement, being able to move one square in any direction.
- * Kings can also participate in castling moves, which is a special double-move involving the king and a rook.
- * <br><br>
- * The King class provides methods for calculating legal moves for a king, including standard moves and capturing moves.
- * It also implements methods for checking if the king is castled and if it is capable of performing king-side or
- * queen-side castling moves.
+ * The King class represents a king chess piece with specialized movement and castling capabilities.
+ * Kings move one square in any direction and are the most important piece on the board, as their
+ * capture results in checkmate. This class handles standard king movement, castling rights,
+ * and maintains state information about whether the king has moved or castled.
+ * <p>
+ * Kings can participate in castling moves under specific conditions, including unmoved status,
+ * clear paths to rooks, and absence of check. The class precomputes legal move patterns
+ * for efficient move generation and validates edge cases for board boundaries.
  *
  * @author Aaron Ho
  */
 public final class King extends Piece {
 
-  /*** An array of possible candidate move coordinates for a king, representing all possible one-square moves. */
+  /** An array of coordinate offsets representing all possible one-square king moves in eight directions. */
   private final static int[] CANDIDATE_MOVE_COORDINATES = { -9, -8, -7, -1, 1, 7, 8, 9 };
 
-  /*** A map that stores the precomputed legal move offsets for each tile on the board,
-   * taking edge cases into consideration. */
-  private final static Map <Integer, int[]> PRECOMPUTED_CANDIDATES = computeCandidates();
+  /**
+   * A precomputed map storing legal move offsets for each board position.
+   * Keys represent tile coordinates and values contain arrays of valid destination offsets,
+   * accounting for board edge restrictions.
+   */
+  private final static Map<Integer, int[]> PRECOMPUTED_CANDIDATES = computeCandidates();
 
-  /*** A boolean indicating if the king has been castled. */
+  /** Indicates whether this king has completed a castling move. */
   private final boolean isCastled;
 
-  /*** A boolean indicating if the king is capable of performing king-side castling. */
+  /** Indicates whether this king retains the right to castle kingside. */
   private final boolean kingSideCastleCapable;
 
-  /*** A boolean indicating if the king is capable of performing queen-side castling. */
+  /** Indicates whether this king retains the right to castle queenside. */
   private final boolean queenSideCastleCapable;
 
   /**
-   * Constructs a new King instance with the given alliance, piece position, and castling capabilities.
+   * Constructs a King with specified alliance, position, and castling capabilities.
+   * This constructor assumes the king has not moved and sets the move count to zero.
    *
-   * @param alliance                 The alliance (color) of the king.
-   * @param piecePosition            The current position of the king on the board.
-   * @param kingSideCastleCapable    Whether the king is capable of performing king-side castling.
-   * @param queenSideCastleCapable   Whether the king is capable of performing queen-side castling.
+   * @param alliance The alliance (color) of the king.
+   * @param piecePosition The initial position of the king on the board.
+   * @param kingSideCastleCapable Whether the king can castle kingside.
+   * @param queenSideCastleCapable Whether the king can castle queenside.
    */
   public King(final Alliance alliance,
               final int piecePosition,
@@ -56,15 +61,14 @@ public final class King extends Piece {
   }
 
   /**
-   * Constructs a new King instance with the given alliance, piece position, first move status, castling status,
-   * and castling capabilities.
+   * Constructs a King with complete state information including move and castling status.
    *
-   * @param alliance                 The alliance (color) of the king.
-   * @param piecePosition            The current position of the king on the board.
-   * @param isFirstMove              Whether it's the first move of the king.
-   * @param isCastled                Whether the king has been castled.
-   * @param kingSideCastleCapable    Whether the king is capable of performing king-side castling.
-   * @param queenSideCastleCapable   Whether the king is capable of performing queen-side castling.
+   * @param alliance The alliance (color) of the king.
+   * @param piecePosition The current position of the king on the board.
+   * @param isFirstMove Whether this is the king's first move.
+   * @param isCastled Whether the king has completed a castling move.
+   * @param kingSideCastleCapable Whether the king can castle kingside.
+   * @param queenSideCastleCapable Whether the king can castle queenside.
    */
   public King(final Alliance alliance,
               final int piecePosition,
@@ -79,13 +83,14 @@ public final class King extends Piece {
   }
 
   /**
-   * Computes and precomputes the legal move offsets for each tile on the board for the king.
-   * Takes into account-edge cases to exclude illegal move offsets.
+   * Precomputes and returns legal move offsets for each board position.
+   * This method calculates valid king moves for all 64 squares, excluding
+   * moves that would place the king off the board or violate edge constraints.
    *
-   * @return A map containing the precomputed legal move offsets for each tile on the board.
+   * @return A map containing precomputed legal move offsets for each board position.
    */
-  private static Map < Integer, int[] > computeCandidates() {
-    final Map < Integer, int[] > candidates = new HashMap < > ();
+  private static Map<Integer, int[]> computeCandidates() {
+    final Map<Integer, int[]> candidates = new HashMap<>();
     for (int position = 0; position < BoardUtils.NUM_TILES; position++) {
       int[] legalOffsets = new int[CANDIDATE_MOVE_COORDINATES.length];
       int numLegalOffsets = 0;
@@ -107,51 +112,51 @@ public final class King extends Piece {
   }
 
   /**
-   * Checks if the king has been castled.
+   * Returns whether this king has completed a castling move.
    *
-   * @return true, if the king has been castled, otherwise false.
+   * @return True if the king has castled, false otherwise.
    */
   public boolean isCastled() {
     return this.isCastled;
   }
 
   /**
-   * Checks if the king is capable of performing king-side castling.
+   * Returns whether this king retains the right to castle kingside.
    *
-   * @return true if king is capable of king-side castling, otherwise false.
+   * @return True if kingside castling is possible, false otherwise.
    */
   public boolean isKingSideCastleCapable() {
     return this.kingSideCastleCapable;
   }
 
   /**
-   * Checks if the king is capable of performing queen-side castling.
+   * Returns whether this king retains the right to castle queenside.
    *
-   * @return true if king is capable of queen-side castling, otherwise false.
+   * @return True if queenside castling is possible, false otherwise.
    */
   public boolean isQueenSideCastleCapable() {
     return this.queenSideCastleCapable;
   }
 
   /**
-   * Calculates the legal moves for the king on the board. Generates both standard moves and capturing moves.
+   * Calculates and returns all legal moves for this king on the given board.
+   * This includes standard one-square moves and capturing moves, but excludes
+   * castling moves which are handled separately by the player classes.
    *
-   * @param board The current state of the chess board.
-   * @return A collection of legal moves for the king.
+   * @param board The current board state.
+   * @return A collection of legal moves for this king.
    */
   @Override
-  public Collection < Move > calculateLegalMoves(final Board board) {
-    final List < Move > legalMoves = new ArrayList < > ();
+  public Collection<Move> calculateLegalMoves(final Board board) {
+    final List<Move> legalMoves = new ArrayList<>();
     for (final int currentCandidateOffset: PRECOMPUTED_CANDIDATES.get(this.piecePosition)) {
       final int candidateDestinationCoordinate = this.piecePosition + currentCandidateOffset;
       final Piece pieceAtDestination = board.getPiece(candidateDestinationCoordinate);
       if (pieceAtDestination == null) {
-        // Use MovePool instead of creating new Move instances
         legalMoves.add(MovePool.INSTANCE.getMajorMove(board, this, candidateDestinationCoordinate));
       } else {
         final Alliance pieceAtDestinationAllegiance = pieceAtDestination.getPieceAllegiance();
         if (this.pieceAlliance != pieceAtDestinationAllegiance) {
-          // Use MovePool instead of creating new Move instances
           legalMoves.add(MovePool.INSTANCE.getMajorAttackMove(board, this, candidateDestinationCoordinate,
                   pieceAtDestination));
         }
@@ -161,9 +166,9 @@ public final class King extends Piece {
   }
 
   /**
-   * Returns a string representation of the king.
+   * Returns the string representation of this king piece.
    *
-   * @return The string representation of the king.
+   * @return The piece type string representation.
    */
   @Override
   public String toString() {
@@ -171,9 +176,11 @@ public final class King extends Piece {
   }
 
   /**
-   * Computes the location bonus for the king based on its current position on the board.
+   * Calculates the positional bonus for this king based on its current board position.
+   * The bonus value is determined by alliance-specific evaluation tables.
    *
-   * @return The location bonus for the king.
+   * @param board The current board state.
+   * @return The location bonus value for this king's position.
    */
   @Override
   public int locationBonus(final Board board) {
@@ -181,10 +188,11 @@ public final class King extends Piece {
   }
 
   /**
-   * Creates a new King instance after making the given move.
+   * Creates a new King instance representing this king after executing the given move.
+   * The new king will have updated position and status information based on the move type.
    *
-   * @param move The move to be made.
-   * @return A new King instance after the move is made.
+   * @param move The move being executed.
+   * @return A new King instance reflecting the post-move state.
    */
   @Override
   public King movePiece(final Move move) {
@@ -192,10 +200,11 @@ public final class King extends Piece {
   }
 
   /**
-   * Compares the King object with another object for equality.
+   * Compares this King with another object for equality.
+   * Kings are equal if they have the same basic piece properties and castling status.
    *
-   * @param other The object to compare with.
-   * @return true if the objects are equal, otherwise false.
+   * @param other The object to compare with this King.
+   * @return True if the objects are equal, false otherwise.
    */
   @Override
   public boolean equals(final Object other) {
@@ -212,9 +221,10 @@ public final class King extends Piece {
   }
 
   /**
-   * Computes the hash code for the King object.
+   * Calculates the hash code for this King instance.
+   * The hash code incorporates the base piece hash code and castling status.
    *
-   * @return The hash code value of the King object.
+   * @return The hash code value for this King.
    */
   @Override
   public int hashCode() {
@@ -222,11 +232,12 @@ public final class King extends Piece {
   }
 
   /**
-   * Checks if the given candidate destination is excluded as a valid move due to the king's position on the first column.
+   * Determines whether a move from the given position with the specified offset
+   * would be excluded due to first column boundary constraints.
    *
-   * @param currentCandidate              The current position of the king.
-   * @param candidateDestinationCoordinate   The candidate destination coordinate to check.
-   * @return true if the candidate destination is excluded, otherwise false.
+   * @param currentCandidate The current position of the king.
+   * @param candidateDestinationCoordinate The move offset being evaluated.
+   * @return True if the move should be excluded due to first column constraints, false otherwise.
    */
   private static boolean isFirstColumnExclusion(final int currentCandidate,
                                                 final int candidateDestinationCoordinate) {
@@ -236,11 +247,12 @@ public final class King extends Piece {
   }
 
   /**
-   * Checks if the given candidate destination is excluded as a valid move due to the king's position on the eighth column.
+   * Determines whether a move from the given position with the specified offset
+   * would be excluded due to eighth column boundary constraints.
    *
-   * @param currentCandidate              The current position of the king.
-   * @param candidateDestinationCoordinate   The candidate destination coordinate to check.
-   * @return true if the candidate destination is excluded, otherwise false.
+   * @param currentCandidate The current position of the king.
+   * @param candidateDestinationCoordinate The move offset being evaluated.
+   * @return True if the move should be excluded due to eighth column constraints, false otherwise.
    */
   private static boolean isEighthColumnExclusion(final int currentCandidate,
                                                  final int candidateDestinationCoordinate) {

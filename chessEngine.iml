@@ -7,8 +7,8 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="google.guava" level="project" />
     <orderEntry type="library" name="kenai.nbpwr.apache.batik.all" level="project" />
     <orderEntry type="library" name="batik.codec" level="project" />
+    <orderEntry type="library" name="google.guava" level="project" />
   </component>
 </module>

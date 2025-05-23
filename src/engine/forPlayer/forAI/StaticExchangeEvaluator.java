@@ -5,7 +5,9 @@ import engine.forBoard.Board;
 import engine.forBoard.Move;
 import engine.forPiece.Piece;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * Implements Static Exchange Evaluation (SEE) for accurate evaluation of capture sequences.

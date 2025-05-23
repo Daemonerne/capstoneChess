@@ -16,7 +16,6 @@ import java.util.Random;
  * The class maintains a set of pre-generated random numbers for each piece type, position, alliance
  * combination, as well as additional numbers for side to move, castling rights, and en passant
  * possibilities. These random numbers are XORed together to create unique position signatures.
- * <p>
  * This class is designed as a non-instantiable utility class with static methods to calculate
  * and update Zobrist hash values for chess board positions.
  *
@@ -33,7 +32,7 @@ public class ZobristHashing {
   private static final long[][][] PIECE_POSITION_TABLE = new long[2][6][64];
 
   /**
-   * Random number for the side to move (when it's black's turn).
+   * Random number for the side to move when it is black's turn.
    * This value is XORed into the hash when the side to move is BLACK.
    */
   private static final long SIDE_TO_MOVE;
@@ -60,17 +59,19 @@ public class ZobristHashing {
    * across different instances of the application.
    */
   static {
-    final Random random = new Random(0); // Fixed seed for reproducibility
+    final Random random = new Random(0);
     for (int alliance = 0; alliance < 2; alliance++) {
       for (int pieceType = 0; pieceType < 6; pieceType++) {
         for (int position = 0; position < 64; position++) {
           PIECE_POSITION_TABLE[alliance][pieceType][position] = random.nextLong();
         }
       }
-    } SIDE_TO_MOVE = random.nextLong();
+    }
+    SIDE_TO_MOVE = random.nextLong();
     for (int i = 0; i < 4; i++) {
       CASTLING_RIGHTS[i] = random.nextLong();
-    } for (int i = 0; i < 8; i++) {
+    }
+    for (int i = 0; i < 8; i++) {
       EN_PASSANT_FILE[i] = random.nextLong();
     }
   }
@@ -96,21 +97,28 @@ public class ZobristHashing {
     long hash = 0;
     for (final Piece piece : board.getAllPieces()) {
       hash ^= getPieceHash(piece);
-    } if (board.currentPlayer().getAlliance() == Alliance.BLACK) {
+    }
+    if (board.currentPlayer().getAlliance() == Alliance.BLACK) {
       hash ^= SIDE_TO_MOVE;
-    } if (board.whitePlayer().getPlayerKing().isKingSideCastleCapable()) {
+    }
+    if (board.whitePlayer().getPlayerKing().isKingSideCastleCapable()) {
       hash ^= CASTLING_RIGHTS[0];
-    } if (board.whitePlayer().getPlayerKing().isQueenSideCastleCapable()) {
+    }
+    if (board.whitePlayer().getPlayerKing().isQueenSideCastleCapable()) {
       hash ^= CASTLING_RIGHTS[1];
-    } if (board.blackPlayer().getPlayerKing().isKingSideCastleCapable()) {
+    }
+    if (board.blackPlayer().getPlayerKing().isKingSideCastleCapable()) {
       hash ^= CASTLING_RIGHTS[2];
-    } if (board.blackPlayer().getPlayerKing().isQueenSideCastleCapable()) {
+    }
+    if (board.blackPlayer().getPlayerKing().isQueenSideCastleCapable()) {
       hash ^= CASTLING_RIGHTS[3];
-    } final Pawn enPassantPawn = board.getEnPassantPawn();
+    }
+    final Pawn enPassantPawn = board.getEnPassantPawn();
     if (enPassantPawn != null) {
       final int enPassantFile = enPassantPawn.getPiecePosition() % 8;
       hash ^= EN_PASSANT_FILE[enPassantFile];
-    } return hash;
+    }
+    return hash;
   }
 
   /**
@@ -128,8 +136,8 @@ public class ZobristHashing {
                                          final Piece piece,
                                          final int fromPosition,
                                          final int toPosition) {
-    hash ^= getPieceHash(piece, fromPosition); // Remove piece from old position
-    hash ^= getPieceHash(piece, toPosition);   // Add piece to new position
+    hash ^= getPieceHash(piece, fromPosition);
+    hash ^= getPieceHash(piece, toPosition);
     return hash;
   }
 
@@ -214,7 +222,8 @@ public class ZobristHashing {
   public static long updateHashEnPassant(long hash, final int enPassantFile) {
     if (enPassantFile >= 0 && enPassantFile < 8) {
       hash ^= EN_PASSANT_FILE[enPassantFile];
-    } return hash;
+    }
+    return hash;
   }
 
   /**
@@ -228,7 +237,8 @@ public class ZobristHashing {
   public static long updateHashCastlingRight(long hash, final int castlingRightIndex) {
     if (castlingRightIndex >= 0 && castlingRightIndex < 4) {
       hash ^= CASTLING_RIGHTS[castlingRightIndex];
-    } return hash;
+    }
+    return hash;
   }
 
   /**

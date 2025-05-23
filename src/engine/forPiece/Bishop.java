@@ -12,29 +12,32 @@ import static engine.forBoard.BoardUtils.isValidTileCoordinate;
 import static engine.forBoard.MoveUtils.Line;
 
 /**
- * The Bishop class represents a bishop chess piece. It extends the Piece class and defines the specific properties and
- * behaviors of a bishop on the chess board. Bishops move diagonally across the board, and each bishop stays on the
- * color of square it started on.
- * <br><br>
- * This class provides methods for calculating legal moves for a bishop, including diagonal moves and capturing moves.
- * It precomputes legal move lines for each tile on the board, taking edge cases and exclusions into consideration.
+ * The Bishop class represents a bishop chess piece that moves diagonally across the board.
+ * It extends the Piece class and implements the specific movement patterns and behaviors
+ * unique to bishops in chess. Bishops are constrained to diagonal movement and remain on
+ * the same color squares throughout the game.
+ * <p>
+ * This class precomputes all possible diagonal move lines for each board position to optimize
+ * move generation during gameplay. The implementation handles edge cases where diagonal moves
+ * would wrap around the board edges.
  *
  * @author Aaron Ho
  */
 public final class Bishop extends Piece {
 
-  /*** An array of possible candidate move coordinates for a bishop, representing diagonal moves. */
+  /** The diagonal direction offsets representing all possible bishop moves from any position. */
   private final static int[] CANDIDATE_MOVE_COORDINATES = { -9, -7, 7, 9 };
 
-  /*** A map that stores the precomputed legal move lines for each tile on the board, considering diagonal moves. */
+  /** A cache of precomputed legal move lines for each tile position on the board. */
   private final static Map<Integer, Line[]> PRECOMPUTED_CANDIDATES = computeCandidates();
 
   /**
-   * Constructs a new Bishop instance with the given alliance, piece position, and number of moves.
+   * Constructs a new Bishop with the specified alliance, position, and move count.
+   * The bishop is initialized with first move status set to true.
    *
-   * @param alliance         The alliance (color) of the bishop.
-   * @param piecePosition    The current position of the bishop on the board.
-   * @param numMoves         The number of moves made by the bishop.
+   * @param alliance The alliance (color) of the bishop.
+   * @param piecePosition The initial position of the bishop on the board (0-63).
+   * @param numMoves The number of moves made by this bishop.
    */
   public Bishop(final Alliance alliance,
                 final int piecePosition,
@@ -43,12 +46,12 @@ public final class Bishop extends Piece {
   }
 
   /**
-   * Constructs a new Bishop instance with the given alliance, piece position, first move status, and number of moves.
+   * Constructs a new Bishop with full specification of all attributes.
    *
-   * @param alliance         The alliance (color) of the bishop.
-   * @param piecePosition    The current position of the bishop on the board.
-   * @param isFirstMove      Whether it's the first move of the bishop.
-   * @param numMoves         The number of moves made by the bishop.
+   * @param alliance The alliance (color) of the bishop.
+   * @param piecePosition The position of the bishop on the board (0-63).
+   * @param isFirstMove Whether this bishop has made its first move.
+   * @param numMoves The number of moves made by this bishop.
    */
   public Bishop(final Alliance alliance,
                 final int piecePosition,
@@ -58,10 +61,11 @@ public final class Bishop extends Piece {
   }
 
   /**
-   * Computes and precomputes the legal move lines for each tile on the board for the bishop, considering diagonal moves.
-   * Takes edge cases and exclusions into consideration
+   * Precomputes all possible diagonal move lines for bishops on each tile of the board.
+   * This optimization allows for efficient move generation by calculating move patterns
+   * once at initialization rather than during gameplay.
    *
-   * @return A map containing the precomputed legal move lines for each tile on the board.
+   * @return An unmodifiable map of board positions to their corresponding diagonal move lines.
    */
   private static Map<Integer, Line[]> computeCandidates() {
     Map<Integer, Line[]> candidates = new HashMap<>();
@@ -92,10 +96,12 @@ public final class Bishop extends Piece {
   }
 
   /**
-   * Calculates the legal moves for the bishop on the board. Generates diagonal moves and capturing moves along each line.
+   * Calculates all legal moves for this bishop given the current board state.
+   * The method generates moves along each diagonal line until blocked by a piece
+   * or the board edge. Captures are allowed if the blocking piece belongs to the opponent.
    *
-   * @param board The current state of the chess board.
-   * @return A collection of legal moves for the bishop.
+   * @param board The current chess board state.
+   * @return An unmodifiable collection of legal moves for this bishop.
    */
   @Override
   public Collection<Move> calculateLegalMoves(final Board board) {
@@ -104,12 +110,10 @@ public final class Bishop extends Piece {
       for (final int candidateDestinationCoordinate : line.getLineCoordinates()) {
         final Piece pieceAtDestination = board.getPiece(candidateDestinationCoordinate);
         if (pieceAtDestination == null) {
-          // Use MovePool instead of creating new Move instances
           legalMoves.add(MovePool.INSTANCE.getMajorMove(board, this, candidateDestinationCoordinate));
         } else {
           final Alliance pieceAlliance = pieceAtDestination.getPieceAllegiance();
           if (this.pieceAlliance != pieceAlliance) {
-            // Use MovePool instead of creating new Move instances
             legalMoves.add(MovePool.INSTANCE.getMajorAttackMove(board, this, candidateDestinationCoordinate,
                     pieceAtDestination));
           }
@@ -121,9 +125,12 @@ public final class Bishop extends Piece {
   }
 
   /**
-   * Computes the location bonus for the bishop based on its current position on the board.
+   * Calculates the positional bonus for this bishop based on its current location.
+   * The bonus value is determined by alliance-specific position tables that favor
+   * certain squares for optimal bishop placement.
    *
-   * @return The location bonus for the bishop.
+   * @param board The current chess board state.
+   * @return The location bonus value for this bishop's position.
    */
   @Override
   public int locationBonus(final Board board) {
@@ -131,10 +138,11 @@ public final class Bishop extends Piece {
   }
 
   /**
-   * Creates a new Bishop instance after making the given move.
+   * Creates a new Bishop instance representing this piece after making the specified move.
+   * This method uses the piece pool to efficiently reuse Bishop objects.
    *
-   * @param move The move to be made.
-   * @return A new Bishop instance after the move is made.
+   * @param move The move to be executed.
+   * @return A new Bishop instance at the destination position.
    */
   @Override
   public Bishop movePiece(final Move move) {
@@ -142,9 +150,9 @@ public final class Bishop extends Piece {
   }
 
   /**
-   * Creates a new Bishop instance after making the given move.
+   * Returns the string representation of this bishop piece.
    *
-   * @return A new Bishop instance after the move is made.
+   * @return The character "B" representing a bishop.
    */
   @Override
   public String toString() {
@@ -152,11 +160,13 @@ public final class Bishop extends Piece {
   }
 
   /**
-   * Checks if the given position and offset lead to an exclusion for the bishop's diagonal move due to being on the first column.
+   * Determines if a diagonal move from the first column would illegally wrap to the opposite edge.
+   * This exclusion prevents bishops on the leftmost column from making certain diagonal moves
+   * that would incorrectly place them on the rightmost column.
    *
-   * @param position            The current position of the bishop.
-   * @param offset              The offset being considered for the diagonal move.
-   * @return true, if the exclusion applies, otherwise false.
+   * @param position The current position being evaluated.
+   * @param offset The diagonal move offset being considered.
+   * @return True if this move should be excluded, false otherwise.
    */
   private static boolean isFirstColumnExclusion(final int position,
                                                 final int offset) {
@@ -165,16 +175,17 @@ public final class Bishop extends Piece {
   }
 
   /**
-   * Checks if the given position and offset lead to an exclusion for the bishop's diagonal move due to being on the eighth column.
+   * Determines if a diagonal move from the eighth column would illegally wrap to the opposite edge.
+   * This exclusion prevents bishops on the rightmost column from making certain diagonal moves
+   * that would incorrectly place them on the leftmost column.
    *
-   * @param position            The current position of the bishop.
-   * @param offset              The offset being considered for the diagonal move.
-   * @return true, if the exclusion applies, otherwise false.
+   * @param position The current position being evaluated.
+   * @param offset The diagonal move offset being considered.
+   * @return True if this move should be excluded, false otherwise.
    */
   private static boolean isEighthColumnExclusion(final int position,
                                                  final int offset) {
     return BoardUtils.Instance.EighthColumn.get(position) &&
             ((offset == -7) || (offset == 9));
   }
-
 }

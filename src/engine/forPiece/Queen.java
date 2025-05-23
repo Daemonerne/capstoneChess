@@ -1,11 +1,7 @@
 package engine.forPiece;
 
 import engine.Alliance;
-import engine.forBoard.Board;
-import engine.forBoard.BoardUtils;
-import engine.forBoard.Move;
-import engine.forBoard.MovePool;
-import engine.forBoard.MoveUtils;
+import engine.forBoard.*;
 
 import java.util.*;
 

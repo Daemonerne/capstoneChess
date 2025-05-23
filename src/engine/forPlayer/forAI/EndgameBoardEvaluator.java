@@ -4,7 +4,10 @@ import com.google.common.annotations.VisibleForTesting;
 import engine.Alliance;
 import engine.forBoard.Board;
 import engine.forBoard.Move;
-import engine.forPiece.*;
+import engine.forPiece.Bishop;
+import engine.forPiece.King;
+import engine.forPiece.Knight;
+import engine.forPiece.Piece;
 import engine.forPlayer.Player;
 
 import java.util.*;
