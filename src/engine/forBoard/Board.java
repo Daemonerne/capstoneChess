@@ -338,9 +338,7 @@ public final class Board {
     /** The Zobrist hash value for the board being built. */
     private long zobristHash;
 
-    /**
-     * Constructs a new Builder instance with empty configurations.
-     */
+    /*** Constructs a new Builder instance with empty configurations. */
     public Builder() {
       this.BoardConfigurations = new HashMap<>(32, 1.0f);
       this.zobristHash = 0;
