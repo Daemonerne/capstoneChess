@@ -110,6 +110,7 @@ public abstract class Piece {
   /**
    * Abstract method for calculating a location bonus for the piece. The bonus affects the piece's tactical strength based on its position.
    *
+   * @param board The current board.
    * @return The location bonus value for the piece.
    */
   public abstract int locationBonus(final Board board);

@@ -11,6 +11,9 @@ import engine.forPlayer.MoveStatus;
  * equals(), hashCode(), and toString() methods. It serves as a crucial component in the chess engine's
  * move validation and execution pipeline, providing a clean way to represent the outcome of a move attempt.
  *
+ * @param toBoard The destination board state after the move.
+ * @param moveStatus The status of the move, indicating whether it's done, illegal, or leaves the player in check.
+ *
  * @author Aaron Ho
  */
 public record MoveTransition(Board toBoard, MoveStatus moveStatus) {

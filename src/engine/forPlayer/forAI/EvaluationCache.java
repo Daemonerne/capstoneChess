@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * This class follows the singleton pattern to ensure consistent caching across the entire chess engine.
  * Cache statistics are maintained to monitor hit rates and performance characteristics.
  *
- * @author Claude
+ * @author Aaron Ho
  */
 public class EvaluationCache {
 

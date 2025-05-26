@@ -198,10 +198,16 @@ public enum Alliance {
           0, 0, 0, 0, 0, 0, 0, 0
   };
 
-  /** Piece type offsets for accessing the piece-square table. */
+  /** Pawn offset for accessing the piece-square table. */
   private static final int PAWN_OFFSET = 0;
+
+  /** Knight offset for accessing the piece-square table. */
   private static final int KNIGHT_OFFSET = 128;
+
+  /** Bishop offset for accessing the piece-square table. */
   private static final int BISHOP_OFFSET = 256;
+
+  /** Rook offset for accessing the piece-square table. */
   private static final int ROOK_OFFSET = 384;
 
   /**

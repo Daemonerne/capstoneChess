@@ -12,6 +12,10 @@ import engine.forBoard.Board;
  * BoardTransition instances are created whenever a move is attempted, allowing the caller
  * to inspect both the outcome and the resulting position in a single return value.
  *
+ * @param transitionBoard The chessboard state resulting from the move execution.
+ * @param moveStatus The status indicating the outcome of the move attempt.
+ *
+ *
  * @author dareTo81
  * @author Aaron Ho
  */

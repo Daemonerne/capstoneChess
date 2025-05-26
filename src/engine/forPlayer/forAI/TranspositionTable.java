@@ -16,6 +16,9 @@ package engine.forPlayer.forAI;
  */
 public class TranspositionTable {
 
+  /** Private constructor to prevent instantiation. */
+  private TranspositionTable() {}
+
   /**
    * The Entry class represents a single record in the transposition table containing
    * all necessary information about a previously evaluated chess position. Each entry

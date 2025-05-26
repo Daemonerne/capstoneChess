@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  * material balance, king centralization, pawn promotion potential, and various endgame patterns to provide
  * accurate position assessments for late-game scenarios.
  *
- * @author Claude
+ * @author Aaron Ho
  */
 public class EndgameBoardEvaluator implements BoardEvaluator {
 

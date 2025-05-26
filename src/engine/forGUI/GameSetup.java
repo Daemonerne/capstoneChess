@@ -126,6 +126,8 @@ class GameSetup extends JDialog {
   /**
    * Returns a JSpinner that will represent a customizable option in the GUI.
    *
+   * @param c The container to which the label and spinner components will be added.
+   * @param model The spinner model that defines the spinner's behavior, value range, and step size.
    * @return a label JSpinner.
    */
   private static JSpinner addLabeledSpinner(final Container c,

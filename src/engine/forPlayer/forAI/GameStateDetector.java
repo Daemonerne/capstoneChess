@@ -13,7 +13,7 @@ import java.util.*;
  * This class replaces the TaperedEvaluator with specialized evaluators for opening,
  * middlegame, and endgame positions, enhancing evaluation accuracy.
  *
- * @author Claude
+ * @author Aaron Ho
  */
 public class GameStateDetector {
 
