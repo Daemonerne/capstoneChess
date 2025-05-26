@@ -14,43 +14,38 @@ import java.util.stream.Collectors;
 import static engine.forPiece.Piece.PieceType.KING;
 import static java.util.stream.Collectors.collectingAndThen;
 
-
-/***
- * The abstract class `Player` represents a player in a chess game, encapsulating essential functionality and state
- * for player-specific operations. A player is associated with a `Board`` instance, representing the chessboard, and possesses
- * a `King`, denoting the player's monarch. The collection of legal moves available to the player on the current board state is
- * maintained, and the player's check status is determined based on the presence of opponent attacks on the player's king.
- * Additionally, a threefold repetition mechanism is facilitated through a private hashmap tracking position repetitions. The class
- * offers methods to ascertain the player's check, checkmate, and stalemate statuses, as well as whether the player has executed
- * castling. The core functionality includes move handling, with methods to make and undo moves, along with checks for the existence
- * of legal escape moves. The player's alliance (color) is obtained through the `getAlliance()` method, and the opponent player is
- * retrieved via the `getOpponent()` method. Subclasses are required to implement methods for obtaining active pieces, calculating
- * king castling moves, and determining castle opportunities. This class serves as a foundational element for creating concrete player
- * implementations in a chess engine, providing a comprehensive framework for player-specific behaviors and interactions within the game.
+/**
+ * The Player class represents an abstract chess player, providing the foundation for player-specific
+ * operations and game state management. Each player is associated with a board position and maintains
+ * their king piece, legal moves, and check status. The class handles move execution, validation,
+ * and state queries including checkmate, stalemate, and castling status. Concrete subclasses must
+ * implement alliance-specific behavior for piece management and castling calculations.
  *
  * @author Aaron Ho
  * @author dareTo81
  */
 public abstract class Player {
 
-  /*** The chessboard associated with this player. */
+  /** The chessboard associated with this player. */
   protected final Board board;
 
-  /*** The king piece of this player. */
+  /** The king piece belonging to this player. */
   protected final King playerKing;
 
-  /*** The collection of legal moves that this player can make on the current board state. */
+  /** The collection of legal moves available to this player on the current board state. */
   protected final Collection<Move> legalMoves;
 
-  /*** A flag indicating whether this player is currently in check. */
+  /** Flag indicating whether this player is currently in check. */
   protected final boolean isInCheck;
 
   /**
-   * Constructs a new Player object with the given chessboard and legal moves.
+   * Constructs a Player with the specified board and move collections.
+   * Establishes the player's king, determines check status, and calculates all legal moves
+   * including castling options.
    *
-   * @param board           The chessboard associated with this player.
-   * @param playerLegals    The collection of legal moves for this player.
-   * @param opponentLegals  The collection of legal moves for the opponent player.
+   * @param board The chessboard associated with this player.
+   * @param playerLegals The collection of standard legal moves for this player.
+   * @param opponentLegals The collection of legal moves for the opponent player.
    */
   Player(final Board board, final Collection<Move> playerLegals, final Collection<Move> opponentLegals) {
     this.board = board;
@@ -61,7 +56,7 @@ public abstract class Player {
   }
 
   /**
-   * Checks if the player is currently in check.
+   * Determines whether this player is currently in check.
    *
    * @return True if the player is in check, false otherwise.
    */
@@ -70,7 +65,8 @@ public abstract class Player {
   }
 
   /**
-   * Checks if the player is in checkmate.
+   * Determines whether this player is in checkmate.
+   * A player is in checkmate if they are in check and have no legal escape moves.
    *
    * @return True if the player is in checkmate, false otherwise.
    */
@@ -79,7 +75,8 @@ public abstract class Player {
   }
 
   /**
-   * Checks if the player is in stalemate.
+   * Determines whether this player is in stalemate.
+   * A player is in stalemate if they are not in check but have no legal moves.
    *
    * @return True if the player is in stalemate, false otherwise.
    */
@@ -88,7 +85,7 @@ public abstract class Player {
   }
 
   /**
-   * Checks if the player has castled.
+   * Determines whether this player has castled.
    *
    * @return True if the player has castled, false otherwise.
    */
@@ -97,18 +94,19 @@ public abstract class Player {
   }
 
   /**
-   * Gets the king piece of the player.
+   * Retrieves this player's king piece.
    *
-   * @return The king piece.
+   * @return The king piece belonging to this player.
    */
   public King getPlayerKing() {
     return this.playerKing;
   }
 
   /**
-   * Establishes the king piece for the player by searching through active pieces.
+   * Establishes the king piece for this player by locating it among active pieces.
    *
-   * @return The king piece of the player.
+   * @return The king piece belonging to this player.
+   * @throws RuntimeException If no king piece is found among active pieces.
    */
   private King establishKing() {
     return (King) getActivePieces().stream()
@@ -118,9 +116,9 @@ public abstract class Player {
   }
 
   /**
-   * Checks if the player has any legal escape moves from the current position.
+   * Determines whether this player has any legal escape moves available.
    *
-   * @return True if there are escape moves, false otherwise.
+   * @return True if escape moves exist, false otherwise.
    */
   private boolean hasEscapeMoves() {
     return this.legalMoves.stream()
@@ -129,20 +127,20 @@ public abstract class Player {
   }
 
   /**
-   * Gets the collection of legal moves for the player.
+   * Retrieves the collection of legal moves for this player.
    *
-   * @return The collection of legal moves.
+   * @return An unmodifiable collection of legal moves.
    */
   public Collection<Move> getLegalMoves() {
     return this.legalMoves;
   }
 
   /**
-   * Calculates the attacks on a specific tile.
+   * Calculates all moves that attack a specific tile on the board.
    *
-   * @param tile   The tile to check for attacks.
-   * @param moves  The collection of moves to consider.
-   * @return A collection of moves that attack the specified tile.
+   * @param tile The tile coordinate to check for attacks.
+   * @param moves The collection of moves to examine.
+   * @return An unmodifiable collection of moves that attack the specified tile.
    */
   public static Collection<Move> calculateAttacksOnTile(final int tile, final Collection<Move> moves) {
     return moves.stream()
@@ -151,10 +149,11 @@ public abstract class Player {
   }
 
   /**
-   * Makes a move on the chessboard and returns the resulting board state.
+   * Executes a move and returns the resulting board transition.
+   * Validates the move legality and ensures the move does not leave the player in check.
    *
-   * @param move The move to make.
-   * @return A MoveTransition object representing the result of the move.
+   * @param move The move to execute.
+   * @return A MoveTransition object containing the resulting board state and move status.
    */
   public MoveTransition makeMove(final Move move) {
     if (!this.legalMoves.contains(move)) {
@@ -167,49 +166,55 @@ public abstract class Player {
   }
 
   /**
-   * Undoes a move on the chessboard and returns the resulting board state.
+   * Undoes a move and returns the previous board state.
    *
    * @param move The move to undo.
-   * @return A MoveTransition object representing the result of the move undo.
+   * @return A MoveTransition object containing the previous board state.
    */
   public MoveTransition unMakeMove(final Move move) {
     return new MoveTransition(move.undo(), MoveStatus.DONE);
   }
 
   /**
-   * Gets the collection of active pieces for this player.
+   * Retrieves the collection of active pieces belonging to this player.
+   * Must be implemented by concrete subclasses to return alliance-specific pieces.
    *
-   * @return The collection of active pieces.
+   * @return The collection of active pieces for this player.
    */
   public abstract Collection<Piece> getActivePieces();
 
   /**
-   * Gets the alliance (color) of this player (e.g., WHITE or BLACK).
+   * Retrieves the alliance (color) of this player.
+   * Must be implemented by concrete subclasses to return the appropriate alliance.
    *
-   * @return The alliance of the player.
+   * @return The alliance of this player.
    */
   public abstract Alliance getAlliance();
 
   /**
-   * Gets the opponent player.
+   * Retrieves the opponent player.
+   * Must be implemented by concrete subclasses to return the opposing player.
    *
    * @return The opponent player.
    */
   public abstract Player getOpponent();
 
   /**
-   * Calculates and returns the possible king castling moves for this player.
+   * Calculates and returns possible castling moves for this player's king.
+   * Must be implemented by concrete subclasses to handle alliance-specific castling rules.
    *
-   * @param playerLegals   The legal moves of this player.
-   * @param opponentLegals The legal moves of the opponent.
-   * @return A collection of possible king castling moves.
+   * @param playerLegals The legal moves available to this player.
+   * @param opponentLegals The legal moves available to the opponent.
+   * @return A collection of possible castling moves.
    */
   protected abstract Collection<Move> calculateKingCastles(Collection<Move> playerLegals, Collection<Move> opponentLegals);
 
   /**
-   * Checks if the player has any castle opportunities (i.e., king-side or queen-side castling).
+   * Determines whether this player has any castling opportunities available.
+   * A player has castling opportunities if they are not in check, have not already castled,
+   * and retain either kingside or queenside castling capabilities.
    *
-   * @return True if there are castle opportunities, false otherwise.
+   * @return True if castling opportunities exist, false otherwise.
    */
   protected boolean hasCastleOpportunities() {
     return !this.isInCheck || !this.playerKing.isCastled() ||

@@ -16,10 +16,11 @@ import java.util.List;
 import static engine.forPiece.Piece.PieceType.ROOK;
 
 /**
- * The `BlackPlayer` class extends `Player` to represent a player controlling the black pieces in a chess game.
- * It extends the abstract `Player` class and provides functionality specific to black pieces.
- * This class is responsible for generating legal moves for the black player, including special moves
- * like castling and en passant captures.
+ * The BlackPlayer class represents a chess player controlling the black pieces.
+ * It extends the abstract Player class and provides black-specific functionality for
+ * move generation, castling calculations, and piece management. This implementation
+ * handles all legal moves available to black pieces including special moves such as
+ * castling and captures.
  *
  * @author Aaron Ho
  * @author dareTo81
@@ -27,12 +28,13 @@ import static engine.forPiece.Piece.PieceType.ROOK;
 public final class BlackPlayer extends Player {
 
   /**
-   * Constructs a new `BlackPlayer` object with the specified board and collections of legal moves
-   * for both white and black players.
+   * Constructs a new BlackPlayer with the specified board and legal move collections.
+   * Initializes the player with access to the current board state and legal moves
+   * for both black and white players to enable proper move validation and calculation.
    *
-   * @param board The current chess board.
-   * @param whiteStandardLegals A collection of legal moves for the white player.
-   * @param blackStandardLegals A collection of legal moves for the black player.
+   * @param board The current chess board state.
+   * @param whiteStandardLegals Collection of legal moves for the white player.
+   * @param blackStandardLegals Collection of legal moves for the black player.
    */
   public BlackPlayer(final Board board,
                      final Collection<Move> whiteStandardLegals,
@@ -41,26 +43,23 @@ public final class BlackPlayer extends Player {
   }
 
   /**
-   * Calculates the legal king-side and queen-side castling moves for the black player.
-   * A castling move is legal if the following conditions are met:
-   * 1. The black king has not moved before.
-   * 2. The black king is not currently in check.
-   * 3. The path between the king and the corresponding rook is clear of any pieces.
-   * 4. Neither the king nor the corresponding rook have moved before.
-   * 5. The squares between the king and the corresponding rook are not under attack by the opponent.
-   * 6. The squares on which the king moves during castling are not under attack by the opponent.
-   * 7. The castling move does not lead to a king pawn trap, where the king would be in check after castling.
+   * Calculates all legal castling moves available to the black player.
+   * Validates castling conditions including king and rook first-move status,
+   * clear paths between pieces, absence of attacks on critical squares,
+   * and verification that castling does not result in check. Returns both
+   * kingside and queenside castling moves when legal.
    *
-   * @param playerLegals A collection of legal moves for the black player.
-   * @param opponentLegals A collection of legal moves for the white player (opponent).
-   * @return A collection of legal castling moves for the black player, which may be empty.
+   * @param playerLegals Collection of legal moves for the black player.
+   * @param opponentLegals Collection of legal moves for the white player.
+   * @return Collection of legal castling moves, or empty collection if none available.
    */
   @Override
   protected Collection<Move> calculateKingCastles(final Collection<Move> playerLegals,
                                                   final Collection<Move> opponentLegals) {
     if (!hasCastleOpportunities()) {
       return Collections.emptyList();
-    } final List<Move> kingCastles = new ArrayList<>();
+    }
+    final List<Move> kingCastles = new ArrayList<>();
     if (this.playerKing.isFirstMove() && this.playerKing.getPiecePosition() == 4 && !this.isInCheck) {
       if (this.board.getPiece(5) == null && this.board.getPiece(6) == null) {
         final Piece kingSideRook = this.board.getPiece(7);
@@ -69,11 +68,11 @@ public final class BlackPlayer extends Player {
                 Player.calculateAttacksOnTile(6, opponentLegals).isEmpty() &&
                 kingSideRook.getPieceType() == ROOK) {
           if (BoardUtils.isKingPawnTrap(this.board, this.playerKing, 12)) {
-            // Use MovePool for king-side castle move
             kingCastles.add(MovePool.INSTANCE.getKingSideCastleMove(this.board, this.playerKing, 6, (Rook) kingSideRook, kingSideRook.getPiecePosition(), 5));
           }
         }
-      } if (this.board.getPiece(1) == null && this.board.getPiece(2) == null &&
+      }
+      if (this.board.getPiece(1) == null && this.board.getPiece(2) == null &&
               this.board.getPiece(3) == null) {
         final Piece queenSideRook = this.board.getPiece(0);
         if (queenSideRook != null && queenSideRook.isFirstMove() &&
@@ -81,18 +80,19 @@ public final class BlackPlayer extends Player {
                 Player.calculateAttacksOnTile(3, opponentLegals).isEmpty() &&
                 queenSideRook.getPieceType() == ROOK) {
           if (BoardUtils.isKingPawnTrap(this.board, this.playerKing, 12)) {
-            // Use MovePool for queen-side castle move
             kingCastles.add(MovePool.INSTANCE.getQueenSideCastleMove(this.board, this.playerKing, 2, (Rook) queenSideRook, queenSideRook.getPiecePosition(), 3));
           }
         }
       }
-    } return Collections.unmodifiableList(kingCastles);
+    }
+    return Collections.unmodifiableList(kingCastles);
   }
 
   /**
-   * Gets the opponent of the black player, which is the white player in the chess game.
+   * Returns the opponent player for the black player.
+   * The opponent of the black player is always the white player.
    *
-   * @return The `WhitePlayer` object representing the opponent.
+   * @return The WhitePlayer instance representing the opponent.
    */
   @Override
   public WhitePlayer getOpponent() {
@@ -100,9 +100,10 @@ public final class BlackPlayer extends Player {
   }
 
   /**
-   * Gets a collection of active black pieces on the current chess board.
+   * Returns all active black pieces currently on the chess board.
+   * Active pieces are those that remain in play and have not been captured.
    *
-   * @return A collection of `Piece` objects representing the active black pieces.
+   * @return Collection of black pieces on the board.
    */
   @Override
   public Collection<Piece> getActivePieces() {
@@ -110,9 +111,10 @@ public final class BlackPlayer extends Player {
   }
 
   /**
-   * Gets the alliance of the black player, which is `Alliance.BLACK`.
+   * Returns the alliance designation for the black player.
+   * The alliance identifies which color pieces this player controls.
    *
-   * @return The `Alliance` enum value representing the black player's alliance.
+   * @return Alliance.BLACK indicating this player controls black pieces.
    */
   @Override
   public Alliance getAlliance() {
@@ -120,9 +122,10 @@ public final class BlackPlayer extends Player {
   }
 
   /**
-   * Returns a string representation of the black player's alliance, which is "BLACK".
+   * Returns the string representation of the black player's alliance.
+   * Provides a human-readable identifier for this player type.
    *
-   * @return The string "BLACK" to represent the black player.
+   * @return String "BLACK" representing this player's alliance.
    */
   @Override
   public String toString() {

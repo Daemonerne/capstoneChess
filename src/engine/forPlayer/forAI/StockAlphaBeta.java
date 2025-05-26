@@ -23,87 +23,104 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import static engine.forBoard.Move.MoveFactory;
 
 /**
- * The StockAlphaBeta class represents a chess engine that employs the alpha-beta search algorithm
- * with Lazy SMP parallel search optimization. It uses the Young Brothers Wait concept to improve
- * search efficiency in a parallel environment.
+ * The StockAlphaBeta class implements a chess engine using the alpha-beta search algorithm
+ * with Lazy SMP parallel search optimization. This implementation employs advanced chess
+ * engine techniques including iterative deepening, aspiration windows, transposition tables,
+ * quiescence search, null move pruning, late move reductions, and various move ordering
+ * heuristics to achieve high-performance chess move selection.
+ * <p>
+ * The engine uses multiple threads with the Young Brothers Wait concept to improve search
+ * efficiency while maintaining search quality. It incorporates modern pruning techniques
+ * and evaluation caching to reduce the search space and improve performance.
+ *
+ * @author Aaron Ho
  */
 public class StockAlphaBeta extends Observable implements MoveStrategy {
 
   /** The evaluator used to assess board positions and generate evaluation scores. */
   private final BoardEvaluator evaluator;
 
-  /** The maximum depth for iterative deepening. */
+  /** The maximum depth for iterative deepening search. */
   private final int maxDepth;
 
-  /** The count of boards evaluated during the search. */
+  /** The count of boards evaluated during the search process. */
   private final AtomicLong boardsEvaluated = new AtomicLong(0);
 
-  /** Thread-local search statistics. */
+  /** Thread-local search statistics for tracking per-thread performance metrics. */
   private final ThreadLocal<SearchStats> threadStats = new ThreadLocal<>();
 
-  /** The number of threads to use for search. */
+  /** The number of threads to use for parallel search operations. */
   private final int threadCount;
 
-  /** Flag to indicate search should be stopped. */
+  /** Flag indicating whether the search should be stopped. */
   private volatile boolean searchStopped;
 
-  /** Thread pool for search workers. */
+  /** Thread pool executor for managing search worker threads. */
   private final ExecutorService searchThreadPool;
 
-  /** Thread-safe transposition table. */
+  /** Thread-safe transposition table for storing previously evaluated positions. */
   private final StripedTranspositionTable transpositionTable;
 
-  /** An array of previous historically good moves that influences the sorting of moves. */
+  /** History heuristic table for move ordering based on previous search results. */
   private static final int[][] historyHeuristic = new int[64][64];
 
-  /** Killer moves table [killer_slot][ply]. */
+  /** Killer moves table storing good non-capture moves for each search ply. */
   private final ThreadLocal<Move[][]> killerMoves = ThreadLocal.withInitial(() ->
           new Move[2][MAX_SEARCH_DEPTH]);
 
-  /** Countermove table for better move ordering */
+  /** Countermove table for storing responses to opponent moves for improved move ordering. */
   private final Move[][] counterMoves = new Move[64][64];
 
-  /** The maximum number of quiescence searches allowed. */
+  /** The maximum number of quiescence search nodes allowed per search. */
   private static final int MAX_QUIESCENCE = 300000;
 
-  /** Maximum search depth for data structures. */
+  /** Maximum search depth supported by data structures. */
   private static final int MAX_SEARCH_DEPTH = 100;
 
-  /** The futility pruning depth used to prune futile moves. */
+  /** The depth threshold for applying futility pruning. */
   private static final int FUTILITY_PRUNING_DEPTH = 3;
 
-  /** A depth threshold that when crossed initiates a LMR (Late Move Reduction) in depth. */
+  /** The move count threshold for applying late move reductions. */
   private static final int LMR_THRESHOLD = 9;
 
-  /** The reduction scale used in a Late Move Reduction. */
+  /** The reduction scale factor used in late move reductions. */
   private static final double LMR_SCALE = 0.9;
 
-  /** The delta pruning value used to prune likely unnecessary branches. */
+  /** The evaluation margin for delta pruning in quiescence search. */
   private static final double DELTA_PRUNING_VALUE = 5;
 
-  /** Margin for razoring pruning */
+  /** The evaluation margin for razoring pruning technique. */
   private static final double RAZOR_MARGIN = 150;
 
-  /** Aspiration window size */
+  /** The size of the aspiration window for aspiration search. */
   private static final double ASPIRATION_WINDOW = 40;
 
-  /** Delta material for pruning in quiescence search */
+  /** The material threshold for delta pruning in quiescence search. */
   private static final double DELTA_MATERIAL = 100;
 
-  /** SEE pruning threshold for quiescence */
+  /** The static exchange evaluation threshold for pruning bad captures. */
   private static final int SEE_PRUNING_THRESHOLD = -20;
 
-  /** Alpha-beta window bounds for aspiration search. */
+  /** The highest evaluation value seen during aspiration search. */
   private double highestSeenValue = Double.NEGATIVE_INFINITY;
+
+  /** The lowest evaluation value seen during aspiration search. */
   private double lowestSeenValue = Double.POSITIVE_INFINITY;
 
-  /** Reference to static exchange evaluator */
+  /** Reference to the static exchange evaluator for move evaluation. */
   private final StaticExchangeEvaluator seeEvaluator = StaticExchangeEvaluator.get();
 
-  /** Enumeration representing different move sorting strategies. */
+  /**
+   * The MoveSorter enumeration defines different strategies for ordering moves
+   * to improve alpha-beta search efficiency. Different sorting strategies are
+   * used based on the search context and depth.
+   */
   private enum MoveSorter {
 
-    /** Standard sorting based on history heuristic. */
+    /**
+     * Standard move sorting strategy using history heuristic, killer moves,
+     * countermoves, and static exchange evaluation for move ordering.
+     */
     STANDARD {
       @Override
       Collection<Move> sort(final Collection<Move> moves, final Board board,
@@ -112,27 +129,21 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         Move[][] killers = engine.killerMoves.get();
         Move lastMove = board.getTransitionMove();
 
-        // Pre-calculate all values that will be used in comparisons
-        // This ensures consistency in the comparator
         Map<Move, Integer> seeScores = new HashMap<>();
         Map<Move, Boolean> isUndefendedMap = new HashMap<>();
         Map<Move, Boolean> isKillerMap = new HashMap<>();
         Map<Move, Boolean> isCounterMap = new HashMap<>();
 
         for (Move move : sortedMoves) {
-          // Pre-calculate SEE scores and undefended status
           if (move.isAttack()) {
             seeScores.put(move, engine.seeEvaluator.evaluate(board, move));
-            // Pre-calculate before comparison to ensure consistency
             Piece attackedPiece = move.getAttackedPiece();
             isUndefendedMap.put(move, attackedPiece != null &&
                     !engine.seeEvaluator.isPieceDefended(attackedPiece, board));
           }
 
-          // Pre-calculate killer move status
           isKillerMap.put(move, move.equals(killers[0][ply]) || move.equals(killers[1][ply]));
 
-          // Pre-calculate counter move status
           boolean isCounter = false;
           if (lastMove != null && lastMove != MoveFactory.getNullMove() &&
                   lastMove.getCurrentCoordinate() >= 0 && lastMove.getDestinationCoordinate() >= 0 &&
@@ -143,7 +154,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         }
 
         sortedMoves.sort((move1, move2) -> {
-          // First prioritize captures of undefended pieces (hanging pieces)
           boolean isUndefendedCapture1 = isUndefendedMap.getOrDefault(move1, false);
           boolean isUndefendedCapture2 = isUndefendedMap.getOrDefault(move2, false);
 
@@ -151,7 +161,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
             return isUndefendedCapture1 ? -1 : 1;
           }
 
-          // Next check if either move is a killer move
           boolean isKiller1 = isKillerMap.getOrDefault(move1, false);
           boolean isKiller2 = isKillerMap.getOrDefault(move2, false);
 
@@ -159,7 +168,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
             return isKiller1 ? -1 : 1;
           }
 
-          // Check if either move is a countermove to the last move
           boolean isCounter1 = isCounterMap.getOrDefault(move1, false);
           boolean isCounter2 = isCounterMap.getOrDefault(move2, false);
 
@@ -167,17 +175,14 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
             return isCounter1 ? -1 : 1;
           }
 
-          // For captures, use SEE scores
           boolean isCapture1 = move1.isAttack();
           boolean isCapture2 = move2.isAttack();
 
           if (isCapture1 && isCapture2) {
-            // Compare the SEE scores directly
             int score1 = seeScores.getOrDefault(move1, 0);
             int score2 = seeScores.getOrDefault(move2, 0);
             return Integer.compare(score2, score1);
           } else if (isCapture1 != isCapture2) {
-            // Fixed logic for comparing captures vs non-captures
             if (isCapture1) {
               int seeValue = seeScores.getOrDefault(move1, 0);
               return seeValue >= 0 ? -1 : 1;
@@ -187,11 +192,9 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
             }
           }
 
-          // Then use history heuristic with proper bounds checking
           int score1 = 0;
           int score2 = 0;
 
-          // Add bounds checking for move1 and move2
           if (isValidPosition(move1)) {
             score1 = historyHeuristic[move1.getCurrentCoordinate()][move1.getDestinationCoordinate()];
           }
@@ -205,7 +208,12 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         return sortedMoves;
       }
 
-      // Helper method to check if a move has valid coordinates for historyHeuristic
+      /**
+       * Validates that a move has coordinates within the valid range for history heuristic access.
+       *
+       * @param move The move to validate.
+       * @return True if the move has valid coordinates, false otherwise.
+       */
       private boolean isValidPosition(Move move) {
         if (move == null) return false;
         int current = move.getCurrentCoordinate();
@@ -214,14 +222,16 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       }
     },
 
-    /** Expensive sorting for root moves. */
+    /**
+     * Expensive move sorting strategy used for root moves that performs
+     * comprehensive evaluation including threat analysis and detailed move scoring.
+     */
     EXPENSIVE {
       @Override
       Collection<Move> sort(final Collection<Move> moves, final Board board,
                             final StockAlphaBeta engine, final int ply) {
         List<Move> sortedMoves = new ArrayList<>(moves);
 
-        // Get SEE scores for all captures
         Map<Move, Integer> seeScores = new HashMap<>();
         for (Move move : sortedMoves) {
           if (move.isAttack()) {
@@ -232,12 +242,10 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         sortedMoves.sort((move1, move2) -> ComparisonChain.start()
                 .compareTrueFirst(BoardUtils.kingThreat(move1), BoardUtils.kingThreat(move2))
                 .compareTrueFirst(move1.isCastlingMove(), move2.isCastlingMove())
-                // For captures, use SEE instead of MVV-LVA
                 .compare(
                         move1.isAttack() ? seeScores.getOrDefault(move1, 0) : -1000,
                         move2.isAttack() ? seeScores.getOrDefault(move2, 0) : -1000
                 )
-                // Also consider history for non-captures with bounds checking
                 .compare(
                         isValidPosition(move1) ?
                                 historyHeuristic[move1.getCurrentCoordinate()][move1.getDestinationCoordinate()] : 0,
@@ -248,7 +256,12 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         return sortedMoves;
       }
 
-      // Helper method to check if a move has valid coordinates for historyHeuristic
+      /**
+       * Validates that a move has coordinates within the valid range for history heuristic access.
+       *
+       * @param move The move to validate.
+       * @return True if the move has valid coordinates, false otherwise.
+       */
       private boolean isValidPosition(Move move) {
         int current = move.getCurrentCoordinate();
         int dest = move.getDestinationCoordinate();
@@ -256,28 +269,39 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       }
     };
 
+    /**
+     * Sorts the given collection of moves according to the strategy's ordering criteria.
+     *
+     * @param moves The collection of moves to sort.
+     * @param board The current board position.
+     * @param engine The engine instance for accessing move ordering data.
+     * @param ply The current search ply for accessing ply-specific data.
+     * @return A sorted collection of moves.
+     */
     abstract Collection<Move> sort(Collection<Move> moves, final Board board,
                                    final StockAlphaBeta engine, final int ply);
   }
 
   /**
-   * Constructs a StockAlphaBeta instance with the specified search depth.
+   * Constructs a StockAlphaBeta chess engine with the specified maximum search depth.
+   * Initializes the thread pool, transposition table, and determines the appropriate
+   * board evaluator based on the current game state.
    *
-   * @param maxDepth The maximum depth for iterative deepening.
-   * @param board The initial board for evaluator selection.
+   * @param maxDepth The maximum depth for iterative deepening search.
+   * @param board The initial board position for evaluator selection.
    */
   public StockAlphaBeta(final int maxDepth, final Board board) {
     this.maxDepth = maxDepth;
     this.threadCount = Runtime.getRuntime().availableProcessors();
     this.searchThreadPool = Executors.newFixedThreadPool(threadCount);
-    this.transpositionTable = new StripedTranspositionTable(256); // 256MB default
+    this.transpositionTable = new StripedTranspositionTable(256);
     this.evaluator = determineGameState(board);
   }
 
   /**
-   * Returns a string representation of the StockAlphaBeta instance.
+   * Returns a string representation of this chess engine.
    *
-   * @return A string representing the instance.
+   * @return A string identifying this engine implementation.
    */
   @Override
   public String toString() {
@@ -285,11 +309,12 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   }
 
   /**
-   * Executes the alpha-beta search algorithm with Iterative Deepening and Lazy SMP
-   * to find the best move for the current player.
+   * Executes the alpha-beta search algorithm with iterative deepening and parallel search
+   * to find the best move for the current player. Uses aspiration windows, transposition
+   * tables, and various pruning techniques to optimize search performance.
    *
-   * @param board The current chess board.
-   * @return The best move determined by the algorithm.
+   * @param board The current chess board position.
+   * @return The best move determined by the search algorithm.
    */
   @Override
   public Move execute(final Board board) {
@@ -300,23 +325,18 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     this.boardsEvaluated.set(0);
     this.transpositionTable.incrementAge();
 
-    // Reset evaluation cache stats for new search
     EvaluationCache.get().clear();
 
     try {
-      // For each iterative deepening depth
       for (int currentDepth = 1; currentDepth <= maxDepth && !searchStopped; currentDepth++) {
-        // Use aspiration windows for deeper searches
         if (currentDepth >= 3) {
           bestMove = searchRootAspirationWindow(board, currentDepth, bestMove);
         } else {
           bestMove = searchRootParallel(board, currentDepth, -Double.MAX_VALUE, Double.MAX_VALUE);
         }
 
-        // Update history heuristic for the best move
         updateHistoryHeuristic(bestMove, currentDepth);
 
-        // Output statistics
         final long evaluatedPositions = this.boardsEvaluated.get();
         final long executionTime = System.currentTimeMillis() - startTime;
         final String result = String.format(
@@ -331,40 +351,45 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         notifyObservers(result);
       }
     } finally {
-      // Don't shut down the thread pool here as it's reused
     }
 
     return bestMove;
   }
 
   /**
-   * Gets a cached evaluation or computes a new one if not in cache.
+   * Retrieves a cached board evaluation or computes a new evaluation if not found in cache.
+   *
+   * @param board The board position to evaluate.
+   * @param depth The search depth for the evaluation.
+   * @return The evaluation score for the board position.
    */
   private double getCachedEvaluation(Board board, int depth) {
-    // Try to get from cache first
     Double cachedScore = EvaluationCache.get().probe(board, depth);
     if (cachedScore != null) {
       return cachedScore;
     }
 
-    // Not in cache, calculate and store
     double score = this.evaluator.evaluate(board, depth);
     EvaluationCache.get().store(board, depth, score);
     return score;
   }
 
   /**
-   * Implements aspiration window search for deeper iterations
+   * Implements aspiration window search for deeper iterations to reduce search time
+   * by using narrow alpha-beta windows based on previous search results.
+   *
+   * @param board The root board position.
+   * @param depth The current search depth.
+   * @param previousBestMove The best move from the previous iteration.
+   * @return The best move found with aspiration window search.
    */
   private Move searchRootAspirationWindow(final Board board, final int depth, final Move previousBestMove) {
     double alpha = depth > 3 ? highestSeenValue - ASPIRATION_WINDOW : -Double.MAX_VALUE;
     double beta = depth > 3 ? lowestSeenValue + ASPIRATION_WINDOW : Double.MAX_VALUE;
     Move bestMove;
 
-    // Try with narrow window first
     bestMove = searchRootParallel(board, depth, alpha, beta);
 
-    // If window fails, try with full window
     if ((board.currentPlayer().getAlliance().isWhite() && highestSeenValue <= alpha) ||
             (!board.currentPlayer().getAlliance().isWhite() && lowestSeenValue >= beta)) {
       System.out.println("Aspiration window failed, re-searching with full window");
@@ -375,16 +400,16 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   }
 
   /**
-   * Searches the root position in parallel using Lazy SMP.
+   * Searches the root position using parallel Lazy SMP search with Young Brothers Wait protocol.
+   * Distributes move searching across multiple threads for improved performance.
    *
-   * @param board The root board position
-   * @param depth The current search depth
-   * @param alpha The alpha bound
-   * @param beta The beta bound
-   * @return The best move found
+   * @param board The root board position.
+   * @param depth The current search depth.
+   * @param alpha The alpha bound for alpha-beta search.
+   * @param beta The beta bound for alpha-beta search.
+   * @return The best move found by the parallel search.
    */
   private Move searchRootParallel(final Board board, final int depth, double alpha, double beta) {
-    // Sort moves to try most promising first
     final List<Move> allMoves = new ArrayList<>(
             MoveSorter.EXPENSIVE.sort(board.currentPlayer().getLegalMoves(), board, this, 0));
 
@@ -392,47 +417,37 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       return MoveFactory.getNullMove();
     }
 
-    // For tracking the best move found
     final AtomicReference<Move> globalBestMove = new AtomicReference<>(allMoves.get(0));
     final AtomicReference<Double> globalBestScore = new AtomicReference<>(
             board.currentPlayer().getAlliance().isWhite() ? alpha : beta);
 
-    // Counter for distributing moves to threads
     final AtomicInteger moveIndex = new AtomicInteger(0);
 
-    // Ensure first move is fully searched before others (Young Brothers Wait)
     final CountDownLatch firstMoveLatch = new CountDownLatch(1);
 
-    // Create tasks for each thread
     List<Future<?>> futures = new ArrayList<>();
     for (int threadId = 0; threadId < threadCount; threadId++) {
       final int id = threadId;
       futures.add(searchThreadPool.submit(() -> {
-        // Initialize thread-local stats
         SearchStats stats = new SearchStats();
         threadStats.set(stats);
 
-        // Initialize thread-local killers
         if (killerMoves.get() == null) {
           killerMoves.set(new Move[2][MAX_SEARCH_DEPTH]);
         }
 
         try {
-          // First thread searches the first move
           if (id == 0) {
             searchFirstMove(board, allMoves.get(0), depth, globalBestMove, globalBestScore, alpha, beta);
-            firstMoveLatch.countDown(); // Signal other threads to start
+            firstMoveLatch.countDown();
           } else {
-            // Other threads wait for first move to be searched
             firstMoveLatch.await();
           }
 
-          // Then all threads take moves from the shared queue
           int idx;
           while ((idx = moveIndex.getAndIncrement()) < allMoves.size() && !searchStopped) {
-            if (idx == 0) continue; // Skip first move (already searched)
+            if (idx == 0) continue;
 
-            // Slightly vary search depth for better parallel efficiency
             int threadDepth = depth - (id % 2);
             if (threadDepth < 1) threadDepth = 1;
 
@@ -446,13 +461,11 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
         } finally {
-          // Update shared statistics
           boardsEvaluated.addAndGet(stats.boardsEvaluated);
         }
       }));
     }
 
-    // Wait for all threads to finish
     for (Future<?> future : futures) {
       try {
         future.get();
@@ -461,7 +474,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       }
     }
 
-    // Update aspiration window bounds for next iteration
     if (board.currentPlayer().getAlliance().isWhite()) {
       highestSeenValue = globalBestScore.get();
     } else {
@@ -472,7 +484,16 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   }
 
   /**
-   * Search the first move at the root with Young Brothers Wait protocol.
+   * Searches the first move at the root using the Young Brothers Wait protocol
+   * to ensure the most promising move is fully explored before other threads begin.
+   *
+   * @param board The root board position.
+   * @param move The first move to search.
+   * @param depth The search depth.
+   * @param bestMove Reference to the current best move.
+   * @param bestScore Reference to the current best score.
+   * @param alpha The alpha bound.
+   * @param beta The beta bound.
    */
   private void searchFirstMove(Board board, Move move, int depth,
                                AtomicReference<Move> bestMove, AtomicReference<Double> bestScore,
@@ -484,14 +505,22 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   }
 
   /**
-   * Search a move at the root and update best move if better is found.
+   * Searches a specific move and updates the best move and score if a better result is found.
+   *
+   * @param board The current board position.
+   * @param move The move to search.
+   * @param toBoard The board position after the move.
+   * @param depth The search depth.
+   * @param bestMove Reference to the current best move.
+   * @param bestScore Reference to the current best score.
+   * @param alpha The alpha bound.
+   * @param beta The beta bound.
    */
   private void searchMove(Board board, Move move, Board toBoard, int depth,
                           AtomicReference<Move> bestMove, AtomicReference<Double> bestScore,
                           double alpha, double beta) {
     double score;
     if (board.currentPlayer().getAlliance().isWhite()) {
-      // White is maximizing
       score = min(toBoard, depth - 1, alpha, beta, 1);
       if (score > bestScore.get()) {
         synchronized (bestScore) {
@@ -499,13 +528,11 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
             bestScore.set(score);
             bestMove.set(move);
 
-            // Record as a countermove if possible
             recordCounterMove(board, move);
           }
         }
       }
     } else {
-      // Black is minimizing
       score = max(toBoard, depth - 1, alpha, beta, 1);
       if (score < bestScore.get()) {
         synchronized (bestScore) {
@@ -513,7 +540,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
             bestScore.set(score);
             bestMove.set(move);
 
-            // Record as a countermove if possible
             recordCounterMove(board, move);
           }
         }
@@ -522,7 +548,10 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   }
 
   /**
-   * Records a move as a countermove to the last opponent move
+   * Records a move as a countermove response to the last opponent move for move ordering.
+   *
+   * @param board The current board position.
+   * @param move The move to record as a countermove.
    */
   private void recordCounterMove(Board board, Move move) {
     Move lastMove = board.getTransitionMove();
@@ -532,21 +561,23 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   }
 
   /**
-   * Calculates the depth for the quiescence search based on the board state and current depth.
+   * Calculates the appropriate depth for quiescence search based on position activity
+   * and current search constraints.
+   *
+   * @param toBoard The board position to evaluate.
+   * @param depth The current search depth.
+   * @return The depth to use for quiescence search.
    */
   private int calculateQuiescenceDepth(final Board toBoard, final int depth) {
     SearchStats stats = threadStats.get();
 
-    // For final ply, consider quiescence search if it's an active position
     if (depth == 1 && stats.quiescenceCount < MAX_QUIESCENCE) {
       int activityMeasure = 0;
 
-      // Always do quiescence in check
       if (toBoard.currentPlayer().isInCheck()) {
         return 1;
       }
 
-      // Do quiescence after captures or checks
       for (final Move move : BoardUtils.lastNMoves(toBoard, 2)) {
         if (move.isAttack()) {
           activityMeasure += 1;
@@ -562,18 +593,24 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   }
 
   /**
-   * Implements the max portion of the alpha-beta search algorithm.
+   * Implements the maximizing player portion of the alpha-beta search algorithm
+   * with various pruning techniques and search extensions.
+   *
+   * @param board The current board position.
+   * @param depth The remaining search depth.
+   * @param alpha The alpha bound.
+   * @param beta The beta bound.
+   * @param ply The current search ply.
+   * @return The best evaluation score for the maximizing player.
    */
   private double max(final Board board, int depth, double alpha, double beta, int ply) {
     SearchStats stats = threadStats.get();
 
-    // Terminal node check
     if (depth <= 0 || BoardUtils.isEndOfGame(board) || searchStopped) {
       return depth <= 0 ? quiescenceSearch(board, alpha, beta, ply, true) :
               getCachedEvaluation(board, depth);
     }
 
-    // Transposition table lookup
     long zobristHash = board.getZobristHash();
     TranspositionTable.Entry entry = transpositionTable.get(zobristHash);
     if (entry != null && entry.depth >= depth) {
@@ -589,7 +626,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       }
     }
 
-    // Razoring
     if (depth == 1) {
       double eval = getCachedEvaluation(board, depth);
       if (eval + RAZOR_MARGIN < alpha) {
@@ -597,7 +633,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       }
     }
 
-    // Futility pruning
     if (depth < FUTILITY_PRUNING_DEPTH && !board.currentPlayer().isInCheck()) {
       double eval = getCachedEvaluation(board, depth);
       if (eval >= beta + (depth * 100)) {
@@ -605,33 +640,28 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       }
     }
 
-    // Internal Iterative Deepening (IID)
     Move ttMove = null;
     if (entry == null && depth >= 4) {
       max(board, depth - 2, alpha, beta, ply);
       entry = transpositionTable.get(zobristHash);
       if (entry != null) {
-        // We don't have explicit ttMove but can get info from entry
         ttMove = findMoveFromHash(board, entry);
       }
     }
 
-    // Null Move Pruning
     if (depth >= 3 && !board.currentPlayer().isInCheck() && hasNonPawnMaterial(board.currentPlayer())) {
-      // Make a null move
       Board nullMoveBoard = makeNullMove(board);
-      int R = 2 + depth / 6; // Dynamic reduction
+      int R = 2 + depth / 6;
       double nullMoveScore = min(nullMoveBoard, depth - 1 - R, alpha, beta, ply + 1);
 
       if (nullMoveScore >= beta) {
-        // Verification search for deep positions
         if (depth >= 6) {
           double verificationScore = min(nullMoveBoard, depth - 4, alpha, beta, ply + 1);
           if (verificationScore >= beta) {
             return beta;
           }
         } else {
-          return beta; // Regular null move pruning cutoff
+          return beta;
         }
       }
     }
@@ -642,12 +672,9 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     Move[][] killers = killerMoves.get();
     int movesSearched = 0;
 
-    // Sort moves for better cutoffs
     Collection<Move> sortedMoves = MoveSorter.STANDARD.sort(board.currentPlayer().getLegalMoves(), board, this, ply);
 
-    // If we have a transposition table hit, try that move first
     if (ttMove != null) {
-      // Ensure ttMove is at the front of the search
       List<Move> reorderedMoves = new ArrayList<>();
       for (Move move : sortedMoves) {
         if (move.equals(ttMove)) {
@@ -660,7 +687,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     }
 
     for (final Move move : sortedMoves) {
-      // Skip negative SEE captures early in the search
       if (move.isAttack() && depth < 3 && movesSearched > 2) {
         int seeScore = seeEvaluator.evaluate(board, move);
         if (seeScore < SEE_PRUNING_THRESHOLD) {
@@ -673,28 +699,22 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         final Board toBoard = moveTransition.toBoard();
         double currentValue;
 
-        // Check extensions
         int newDepth = depth - 1;
         if (toBoard.currentPlayer().isInCheck()) {
-          newDepth++; // Extend search when in check
+          newDepth++;
         }
 
-        // Principal Variation Search
         if (firstMove) {
           currentValue = min(toBoard, newDepth, currentAlpha, beta, ply + 1);
         } else {
-          // Try reduced depth for non-PV nodes
-          // Late Move Reduction
           int reduction = 0;
           if (depth >= 3 && movesSearched >= 4 && !move.isAttack() && !board.currentPlayer().isInCheck()) {
             reduction = 1 + (movesSearched / 6);
             if (reduction > 3) reduction = 3;
           }
 
-          // Reduced search with null window
           currentValue = min(toBoard, newDepth - reduction, currentAlpha, currentAlpha + 0.1, ply + 1);
 
-          // Re-search if promising and in window
           if (currentValue > currentAlpha && currentValue < beta) {
             currentValue = min(toBoard, newDepth, currentAlpha, beta, ply + 1);
           }
@@ -704,7 +724,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
           currentAlpha = currentValue;
           bestFoundMove = move;
 
-          // Update killer moves and counter moves
           if (!move.isAttack()) {
             if (!move.equals(killers[0][ply])) {
               killers[1][ply] = killers[0][ply];
@@ -712,17 +731,13 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
             }
           }
 
-          // Record counter move
           recordCounterMove(board, move);
 
-          // Beta cutoff
           if (currentAlpha >= beta) {
-            // Update history for good beta cutoffs
             if (!move.isAttack()) {
               historyHeuristic[move.getCurrentCoordinate()][move.getDestinationCoordinate()] += depth * depth;
             }
 
-            // Store in transposition table
             transpositionTable.store(zobristHash, beta, depth, TranspositionTable.LOWERBOUND);
             return beta;
           }
@@ -733,7 +748,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       }
     }
 
-    // Store position in transposition table
     byte nodeType = TranspositionTable.EXACT;
     if (currentAlpha <= alpha) {
       nodeType = TranspositionTable.UPPERBOUND;
@@ -746,18 +760,24 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   }
 
   /**
-   * Implements the min portion of the alpha-beta search algorithm.
+   * Implements the minimizing player portion of the alpha-beta search algorithm
+   * with various pruning techniques and search extensions.
+   *
+   * @param board The current board position.
+   * @param depth The remaining search depth.
+   * @param alpha The alpha bound.
+   * @param beta The beta bound.
+   * @param ply The current search ply.
+   * @return The best evaluation score for the minimizing player.
    */
   private double min(final Board board, int depth, double alpha, double beta, int ply) {
     SearchStats stats = threadStats.get();
 
-    // Terminal node check
     if (depth <= 0 || BoardUtils.isEndOfGame(board) || searchStopped) {
       return depth <= 0 ? quiescenceSearch(board, alpha, beta, ply, false) :
               getCachedEvaluation(board, depth);
     }
 
-    // Transposition table lookup
     long zobristHash = board.getZobristHash();
     TranspositionTable.Entry entry = transpositionTable.get(zobristHash);
     if (entry != null && entry.depth >= depth) {
@@ -773,7 +793,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       }
     }
 
-    // Razoring
     if (depth == 1) {
       double eval = getCachedEvaluation(board, depth);
       if (eval - RAZOR_MARGIN > beta) {
@@ -781,7 +800,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       }
     }
 
-    // Futility pruning
     if (depth < FUTILITY_PRUNING_DEPTH && !board.currentPlayer().isInCheck()) {
       double eval = getCachedEvaluation(board, depth);
       if (eval <= alpha - (depth * 100)) {
@@ -789,7 +807,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       }
     }
 
-    // Internal Iterative Deepening (IID)
     Move ttMove = null;
     if (entry == null && depth >= 4) {
       min(board, depth - 2, alpha, beta, ply);
@@ -799,21 +816,19 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       }
     }
 
-    // Null Move Pruning
     if (depth >= 3 && !board.currentPlayer().isInCheck() && hasNonPawnMaterial(board.currentPlayer())) {
       Board nullMoveBoard = makeNullMove(board);
-      int R = 2 + depth / 6; // Dynamic reduction
+      int R = 2 + depth / 6;
       double nullMoveScore = max(nullMoveBoard, depth - 1 - R, alpha, beta, ply + 1);
 
       if (nullMoveScore <= alpha) {
-        // Verification search for deep positions
         if (depth >= 6) {
           double verificationScore = max(nullMoveBoard, depth - 4, alpha, beta, ply + 1);
           if (verificationScore <= alpha) {
             return alpha;
           }
         } else {
-          return alpha; // Regular null move pruning cutoff
+          return alpha;
         }
       }
     }
@@ -824,12 +839,9 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     Move[][] killers = killerMoves.get();
     int movesSearched = 0;
 
-    // Sort moves for better cutoffs
     Collection<Move> sortedMoves = MoveSorter.STANDARD.sort(board.currentPlayer().getLegalMoves(), board, this, ply);
 
-    // If we have a transposition table hit, try that move first
     if (ttMove != null) {
-      // Ensure ttMove is at the front of the search
       List<Move> reorderedMoves = new ArrayList<>();
       for (Move move : sortedMoves) {
         if (move.equals(ttMove)) {
@@ -842,7 +854,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     }
 
     for (final Move move : sortedMoves) {
-      // Skip negative SEE captures early in the search
       if (move.isAttack() && depth < 3 && movesSearched > 2) {
         int seeScore = seeEvaluator.evaluate(board, move);
         if (seeScore < SEE_PRUNING_THRESHOLD) {
@@ -855,28 +866,22 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
         final Board toBoard = moveTransition.toBoard();
         double currentValue;
 
-        // Check extensions
         int newDepth = depth - 1;
         if (toBoard.currentPlayer().isInCheck()) {
-          newDepth++; // Extend search when in check
+          newDepth++;
         }
 
-        // Principal Variation Search
         if (firstMove) {
           currentValue = max(toBoard, newDepth, alpha, currentBeta, ply + 1);
         } else {
-          // Try reduced depth for non-PV nodes
-          // Late Move Reduction
           int reduction = 0;
           if (depth >= 3 && movesSearched >= 4 && !move.isAttack() && !board.currentPlayer().isInCheck()) {
             reduction = 1 + (movesSearched / 6);
             if (reduction > 3) reduction = 3;
           }
 
-          // Reduced search with null window
           currentValue = max(toBoard, newDepth - reduction, currentBeta - 0.1, currentBeta, ply + 1);
 
-          // Re-search if promising and in window
           if (currentValue < currentBeta && currentValue > alpha) {
             currentValue = max(toBoard, newDepth, alpha, currentBeta, ply + 1);
           }
@@ -886,7 +891,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
           currentBeta = currentValue;
           bestFoundMove = move;
 
-          // Update killer moves
           if (!move.isAttack()) {
             if (!move.equals(killers[0][ply])) {
               killers[1][ply] = killers[0][ply];
@@ -894,17 +898,13 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
             }
           }
 
-          // Record counter move
           recordCounterMove(board, move);
 
-          // Alpha cutoff
           if (currentBeta <= alpha) {
-            // Update history for good alpha cutoffs
             if (!move.isAttack()) {
               historyHeuristic[move.getCurrentCoordinate()][move.getDestinationCoordinate()] += depth * depth;
             }
 
-            // Store in transposition table
             transpositionTable.store(zobristHash, alpha, depth, TranspositionTable.UPPERBOUND);
             return alpha;
           }
@@ -915,7 +915,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       }
     }
 
-    // Store position in transposition table
     byte nodeType = TranspositionTable.EXACT;
     if (currentBeta <= alpha) {
       nodeType = TranspositionTable.UPPERBOUND;
@@ -928,21 +927,26 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   }
 
   /**
-   * Dedicated quiescence search function to handle capture sequences
+   * Implements quiescence search to handle tactical sequences involving captures
+   * and checks to avoid the horizon effect in evaluation.
+   *
+   * @param board The current board position.
+   * @param alpha The alpha bound.
+   * @param beta The beta bound.
+   * @param ply The current search ply.
+   * @param maximizing True if this is a maximizing node, false for minimizing.
+   * @return The quiescence search evaluation score.
    */
   private double quiescenceSearch(Board board, double alpha, double beta, int ply, boolean maximizing) {
     SearchStats stats = threadStats.get();
     stats.boardsEvaluated++;
 
-    // Handle terminal positions
     if (BoardUtils.isEndOfGame(board) || searchStopped) {
       return getCachedEvaluation(board, 0);
     }
 
-    // Stand-pat score
     double standPat = getCachedEvaluation(board, 0);
 
-    // Beta/alpha cutoff for maximizing/minimizing player
     if (maximizing) {
       if (standPat >= beta) return beta;
       if (standPat > alpha) alpha = standPat;
@@ -951,60 +955,47 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       if (standPat < beta) beta = standPat;
     }
 
-    // Delta pruning - if even the best capture won't improve alpha, return
     if (maximizing && standPat < alpha - DELTA_MATERIAL) return alpha;
     if (!maximizing && standPat > beta + DELTA_MATERIAL) return beta;
 
-    // Check extensions in quiescence
     if (board.currentPlayer().isInCheck()) {
-      // Consider all moves in check
       return maximizing ?
               max(board, 1, alpha, beta, ply + 1) :
               min(board, 1, alpha, beta, ply + 1);
     }
 
-    // Get only captures for quiescence
     List<Move> captures = board.currentPlayer().getLegalMoves().stream()
             .filter(Move::isAttack)
             .sorted((m1, m2) -> {
-              // Pre-compute values to ensure consistency
               boolean isM1Undefended = m1.isAttack() && m1.getAttackedPiece() != null &&
                       !seeEvaluator.isPieceDefended(m1.getAttackedPiece(), board);
               boolean isM2Undefended = m2.isAttack() && m2.getAttackedPiece() != null &&
                       !seeEvaluator.isPieceDefended(m2.getAttackedPiece(), board);
 
-              // First compare undefended status
               if (isM1Undefended != isM2Undefended) {
                 return isM1Undefended ? -1 : 1;
               }
 
-              // Then use SEE for normal ordering
               int see1 = seeEvaluator.evaluate(board, m1);
               int see2 = seeEvaluator.evaluate(board, m2);
-              return Integer.compare(see2, see1); // Best captures first
+              return Integer.compare(see2, see1);
             })
             .toList();
 
-    // Search captures
     for (Move move : captures) {
-      // SEE pruning - but allow negative SEE captures that lead to check
       int seeScore = seeEvaluator.evaluate(board, move);
 
-      // Modified SEE pruning - allow some negative captures
-      // 1. Allow captures of undefended pieces regardless of SEE
       boolean isUndefendedCapture = !seeEvaluator.isPieceDefended(move.getAttackedPiece(), board);
 
-      // 2. Skip only very bad captures that aren't checkers
       if (seeScore < SEE_PRUNING_THRESHOLD && !isUndefendedCapture) {
-        // Make the move to check if it gives check
         final MoveTransition moveTransition = board.currentPlayer().makeMove(move);
         if (moveTransition.moveStatus().isDone()) {
           boolean givesCheck = moveTransition.toBoard().currentPlayer().isInCheck();
           if (!givesCheck) {
-            continue; // Skip only if not giving check
+            continue;
           }
         } else {
-          continue; // Skip if move is illegal
+          continue;
         }
       }
 
@@ -1029,10 +1020,14 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   }
 
   /**
-   * Try to find a specific move from transposition table entry
+   * Attempts to find a specific move from a transposition table entry.
+   * This is a simplified implementation that searches for matching board positions.
+   *
+   * @param board The current board position.
+   * @param entry The transposition table entry.
+   * @return The move corresponding to the entry, or null if not found.
    */
   private Move findMoveFromHash(Board board, TranspositionTable.Entry entry) {
-    // This is a simplistic approach - a real TT would store the best move explicitly
     for (Move move : board.currentPlayer().getLegalMoves()) {
       MoveTransition moveTransition = board.currentPlayer().makeMove(move);
       if (moveTransition.moveStatus().isDone()) {
@@ -1046,7 +1041,11 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   }
 
   /**
-   * Creates a board where the current player passes (makes a "null move").
+   * Creates a board position where the current player passes their turn (null move).
+   * Used for null move pruning in the search algorithm.
+   *
+   * @param board The current board position.
+   * @return A new board with the same position but opposite side to move.
    */
   private Board makeNullMove(Board board) {
     Board.Builder builder = new Board.Builder();
@@ -1058,7 +1057,11 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   }
 
   /**
-   * Checks if the player has non-pawn material (excluding king).
+   * Checks whether a player has non-pawn material remaining on the board.
+   * Used to determine if null move pruning is safe to apply.
+   *
+   * @param player The player to check for non-pawn material.
+   * @return True if the player has pieces other than pawns and king, false otherwise.
    */
   private boolean hasNonPawnMaterial(Player player) {
     for (Piece piece : player.getActivePieces()) {
@@ -1071,7 +1074,11 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   }
 
   /**
-   * Stores a move that was made into the history heuristic table.
+   * Updates the history heuristic table with information about a good move
+   * to improve move ordering in future searches.
+   *
+   * @param move The move to record in the history heuristic.
+   * @param depth The depth at which this move was found to be good.
    */
   private void updateHistoryHeuristic(Move move, int depth) {
     if (move != null && move != MoveFactory.getNullMove()) {
@@ -1080,7 +1087,11 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   }
 
   /**
-   * Determines the game state for the current position to select appropriate evaluator.
+   * Determines the appropriate board evaluator based on the current game state.
+   * Uses game phase detection to select between opening, middlegame, and endgame evaluators.
+   *
+   * @param board The current board position.
+   * @return The appropriate board evaluator for the game state.
    */
   @VisibleForTesting
   private BoardEvaluator determineGameState(final Board board) {
@@ -1088,40 +1099,51 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
   }
 
   /**
-   * Thread-local search statistics.
+   * The SearchStats class tracks performance statistics for individual search threads
+   * during parallel search operations.
    */
   private static class SearchStats {
+    /** The number of board positions evaluated by this thread. */
     long boardsEvaluated;
+    /** The number of quiescence search nodes explored by this thread. */
     int quiescenceCount;
   }
 
   /**
-   * A thread-safe transposition table using striped locking.
+   * The StripedTranspositionTable class implements a thread-safe transposition table
+   * using striped locking to reduce contention in parallel search operations.
    */
   private static class StripedTranspositionTable {
+    /** The hash table storing transposition table entries. */
     private final TranspositionTable.Entry[] table;
+    /** The bit mask for indexing into the hash table. */
     private final int mask;
+    /** The current age counter for entry replacement decisions. */
     private volatile byte currentAge;
+    /** Array of read-write locks for striped locking. */
     private final ReadWriteLock[] locks;
-    private static final int LOCK_COUNT = 1024;  // Number of locks to reduce contention
+    /** The number of locks used for striped locking. */
+    private static final int LOCK_COUNT = 1024;
 
+    /**
+     * Constructs a new striped transposition table with the specified size.
+     *
+     * @param sizeMB The size of the transposition table in megabytes.
+     */
     public StripedTranspositionTable(int sizeMB) {
-      // Calculate size as power of 2
       long bytes = (long) sizeMB * 1024 * 1024;
-      int entryCount = (int) (bytes / 24);  // Estimated size of an entry
+      int entryCount = (int) (bytes / 24);
       int size = Integer.highestOneBit(entryCount);
 
       table = new TranspositionTable.Entry[size];
       mask = size - 1;
       currentAge = 0;
 
-      // Initialize locks
       locks = new ReentrantReadWriteLock[LOCK_COUNT];
       for (int i = 0; i < LOCK_COUNT; i++) {
         locks[i] = new ReentrantReadWriteLock();
       }
 
-      // Initialize table entries
       for (int i = 0; i < size; i++) {
         table[i] = new TranspositionTable.Entry();
       }
@@ -1130,10 +1152,19 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
               " entries (" + (size * 24 / (1024 * 1024)) + " MB)");
     }
 
+    /**
+     * Gets the appropriate lock for the given hash value using striped locking.
+     *
+     * @param hash The hash value to determine the lock.
+     * @return The read-write lock for the hash value.
+     */
     private ReadWriteLock getLock(long hash) {
       return locks[(int)(hash & (LOCK_COUNT - 1))];
     }
 
+    /**
+     * Increments the age counter for entry replacement decisions.
+     */
     public void incrementAge() {
       currentAge++;
       if (currentAge == 0) {
@@ -1141,6 +1172,12 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       }
     }
 
+    /**
+     * Retrieves a transposition table entry for the given board hash.
+     *
+     * @param zobristHash The Zobrist hash of the board position.
+     * @return The transposition table entry if found, null otherwise.
+     */
     public TranspositionTable.Entry get(long zobristHash) {
       int index = (int) (zobristHash & mask);
 
@@ -1153,7 +1190,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
           return entry;
         }
 
-        // Try secondary hash location (XOR with high bits)
         int index2 = (index ^ (int)(zobristHash >>> 32)) & mask;
         TranspositionTable.Entry entry2 = table[index2];
         if (entry2.key == zobristHash && entry2.key != 0) {
@@ -1167,6 +1203,14 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       }
     }
 
+    /**
+     * Stores a transposition table entry for the given board position.
+     *
+     * @param zobristHash The Zobrist hash of the board position.
+     * @param score The evaluation score for the position.
+     * @param depth The search depth for the evaluation.
+     * @param nodeType The type of node (exact, lower bound, upper bound).
+     */
     public void store(long zobristHash, double score, int depth, byte nodeType) {
       int index = (int) (zobristHash & mask);
 
@@ -1190,18 +1234,25 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       }
     }
 
+    /**
+     * Determines which transposition table entry should be replaced based on
+     * depth, node type, and age criteria.
+     *
+     * @param entry1 The first entry candidate for replacement.
+     * @param entry2 The second entry candidate for replacement.
+     * @param depth The depth of the new entry.
+     * @param nodeType The node type of the new entry.
+     * @return True if the first entry should be replaced, false for the second.
+     */
     private boolean shouldReplace(TranspositionTable.Entry entry1,
                                   TranspositionTable.Entry entry2,
                                   int depth, byte nodeType) {
-      // Always replace if entry is empty
       if (entry1.key == 0) return true;
       if (entry2.key == 0) return false;
 
-      // Prefer deeper searches
       if (entry1.depth < entry2.depth) return true;
       if (entry1.depth > entry2.depth) return false;
 
-      // Prefer exact values over bounds
       boolean isExact1 = entry1.nodeType == TranspositionTable.EXACT;
       boolean isExact2 = entry2.nodeType == TranspositionTable.EXACT;
       boolean newIsExact = nodeType == TranspositionTable.EXACT;
@@ -1210,7 +1261,6 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
       if (isExact1 && !isExact2) return true;
       if (!isExact1 && newIsExact) return true;
 
-      // If same depth and type, prefer current age
       return entry1.age <= entry2.age;
     }
   }

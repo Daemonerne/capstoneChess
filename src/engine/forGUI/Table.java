@@ -500,6 +500,8 @@ public final class Table extends Observable {
     /** Constructs a new BoardPanel and initializes its tile panels. */
     BoardPanel() {
       super(new GridLayout(8, 8));
+      setFocusTraversalPolicyProvider(false);
+      setFocusable(false);
       this.boardTiles = new ArrayList < > ();
       for (int i = 0; i < BoardUtils.NUM_TILES; i++) {
         final TilePanel tilePanel = new TilePanel(this, i);

@@ -10,123 +10,122 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Implements Static Exchange Evaluation (SEE) for accurate evaluation of capture sequences.
- * SEE recursively evaluates the best possible outcome of a capture sequence for each side,
- * helping with move ordering and pruning bad exchanges.
+ * The StaticExchangeEvaluator class implements Static Exchange Evaluation (SEE) for accurate assessment
+ * of capture sequences in chess positions. SEE recursively evaluates the best possible outcome of a
+ * capture sequence for each side, providing critical information for move ordering and pruning decisions
+ * in search algorithms. This evaluation helps distinguish between profitable and unprofitable exchanges.
+ * <p>
+ * The class follows the singleton pattern to ensure consistent evaluation across the chess engine.
+ * It uses simplified piece values optimized for exchange calculations and considers factors such as
+ * piece defense and attack sequences to determine the material outcome of captures.
+ *
+ * @author Aaron Ho
  */
 public class StaticExchangeEvaluator {
 
-  /** Singleton instance of the StaticExchangeEvaluator. */
+  /** The singleton instance of the StaticExchangeEvaluator for global access. */
   private static final StaticExchangeEvaluator INSTANCE = new StaticExchangeEvaluator();
 
-  /** Piece values for SEE calculations, simpler than full evaluation values */
+  /**
+   * Simplified piece values used for SEE calculations, indexed by piece type ordinal.
+   * Values are optimized for exchange evaluation rather than full position assessment.
+   */
   private static final int[] SEE_PIECE_VALUES = {
-          100,    // PAWN
-          320,    // KNIGHT
-          330,    // BISHOP
-          500,    // ROOK
-          900,    // QUEEN
-          20000   // KING - very high value to ensure kings are rarely considered for exchanges
+          100,
+          320,
+          330,
+          500,
+          900,
+          20000
   };
 
-  /** Private constructor to enforce singleton pattern */
+  /**
+   * Constructs a new StaticExchangeEvaluator instance.
+   * Private constructor enforces the singleton pattern.
+   */
   private StaticExchangeEvaluator() {}
 
   /**
-   * Returns the singleton instance.
+   * Returns the singleton instance of the StaticExchangeEvaluator.
+   *
+   * @return The singleton StaticExchangeEvaluator instance.
    */
   public static StaticExchangeEvaluator get() {
     return INSTANCE;
   }
 
   /**
-   * Evaluates the score of a capture move using static exchange evaluation.
+   * Evaluates the material gain or loss from a capture move using static exchange evaluation.
+   * The method simulates the optimal capture sequence for both sides and returns the expected
+   * material outcome. Non-capture moves return a value of zero.
    *
-   * @param board The current board
-   * @param move The capture move to evaluate
-   * @return Estimated material gain/loss from the exchange sequence, positive = good for side to move
+   * @param board The current chess board state.
+   * @param move The capture move to evaluate.
+   * @return The estimated material gain or loss, positive values favor the side making the initial capture.
    */
   public int evaluate(final Board board, final Move move) {
     if (!move.isAttack()) {
-      return 0; // Non-capture moves have SEE value of 0
+      return 0;
     }
 
-    // Get the square where the exchange happens
     final int targetSquare = move.getDestinationCoordinate();
-
-    // Get the attacking piece value
     final Piece attackingPiece = move.getMovedPiece();
     final int attackerValue = getPieceValue(attackingPiece.getPieceType());
-
-    // Get the captured piece value
     final Piece capturedPiece = move.getAttackedPiece();
     final int capturedValue = getPieceValue(capturedPiece.getPieceType());
 
-    // Special case for en passant - simply return pawn value
     if (move instanceof Move.PawnEnPassantAttack) {
-      return SEE_PIECE_VALUES[0]; // Pawn value
+      return SEE_PIECE_VALUES[0];
     }
 
-    // Check if piece is undefended for fast path
     if (!isPieceDefended(capturedPiece, board)) {
-      return capturedValue; // Just return the value of the captured piece
+      return capturedValue;
     }
 
-    // For normal captures, we need to find all attackers to the square
     final Alliance sideToMove = board.currentPlayer().getAlliance();
     final Alliance opponentSide = board.currentPlayer().getOpponent().getAlliance();
-
-    // Create attack maps for square
     final List<Piece> attackers = findAttackers(board, targetSquare);
 
-    // Make the initial capture
     int gain = capturedValue;
 
-    // If the sequence stops here, return the gain
     if (attackers.isEmpty()) {
       return gain;
     }
 
-    // Simulate the capture sequence
     List<Piece> remainingAttackers = new ArrayList<>(attackers);
-
-    // Remove the initial attacker
     remainingAttackers.removeIf(p -> p.equals(attackingPiece));
 
     Alliance side = opponentSide;
     int lastAttackerValue = attackerValue;
 
-    // Keep capturing until no attackers remain or it's not beneficial
     while (!remainingAttackers.isEmpty()) {
-      // Find the least valuable piece that can attack
       Piece nextAttacker = findLeastValuableAttacker(remainingAttackers, side);
 
-      // If no attacker found for this side, break
       if (nextAttacker == null) {
         break;
       }
 
-      // Make the capture
       gain = -gain + lastAttackerValue;
 
-      // If this capture would result in a negative score, the side wouldn't make it
       if (gain < 0) {
         break;
       }
 
-      // Update for next iteration
       lastAttackerValue = getPieceValue(nextAttacker.getPieceType());
       remainingAttackers.remove(nextAttacker);
       side = side.equals(Alliance.WHITE) ? Alliance.BLACK : Alliance.WHITE;
     }
 
-    // FIX: Just return the gain from the exchange sequence
     return gain;
   }
 
   /**
-   * Checks if a piece is defended by any other piece of the same alliance.
-   * More efficient than full attackers calculation for a simple check.
+   * Determines whether a piece is defended by any other piece of the same alliance.
+   * This method provides an efficient check for piece defense without full attack calculation.
+   *
+   * @param piece The piece to check for defense.
+   * @param board The current chess board state.
+   * @return True if the piece is defended by a friendly piece, false otherwise.
    */
   public boolean isPieceDefended(final Piece piece, final Board board) {
     if (piece == null) return false;
@@ -134,7 +133,6 @@ public class StaticExchangeEvaluator {
     final int piecePosition = piece.getPiecePosition();
     final Alliance pieceAlliance = piece.getPieceAllegiance();
 
-    // Check if any piece of the same alliance can attack the position
     for (Piece otherPiece : board.getAllPieces()) {
       if (otherPiece.getPieceAllegiance() == pieceAlliance &&
               !otherPiece.equals(piece)) {
@@ -152,7 +150,12 @@ public class StaticExchangeEvaluator {
   }
 
   /**
-   * Finds all pieces that can attack a specific square.
+   * Finds all pieces that can attack a specific square on the board.
+   * This method examines all pieces and their legal moves to determine attack capabilities.
+   *
+   * @param board The current chess board state.
+   * @param targetSquare The square coordinate to check for attackers.
+   * @return A list of pieces that can attack the target square.
    */
   private List<Piece> findAttackers(final Board board, final int targetSquare) {
     List<Piece> attackers = new ArrayList<>();
@@ -172,7 +175,12 @@ public class StaticExchangeEvaluator {
   }
 
   /**
-   * Finds the least valuable attacker of a given side from the list of attackers.
+   * Finds the least valuable attacking piece of a given alliance from the list of attackers.
+   * This method implements the principle of using the lowest-value piece for exchanges.
+   *
+   * @param attackers The list of pieces that can attack the target square.
+   * @param side The alliance of the attacking side.
+   * @return The least valuable attacker of the specified side, or null if none found.
    */
   private Piece findLeastValuableAttacker(List<Piece> attackers, Alliance side) {
     Piece leastValuableAttacker = null;
@@ -192,7 +200,11 @@ public class StaticExchangeEvaluator {
   }
 
   /**
-   * Gets the SEE value for a piece type.
+   * Returns the SEE-specific value for a given piece type.
+   * These values are optimized for exchange evaluation calculations.
+   *
+   * @param pieceType The type of piece to evaluate.
+   * @return The SEE value for the piece type.
    */
   private int getPieceValue(Piece.PieceType pieceType) {
     return switch (pieceType) {
