@@ -12,38 +12,29 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * The `Pawn` class represents a pawn chess piece. It extends the Piece class and defines the specific properties and behaviors
- * of a pawn on the chess board. Pawns have a special move pattern that includes advancing by one or two squares on their first move,
- * capturing diagonally, and performing en passant captures. Additionally, pawns can be promoted to other pieces when they reach the
- * opposing player's back rank.
- * <br><br>
- * This class provides methods for calculating legal moves for a pawn, including standard moves, capturing moves, en passant moves,
- * and pawn promotion moves. It also implements the locationBonus method to evaluate a pawn's position on the board.
- * Additionally, the class keeps track of the number of moves made by the pawn, and this information is used for certain functionalities
- * such as pawn promotion and move tracking.
- * <br><br>
- * Known bug: Occasionally, at a rapid pace of input (one move a second) a promoted pawn will not be promoted into a
- * queen and will remain a pawn at either the first or eighth rank. We think this has to do with the `paint()` or `repaint()` calls
- * in the `Table` class when the new queen is supposed to be painted.
- * <br><br>
- * Note: Despite the rules of chess allowing you to under-promote pieces, there are only a few rare circumstances where knights
- * are the best or only move to end the game or keep it alive. Therefore, to simplify this experience for both the coder and the
- * player, the promotion is hardcoded to be a `Queen`. This is also for your enjoyment of the game, because we know that you are
- * too stupid and dramatic and romantic to realize that promoting any other piece is horribly pointless and idiotic.
+ * The Pawn class represents a pawn chess piece with its unique movement and capture rules.
+ * Pawns can move forward one square, move forward two squares on their first move, capture
+ * diagonally, perform en passant captures, and promote to other pieces upon reaching the
+ * opponent's back rank. This class extends the Piece class and implements all pawn-specific
+ * behaviors including promotion to queen, rook, bishop, or knight pieces.
+ * <p>
+ * Pawn promotion is handled by generating all possible promotion moves when a pawn reaches
+ * the promotion square, allowing the chess engine to evaluate all promotion options.
  *
  * @author Aaron Ho
  * @author dareTo81
  */
 public final class Pawn extends Piece {
 
-  /*** An array of possible candidate move coordinates for a pawn, including advancing by one or two squares and capturing diagonally. */
-  private final static int[] CANDIDATE_MOVE_COORDINATES = { 8, 16, 7, 9 };
+  /** Array of possible move coordinate offsets for pawn movement and capture patterns. */
+  private static final int[] CANDIDATE_MOVE_COORDINATES = { 8, 16, 7, 9 };
 
   /**
-   * Constructs a new Pawn instance with the given alliance and piece position.
+   * Constructs a new Pawn instance with the specified alliance and position.
    *
-   * @param allegiance     The alliance (color) of the pawn.
-   * @param piecePosition  The current position of the pawn on the board.
+   * @param allegiance The alliance (color) of the pawn.
+   * @param piecePosition The current position of the pawn on the board.
+   * @param numMoves The number of moves made by the pawn.
    */
   public Pawn(final Alliance allegiance,
               final int piecePosition, final int numMoves) {
@@ -51,11 +42,12 @@ public final class Pawn extends Piece {
   }
 
   /**
-   * Constructs a new Pawn instance with the given alliance, piece position, and first move status.
+   * Constructs a new Pawn instance with the specified alliance, position, and move status.
    *
-   * @param alliance       The alliance (color) of the pawn.
-   * @param piecePosition  The current position of the pawn on the board.
-   * @param isFirstMove    Whether it's the first move of the pawn.
+   * @param alliance The alliance (color) of the pawn.
+   * @param piecePosition The current position of the pawn on the board.
+   * @param isFirstMove Whether this is the pawn's first move.
+   * @param numMoves The number of moves made by the pawn.
    */
   public Pawn(final Alliance alliance,
               final int piecePosition,
@@ -65,12 +57,12 @@ public final class Pawn extends Piece {
   }
 
   /**
-   * Calculates the location bonus for the pawn based on its position on the board.
-   * The bonus affects the pawn's tactical strength in different positions. This method
-   * calls upon the `pawnBonus` method in `Alliance` and returns a value from a preset
-   * array of values depending on the position of the piece.
+   * Calculates the positional bonus for this pawn based on its current board position.
+   * The bonus value is determined by alliance-specific pawn position tables that favor
+   * advanced and central pawn positions.
    *
-   * @return The location bonus value for the pawn.
+   * @param board The current chess board.
+   * @return The positional bonus value for this pawn's position.
    */
   @Override
   public int locationBonus(final Board board) {
@@ -78,29 +70,28 @@ public final class Pawn extends Piece {
   }
 
   /**
-   * Calculates the legal moves for the pawn on the given board.
+   * Calculates all legal moves for this pawn on the given board, including standard moves,
+   * two-square initial moves, diagonal captures, en passant captures, and promotion moves.
+   * Returns all possible moves that can be legally executed from the current position.
    *
-   * @param board The current board.
-   * @return A collection of legal moves for the pawn.
+   * @param board The current chess board.
+   * @return A collection of legal moves for this pawn.
    */
   @Override
   public Collection<Move> calculateLegalMoves(final Board board) {
     final List<Move> legalMoves = new ArrayList<>();
-    // Iterates over possible candidate move coordinates for the pawn
+
     for (final int currentCandidateOffset: CANDIDATE_MOVE_COORDINATES) {
       int candidateDestinationCoordinate =
               this.piecePosition + (this.pieceAlliance.getDirection() * currentCandidateOffset);
       if (!BoardUtils.isValidTileCoordinate(candidateDestinationCoordinate)) {
         continue;
       }
-      // Handles standard pawn move (one square)
+
       if (currentCandidateOffset == 8 && board.getPiece(candidateDestinationCoordinate) == null) {
-        // Handles pawn promotion move when reaching the last rank
         if (this.pieceAlliance.isPawnPromotionSquare(candidateDestinationCoordinate)) {
-          // Create the base move using the MovePool
           Move pawnMove = MovePool.INSTANCE.getPawnMove(board, this, candidateDestinationCoordinate);
 
-          // Create promotion moves for each piece type
           legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
                   pawnMove, PieceUtils.Instance.getMovedQueen(this.pieceAlliance, candidateDestinationCoordinate)));
           legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
@@ -110,11 +101,9 @@ public final class Pawn extends Piece {
           legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
                   pawnMove, PieceUtils.Instance.getMovedKnight(this.pieceAlliance, candidateDestinationCoordinate)));
         } else {
-          // Regular pawn move
           legalMoves.add(MovePool.INSTANCE.getPawnMove(board, this, candidateDestinationCoordinate));
         }
       }
-      // Handles pawn jump (pawn can move two squares on its first move)
       else if (currentCandidateOffset == 16 && this.isFirstMove() &&
               ((BoardUtils.Instance.SecondRow.get(this.piecePosition) && this.pieceAlliance.isBlack()) ||
                       (BoardUtils.SeventhRow.get(this.piecePosition) && this.pieceAlliance.isWhite()))) {
@@ -122,11 +111,9 @@ public final class Pawn extends Piece {
                 this.piecePosition + (this.pieceAlliance.getDirection() * 8);
         if (board.getPiece(candidateDestinationCoordinate) == null &&
                 board.getPiece(behindCandidateDestinationCoordinate) == null) {
-          // Pawn jump
           legalMoves.add(MovePool.INSTANCE.getPawnJump(board, this, candidateDestinationCoordinate));
         }
       }
-      // Handles pawn capturing moves
       else if (currentCandidateOffset == 7 &&
               !((BoardUtils.Instance.EighthColumn.get(this.piecePosition) && this.pieceAlliance.isWhite()) ||
                       (BoardUtils.Instance.FirstColumn.get(this.piecePosition) && this.pieceAlliance.isBlack()))) {
@@ -134,10 +121,8 @@ public final class Pawn extends Piece {
           final Piece pieceOnCandidate = board.getPiece(candidateDestinationCoordinate);
           if (this.pieceAlliance != pieceOnCandidate.getPieceAllegiance()) {
             if (this.pieceAlliance.isPawnPromotionSquare(candidateDestinationCoordinate)) {
-              // Create the base move using the MovePool
               Move pawnAttackMove = MovePool.INSTANCE.getPawnAttackMove(board, this, candidateDestinationCoordinate, pieceOnCandidate);
 
-              // Create promotion moves for each piece type
               legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
                       pawnAttackMove, PieceUtils.Instance.getMovedQueen(this.pieceAlliance, candidateDestinationCoordinate)));
               legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
@@ -147,7 +132,6 @@ public final class Pawn extends Piece {
               legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
                       pawnAttackMove, PieceUtils.Instance.getMovedKnight(this.pieceAlliance, candidateDestinationCoordinate)));
             } else {
-              // Regular pawn attack
               legalMoves.add(MovePool.INSTANCE.getPawnAttackMove(board, this, candidateDestinationCoordinate, pieceOnCandidate));
             }
           }
@@ -155,25 +139,20 @@ public final class Pawn extends Piece {
                 (this.piecePosition + (this.pieceAlliance.getOppositeDirection()))) {
           final Piece pieceOnCandidate = board.getEnPassantPawn();
           if (this.pieceAlliance != pieceOnCandidate.getPieceAllegiance()) {
-            // En passant attack
             legalMoves.add(MovePool.INSTANCE.getPawnEnPassantAttack(board, this, candidateDestinationCoordinate, pieceOnCandidate));
           }
         }
       }
-      // Handles en passant capture
       else if (currentCandidateOffset == 9 &&
               !((BoardUtils.Instance.FirstColumn.get(this.piecePosition) && this.pieceAlliance.isWhite()) ||
                       (BoardUtils.Instance.EighthColumn.get(this.piecePosition) && this.pieceAlliance.isBlack()))) {
         if (board.getPiece(candidateDestinationCoordinate) != null) {
           if (this.pieceAlliance !=
                   board.getPiece(candidateDestinationCoordinate).getPieceAllegiance()) {
-            // Handles pawn promotion move after capturing
             if (this.pieceAlliance.isPawnPromotionSquare(candidateDestinationCoordinate)) {
-              // Create the base move using the MovePool
               Move pawnAttackMove = MovePool.INSTANCE.getPawnAttackMove(board, this, candidateDestinationCoordinate,
                       board.getPiece(candidateDestinationCoordinate));
 
-              // Create promotion moves for each piece type
               legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
                       pawnAttackMove, PieceUtils.Instance.getMovedQueen(this.pieceAlliance, candidateDestinationCoordinate)));
               legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
@@ -183,7 +162,6 @@ public final class Pawn extends Piece {
               legalMoves.add(MovePool.INSTANCE.getPawnPromotion(
                       pawnAttackMove, PieceUtils.Instance.getMovedKnight(this.pieceAlliance, candidateDestinationCoordinate)));
             } else {
-              // Regular pawn attack
               legalMoves.add(MovePool.INSTANCE.getPawnAttackMove(board, this, candidateDestinationCoordinate,
                       board.getPiece(candidateDestinationCoordinate)));
             }
@@ -192,7 +170,6 @@ public final class Pawn extends Piece {
                 (this.piecePosition - (this.pieceAlliance.getOppositeDirection()))) {
           final Piece pieceOnCandidate = board.getEnPassantPawn();
           if (this.pieceAlliance != pieceOnCandidate.getPieceAllegiance()) {
-            // En passant attack
             legalMoves.add(MovePool.INSTANCE.getPawnEnPassantAttack(board, this, candidateDestinationCoordinate, pieceOnCandidate));
           }
         }
@@ -202,9 +179,9 @@ public final class Pawn extends Piece {
   }
 
   /**
-   * Returns a string representation of the pawn.
+   * Returns the string representation of this pawn piece.
    *
-   * @return The string representation of the pawn.
+   * @return The string representation of the pawn piece type.
    */
   @Override
   public String toString() {
@@ -212,14 +189,14 @@ public final class Pawn extends Piece {
   }
 
   /**
-   * Creates a new Pawn instance after making the given move.
+   * Creates a new Pawn instance representing this pawn after the specified move is executed.
+   * The new pawn will be positioned at the move's destination coordinate.
    *
-   * @param move The move to be made.
-   * @return A new Pawn instance after the move is made.
+   * @param move The move to be executed.
+   * @return A new Pawn instance at the destination position.
    */
   @Override
   public Pawn movePiece(final Move move) {
     return PieceUtils.Instance.getMovedPawn(move.getMovedPiece().getPieceAllegiance(), move.getDestinationCoordinate());
   }
-
 }

@@ -6,45 +6,55 @@ import engine.Alliance;
 import engine.forBoard.BoardUtils;
 
 /**
- * The PieceUtils class is a utility class that provides methods for creating, accessing, and manipulating all possible
- * moved instances of different types of chess pieces. It uses Guava's ImmutableTable to store instances of different pieces
- * for each alliance, destination coordinate, and the number of moves made by the piece. The class follows the singleton
- * pattern to ensure only one instance of PieceUtils is created and used.
- * <br><br>
- * This class allows easy access to moved instances of various chess pieces, such as Pawns, Knights, Bishops, Rooks, and Queens.
- * These instances can be retrieved based on the alliance, destination coordinate, and the number of moves made by the piece.
- * Additionally, PieceUtils provides methods to increment the number of moves for each type of chess piece.
- * The utility is useful for generating all possible moves for a given piece type on the board and keeping track of the
- * number of moves made by each piece.
+ * The PieceUtils class provides utility methods for creating and accessing pre-computed instances
+ * of moved chess pieces. This singleton enum uses Guava's ImmutableTable to store all possible
+ * piece instances for each alliance and destination coordinate combination, optimizing performance
+ * by avoiding repeated object creation during move generation.
+ * <p>
+ * The class maintains separate tables for pawns, knights, bishops, rooks, and queens, allowing
+ * efficient retrieval of moved piece instances based on alliance and destination coordinate.
+ * All stored pieces are configured as having been moved (isFirstMove = false) with a move count of 1.
  *
- * @see com.google.common.collect.ImmutableTable
  * @author dareTo81
  * @author Aaron Ho
  */
 enum PieceUtils {
 
-  /*** The singleton instance of the PieceUtils class. */
+  /**
+   * The singleton instance of the PieceUtils class providing access to all utility methods
+   * and pre-computed piece tables.
+   */
   Instance;
 
-  /*** Table storing all possible moved instances of Queen pieces for each alliance, destination coordinate, and number of moves. */
+  /**
+   * Table storing all possible moved Queen instances for each alliance and destination coordinate.
+   */
   private final Table<Alliance, Integer, Queen> ALL_POSSIBLE_QUEENS = PieceUtils.createAllPossibleMovedQueens();
 
-  /*** Table storing all possible moved instances of Rook pieces for each alliance, destination coordinate, and number of moves. */
+  /**
+   * Table storing all possible moved Rook instances for each alliance and destination coordinate.
+   */
   private final Table<Alliance, Integer, Rook> ALL_POSSIBLE_ROOKS = PieceUtils.createAllPossibleMovedRooks();
 
-  /*** Table storing all possible moved instances of Knight pieces for each alliance, destination coordinate, and number of moves. */
+  /**
+   * Table storing all possible moved Knight instances for each alliance and destination coordinate.
+   */
   private final Table<Alliance, Integer, Knight> ALL_POSSIBLE_KNIGHTS = PieceUtils.createAllPossibleMovedKnights();
 
-  /*** Table storing all possible moved instances of Bishop pieces for each alliance, destination coordinate, and number of moves. */
+  /**
+   * Table storing all possible moved Bishop instances for each alliance and destination coordinate.
+   */
   private final Table<Alliance, Integer, Bishop> ALL_POSSIBLE_BISHOPS = PieceUtils.createAllPossibleMovedBishops();
 
-  /*** Table storing all possible moved instances of Pawn pieces for each alliance, destination coordinate, and number of moves. */
+  /**
+   * Table storing all possible moved Pawn instances for each alliance and destination coordinate.
+   */
   private final Table<Alliance, Integer, Pawn> ALL_POSSIBLE_PAWNS = PieceUtils.createAllPossibleMovedPawns();
 
   /**
-   * Gets a moved Pawn piece instance for the specified alliance, destination coordinate, and number of moves.
+   * Retrieves a moved Pawn instance for the specified alliance and destination coordinate.
    *
-   * @param alliance              The alliance of the Pawn piece.
+   * @param alliance The alliance of the Pawn piece.
    * @param destinationCoordinate The destination coordinate for the moved Pawn piece.
    * @return The moved Pawn piece instance.
    */
@@ -54,9 +64,9 @@ enum PieceUtils {
   }
 
   /**
-   * Gets a moved Knight piece instance for the specified alliance, destination coordinate, and number of moves.
+   * Retrieves a moved Knight instance for the specified alliance and destination coordinate.
    *
-   * @param alliance              The alliance of the Knight piece.
+   * @param alliance The alliance of the Knight piece.
    * @param destinationCoordinate The destination coordinate for the moved Knight piece.
    * @return The moved Knight piece instance.
    */
@@ -66,11 +76,11 @@ enum PieceUtils {
   }
 
   /**
-   * Gets a moved Bishop piece instance for the specified alliance, destination coordinate, and number of moves.
+   * Retrieves a moved Bishop instance for the specified alliance and destination coordinate.
    *
-   * @param alliance              The alliance of the Bishop piece.
+   * @param alliance The alliance of the Bishop piece.
    * @param destinationCoordinate The destination coordinate for the moved Bishop piece.
-   * @return  The moved Bishop piece instance.
+   * @return The moved Bishop piece instance.
    */
   Bishop getMovedBishop(final Alliance alliance,
                         final int destinationCoordinate) {
@@ -78,9 +88,9 @@ enum PieceUtils {
   }
 
   /**
-   * Gets a moved Rook piece instance for the specified alliance, destination coordinate, and number of moves.
+   * Retrieves a moved Rook instance for the specified alliance and destination coordinate.
    *
-   * @param alliance              The alliance of the Rook piece.
+   * @param alliance The alliance of the Rook piece.
    * @param destinationCoordinate The destination coordinate for the moved Rook piece.
    * @return The moved Rook piece instance.
    */
@@ -90,9 +100,9 @@ enum PieceUtils {
   }
 
   /**
-   * Gets a moved Queen piece instance for the specified alliance, destination coordinate, and number of moves.
+   * Retrieves a moved Queen instance for the specified alliance and destination coordinate.
    *
-   * @param alliance              The alliance of the Queen piece.
+   * @param alliance The alliance of the Queen piece.
    * @param destinationCoordinate The destination coordinate for the moved Queen piece.
    * @return The moved Queen piece instance.
    */
@@ -102,9 +112,10 @@ enum PieceUtils {
   }
 
   /**
-   * Creates and returns an ImmutableTable containing all possible moved instances of Pawn pieces for each alliance, destination coordinate, and number of moves.
+   * Creates and populates an ImmutableTable containing all possible moved Pawn instances
+   * for each alliance and board coordinate combination.
    *
-   * @return The ImmutableTable containing all possible moved instances of Pawn pieces.
+   * @return An ImmutableTable containing all possible moved Pawn instances.
    */
   private static Table<Alliance, Integer, Pawn> createAllPossibleMovedPawns() {
     final ImmutableTable.Builder<Alliance, Integer, Pawn> pieces = ImmutableTable.builder();
@@ -117,9 +128,10 @@ enum PieceUtils {
   }
 
   /**
-   * Creates and returns an ImmutableTable containing all possible moved instances of Knight pieces for each alliance, destination coordinate, and number of moves.
+   * Creates and populates an ImmutableTable containing all possible moved Knight instances
+   * for each alliance and board coordinate combination.
    *
-   * @return The ImmutableTable containing all possible moved instances of Knight pieces.
+   * @return An ImmutableTable containing all possible moved Knight instances.
    */
   private static Table<Alliance, Integer, Knight> createAllPossibleMovedKnights() {
     final ImmutableTable.Builder<Alliance, Integer, Knight> pieces = ImmutableTable.builder();
@@ -132,9 +144,10 @@ enum PieceUtils {
   }
 
   /**
-   * Creates and returns an ImmutableTable containing all possible moved instances of Bishop pieces for each alliance, destination coordinate, and number of moves.
+   * Creates and populates an ImmutableTable containing all possible moved Bishop instances
+   * for each alliance and board coordinate combination.
    *
-   * @return The ImmutableTable containing all possible moved instances of Bishop pieces.
+   * @return An ImmutableTable containing all possible moved Bishop instances.
    */
   private static Table<Alliance, Integer, Bishop> createAllPossibleMovedBishops() {
     final ImmutableTable.Builder<Alliance, Integer, Bishop> pieces = ImmutableTable.builder();
@@ -147,9 +160,10 @@ enum PieceUtils {
   }
 
   /**
-   * Creates and returns an ImmutableTable containing all possible moved instances of Rook pieces for each alliance, destination coordinate, and number of moves.
+   * Creates and populates an ImmutableTable containing all possible moved Rook instances
+   * for each alliance and board coordinate combination.
    *
-   * @return The ImmutableTable containing all possible moved instances of Rook pieces.
+   * @return An ImmutableTable containing all possible moved Rook instances.
    */
   private static Table<Alliance, Integer, Rook> createAllPossibleMovedRooks() {
     final ImmutableTable.Builder<Alliance, Integer, Rook> pieces = ImmutableTable.builder();
@@ -162,9 +176,10 @@ enum PieceUtils {
   }
 
   /**
-   * Creates and returns an ImmutableTable containing all possible moved instances of Queen pieces for each alliance, destination coordinate, and number of moves.
+   * Creates and populates an ImmutableTable containing all possible moved Queen instances
+   * for each alliance and board coordinate combination.
    *
-   * @return The ImmutableTable containing all possible moved instances of Queen pieces.
+   * @return An ImmutableTable containing all possible moved Queen instances.
    */
   private static Table<Alliance, Integer, Queen> createAllPossibleMovedQueens() {
     final ImmutableTable.Builder<Alliance, Integer, Queen> pieces = ImmutableTable.builder();
