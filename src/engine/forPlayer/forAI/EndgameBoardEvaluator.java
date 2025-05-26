@@ -4,21 +4,27 @@ import com.google.common.annotations.VisibleForTesting;
 import engine.Alliance;
 import engine.forBoard.Board;
 import engine.forBoard.Move;
-import engine.forPiece.Bishop;
-import engine.forPiece.King;
-import engine.forPiece.Knight;
-import engine.forPiece.Piece;
+import engine.forPiece.*;
 import engine.forPlayer.Player;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * The EndgameBoardEvaluator class provides specialized evaluation functions for chess endgame positions.
+ * This evaluator focuses on endgame-specific factors such as king activity, passed pawns, pawn structure,
+ * and piece coordination that become critical when few pieces remain on the board. The evaluation considers
+ * material balance, king centralization, pawn promotion potential, and various endgame patterns to provide
+ * accurate position assessments for late-game scenarios.
+ *
+ * @author Claude
+ */
 public class EndgameBoardEvaluator implements BoardEvaluator {
 
-  /*** Singleton instance of the EndgameBoardEvaluator. */
+  /** Singleton instance of the EndgameBoardEvaluator. */
   private static final EndgameBoardEvaluator Instance = new EndgameBoardEvaluator();
 
-  /*** Private constructor to prevent instantiation outside of class. */
+  /** Private constructor to prevent instantiation outside of class. */
   private EndgameBoardEvaluator() {}
 
   /**
@@ -31,11 +37,13 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates the given board from the perspective of a player and returns a score.
+   * Evaluates the given board from the perspective of both players and returns a score.
+   * The evaluation considers endgame-specific factors and returns a positive score when
+   * white has an advantage and a negative score when black has an advantage.
    *
    * @param board The current state of the chess board.
    * @param depth The search depth in the AI's thinking process.
-   * @return      The evaluation score of the board.
+   * @return The evaluation score of the board position.
    */
   @Override
   public double evaluate(final Board board, final int depth) {
@@ -45,10 +53,12 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   /**
    * Calculates the overall score of the current board position for a given player
    * using modern chess engine evaluation principles tuned for endgame positions.
+   * The evaluation combines material assessment, king activity, passed pawn evaluation,
+   * pawn structure analysis, piece coordination, and endgame-specific patterns.
    *
    * @param player The player for whom the board position is being evaluated.
-   * @param board  The current state of the chess board.
-   * @return       The evaluation score of the board from the perspective of the specified player.
+   * @param board The current state of the chess board.
+   * @return The evaluation score of the board from the perspective of the specified player.
    */
   @VisibleForTesting
   private double score(final Player player, final Board board) {
@@ -64,8 +74,14 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates material balance with specific endgame piece values and
-   * recognizes special endgame material combinations.
+   * Evaluates material balance with specific endgame piece values and recognizes
+   * special endgame material combinations. This method applies endgame-specific
+   * piece values and identifies patterns like insufficient material or favorable
+   * material combinations.
+   *
+   * @param player The player whose material is being evaluated.
+   * @param board The current chess board state.
+   * @return The material evaluation score for the player.
    */
   private double materialEvaluation(final Player player, final Board board) {
     double materialScore = 0;
@@ -73,65 +89,56 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
     final Collection<Piece> opponentPieces = player.getOpponent().getActivePieces();
     final boolean isEndgame = isDeepEndgame(board);
 
-    // Count pieces by type for material identification
     Map<Piece.PieceType, Integer> playerPieceCounts = countPieceTypes(playerPieces);
     Map<Piece.PieceType, Integer> opponentPieceCounts = countPieceTypes(opponentPieces);
 
-    // Standard material counting with endgame-specific values
     for (final Piece piece : playerPieces) {
-      // Apply endgame-specific piece values
       switch (piece.getPieceType()) {
         case PAWN:
-          materialScore += 100; // Pawns gain value in endgames (promotion potential)
+          materialScore += 100;
           break;
         case KNIGHT:
-          // Knights lose value in open positions
           materialScore += isEndgame ? 290 : 310;
           break;
         case BISHOP:
-          // Bishops maintain or gain value in open positions
           materialScore += isEndgame ? 330 : 320;
           break;
         case ROOK:
-          // Rooks gain value in endgames
           materialScore += isEndgame ? 530 : 500;
           break;
         case QUEEN:
           materialScore += 900;
           break;
         case KING:
-          materialScore += 10000; // Essentially infinite value
+          materialScore += 10000;
           break;
       }
     }
 
-    // Bishop pair bonus (stronger in endgames with pawns on both sides)
     if (playerPieceCounts.getOrDefault(Piece.PieceType.BISHOP, 0) >= 2) {
       materialScore += 50;
     }
 
-    // Special material combination recognitions
-
-    // Recognize insufficient material combinations
     if (isInsufficientMaterial(playerPieceCounts, opponentPieceCounts)) {
-      materialScore -= 800; // Significant drawish penalty
+      materialScore -= 800;
     }
 
-    // Recognize favorable/unfavorable endgame material
     if (evaluateSpecialMaterialCombinations(playerPieceCounts, opponentPieceCounts, player.getAlliance())) {
-      materialScore += 100; // Bonus for favorable combinations
+      materialScore += 100;
     }
 
-    // Recognize opposite-colored bishops (drawish)
     if (hasOppositeColoredBishops(playerPieces, opponentPieces)) {
-      materialScore -= 50; // Drawish tendency
+      materialScore -= 50;
     }
 
     return materialScore;
   }
 
   /**
-   * Counts the number of each piece type.
+   * Counts the number of each piece type in the given collection of pieces.
+   *
+   * @param pieces The collection of pieces to count.
+   * @return A map containing the count of each piece type.
    */
   private Map<Piece.PieceType, Integer> countPieceTypes(final Collection<Piece> pieces) {
     Map<Piece.PieceType, Integer> pieceCounts = new HashMap<>();
@@ -145,7 +152,11 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Checks if the position is in a deep endgame (few pieces, typically with pawns).
+   * Checks if the position is in a deep endgame state with few pieces remaining.
+   * A deep endgame is characterized by having 4 or fewer non-pawn, non-king pieces.
+   *
+   * @param board The current chess board.
+   * @return True if the position is in a deep endgame, false otherwise.
    */
   private boolean isDeepEndgame(final Board board) {
     final Collection<Piece> allPieces = board.getAllPieces();
@@ -162,21 +173,24 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Checks for insufficient material to force checkmate.
+   * Checks for insufficient material to force checkmate. This includes positions
+   * like king versus king, king and minor piece versus king, or king and two
+   * knights versus king.
+   *
+   * @param playerPieceCounts The piece counts for the player.
+   * @param opponentPieceCounts The piece counts for the opponent.
+   * @return True if insufficient material exists, false otherwise.
    */
   private boolean isInsufficientMaterial(final Map<Piece.PieceType, Integer> playerPieceCounts,
                                          final Map<Piece.PieceType, Integer> opponentPieceCounts) {
-    // No pawns for either side
     boolean noPawns = playerPieceCounts.getOrDefault(Piece.PieceType.PAWN, 0) == 0 &&
             opponentPieceCounts.getOrDefault(Piece.PieceType.PAWN, 0) == 0;
 
     if (noPawns) {
-      // King vs King
       if (playerPieceCounts.size() == 1 && opponentPieceCounts.size() == 1) {
         return true;
       }
 
-      // King + minor piece vs King
       if ((playerPieceCounts.size() == 2 && opponentPieceCounts.size() == 1) ||
               (playerPieceCounts.size() == 1 && opponentPieceCounts.size() == 2)) {
         int minorsCount = playerPieceCounts.getOrDefault(Piece.PieceType.KNIGHT, 0) +
@@ -187,7 +201,6 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
         return minorsCount <= 1;
       }
 
-      // King + 2 Knights vs King (insufficient material)
       return (playerPieceCounts.getOrDefault(Piece.PieceType.KNIGHT, 0) == 2 &&
               playerPieceCounts.size() == 2 && opponentPieceCounts.size() == 1) ||
               (opponentPieceCounts.getOrDefault(Piece.PieceType.KNIGHT, 0) == 2 &&
@@ -198,19 +211,24 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates special material combinations that could be advantageous.
+   * Evaluates special material combinations that could be advantageous in the endgame.
+   * This includes combinations like queen versus rook, rook versus minor piece,
+   * or bishop pair versus knight.
+   *
+   * @param playerPieceCounts The piece counts for the player.
+   * @param opponentPieceCounts The piece counts for the opponent.
+   * @param playerAlliance The alliance of the player being evaluated.
+   * @return True if the player has a favorable material combination, false otherwise.
    */
   private boolean evaluateSpecialMaterialCombinations(final Map<Piece.PieceType, Integer> playerPieceCounts,
                                                       final Map<Piece.PieceType, Integer> opponentPieceCounts,
                                                       final Alliance playerAlliance) {
-    // Queen vs Rook (favorable)
     if (playerPieceCounts.getOrDefault(Piece.PieceType.QUEEN, 0) > 0 &&
             opponentPieceCounts.getOrDefault(Piece.PieceType.ROOK, 0) > 0 &&
             opponentPieceCounts.getOrDefault(Piece.PieceType.QUEEN, 0) == 0) {
       return true;
     }
 
-    // Rook vs Minor Piece (favorable)
     if (playerPieceCounts.getOrDefault(Piece.PieceType.ROOK, 0) > 0 &&
             (opponentPieceCounts.getOrDefault(Piece.PieceType.BISHOP, 0) > 0 ||
                     opponentPieceCounts.getOrDefault(Piece.PieceType.KNIGHT, 0) > 0) &&
@@ -219,21 +237,24 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
       return true;
     }
 
-    // Bishop pair vs Knight (favorable)
     return playerPieceCounts.getOrDefault(Piece.PieceType.BISHOP, 0) >= 2 &&
             opponentPieceCounts.getOrDefault(Piece.PieceType.KNIGHT, 0) > 0 &&
             opponentPieceCounts.getOrDefault(Piece.PieceType.BISHOP, 0) == 0;
   }
 
   /**
-   * Checks if the position has opposite-colored bishops.
+   * Checks if the position has opposite-colored bishops, which often leads to
+   * drawish tendencies in the endgame.
+   *
+   * @param playerPieces The player's pieces.
+   * @param opponentPieces The opponent's pieces.
+   * @return True if opposite-colored bishops exist, false otherwise.
    */
   private boolean hasOppositeColoredBishops(final Collection<Piece> playerPieces,
                                             final Collection<Piece> opponentPieces) {
     Bishop playerBishop = null;
     Bishop opponentBishop = null;
 
-    // Find bishops
     for (final Piece piece : playerPieces) {
       if (piece.getPieceType() == Piece.PieceType.BISHOP) {
         playerBishop = (Bishop) piece;
@@ -248,7 +269,6 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
       }
     }
 
-    // Check if we have one bishop each and they're on opposite colored squares
     if (playerBishop != null && opponentBishop != null) {
       final int playerSquareColor = (playerBishop.getPiecePosition() / 8 + playerBishop.getPiecePosition() % 8) % 2;
       final int opponentSquareColor = (opponentBishop.getPiecePosition() / 8 + opponentBishop.getPiecePosition() % 8) % 2;
@@ -260,8 +280,13 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates king activity, a critical factor in endgames.
-   * In the endgame, king centralization and activity is extremely important.
+   * Evaluates king activity, which is a critical factor in endgames. Active kings
+   * that can participate in the game by attacking pawns, supporting their own pawns,
+   * or controlling key squares are highly valued in endgame positions.
+   *
+   * @param player The player whose king activity is being evaluated.
+   * @param board The current chess board state.
+   * @return The king activity evaluation score.
    */
   private double kingActivityEvaluation(final Player player, final Board board) {
     double kingActivityScore = 0;
@@ -269,41 +294,39 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
     final King opponentKing = player.getOpponent().getPlayerKing();
     final int kingPosition = playerKing.getPiecePosition();
 
-    // King centralization (critical in endgames)
     kingActivityScore += evaluateKingCentralization(kingPosition);
-
-    // Distance to opponent king (in some endgames, we want to be close)
     kingActivityScore += evaluateKingProximity(kingPosition, opponentKing.getPiecePosition());
-
-    // King attacking/defending pawns
     kingActivityScore += evaluateKingPawnDefense(player, board);
-
-    // King safety (less important in many endgames)
-    kingActivityScore -= evaluateKingExposure(player, board) * 0.5; // Apply reduced penalty
+    kingActivityScore -= evaluateKingExposure(player, board) * 0.5;
 
     return kingActivityScore;
   }
 
   /**
-   * Evaluates king centralization - kings want to be as central as possible in endgames.
+   * Evaluates king centralization, which is crucial in endgames. Kings positioned
+   * near the center of the board are generally more active and effective.
+   *
+   * @param kingPosition The position of the king on the board.
+   * @return The centralization score for the king.
    */
   private double evaluateKingCentralization(final int kingPosition) {
     final int kingFile = kingPosition % 8;
     final int kingRank = kingPosition / 8;
 
-    // Distance from center (3.5, 3.5)
     final double fileDistance = Math.abs(kingFile - 3.5);
     final double rankDistance = Math.abs(kingRank - 3.5);
-
-    // Manhattan distance from center
     final double distanceFromCenter = fileDistance + rankDistance;
 
-    // More central kings get higher scores
     return (7 - distanceFromCenter) * 10;
   }
 
   /**
-   * Evaluates king proximity to opponent king - important in king and pawn endgames.
+   * Evaluates king proximity to the opponent king, which is important in certain
+   * endgames, particularly king and pawn endings where opposition matters.
+   *
+   * @param kingPosition The position of the player's king.
+   * @param opponentKingPosition The position of the opponent's king.
+   * @return The proximity evaluation score.
    */
   private double evaluateKingProximity(final int kingPosition, final int opponentKingPosition) {
     final int kingFile = kingPosition % 8;
@@ -311,23 +334,26 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
     final int opponentKingFile = opponentKingPosition % 8;
     final int opponentKingRank = opponentKingPosition / 8;
 
-    // Chebyshev distance between kings
     final int kingDistance = Math.max(
             Math.abs(kingFile - opponentKingFile),
             Math.abs(kingRank - opponentKingRank)
     );
 
-    // In pure king and pawn endgames, opposition is important
     if (kingDistance == 2 && ((kingFile == opponentKingFile) || (kingRank == opponentKingRank))) {
-      return 20; // Bonus for having opposition
+      return 20;
     }
 
-    // For other endgames, advantage depends on material
-    return 0; // Neutral by default
+    return 0;
   }
 
   /**
    * Evaluates how well the king defends friendly pawns and attacks enemy pawns.
+   * In endgames, kings become active pieces that should participate in both
+   * defense and attack operations.
+   *
+   * @param player The player whose king-pawn cooperation is being evaluated.
+   * @param board The current chess board state.
+   * @return The king-pawn defense evaluation score.
    */
   private double evaluateKingPawnDefense(final Player player, final Board board) {
     double kingPawnDefenseScore = 0;
@@ -336,25 +362,23 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
     final List<Piece> playerPawns = getPlayerPawns(player);
     final List<Piece> opponentPawns = getPlayerPawns(player.getOpponent());
 
-    // Check how many friendly pawns the king defends
     for (final Piece pawn : playerPawns) {
       final int distance = calculateChebyshevDistance(kingPosition, pawn.getPiecePosition());
 
       if (distance <= 1) {
-        kingPawnDefenseScore += 10; // Direct defense
+        kingPawnDefenseScore += 10;
       } else if (distance == 2) {
-        kingPawnDefenseScore += 5;  // Nearby defense
+        kingPawnDefenseScore += 5;
       }
     }
 
-    // Check if king is attacking enemy pawns
     for (final Piece pawn : opponentPawns) {
       final int distance = calculateChebyshevDistance(kingPosition, pawn.getPiecePosition());
 
       if (distance <= 1) {
-        kingPawnDefenseScore += 8; // Direct attack
+        kingPawnDefenseScore += 8;
       } else if (distance == 2) {
-        kingPawnDefenseScore += 4; // Nearby attack
+        kingPawnDefenseScore += 4;
       }
     }
 
@@ -362,8 +386,13 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates king exposure to checks and attacks - less critical in endgames
-   * but still relevant, especially with queens on the board.
+   * Evaluates king exposure to checks and attacks. While less critical in endgames
+   * than in middlegames, king safety is still relevant, especially when queens
+   * remain on the board.
+   *
+   * @param player The player whose king safety is being evaluated.
+   * @param board The current chess board state.
+   * @return The king exposure evaluation score.
    */
   private double evaluateKingExposure(final Player player, final Board board) {
     double exposureScore = 0;
@@ -371,22 +400,18 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
     final King playerKing = player.getPlayerKing();
     final int kingPosition = playerKing.getPiecePosition();
 
-    // Count checks and threats near king
     for (final Move move : opponentMoves) {
       final int destination = move.getDestinationCoordinate();
 
-      // Direct check
       if (destination == kingPosition) {
         exposureScore += 30;
       }
 
-      // Threat near king
       if (calculateChebyshevDistance(kingPosition, destination) <= 1) {
         exposureScore += 5;
       }
     }
 
-    // If player is in check
     if (player.isInCheck()) {
       exposureScore += 20;
     }
@@ -395,8 +420,13 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates passed pawns, which are especially important in endgames.
-   * This is a critical evaluation function for endgames.
+   * Evaluates passed pawns, which are especially important in endgames due to
+   * their promotion potential. This evaluation considers pawn advancement,
+   * king support, and path clearance to the promotion square.
+   *
+   * @param player The player whose passed pawns are being evaluated.
+   * @param board The current chess board state.
+   * @return The passed pawn evaluation score.
    */
   private double passedPawnEvaluation(final Player player, final Board board) {
     double passedPawnScore = 0;
@@ -406,73 +436,61 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
     final King playerKing = player.getPlayerKing();
     final King opponentKing = player.getOpponent().getPlayerKing();
 
-    // Identify and evaluate passed pawns
     for (final Piece pawn : playerPawns) {
       if (isPassedPawn(pawn, opponentPawns, alliance)) {
         final int pawnPosition = pawn.getPiecePosition();
         final int pawnRank = pawnPosition / 8;
-
-        // Calculate rank from pawn's perspective (distance to promotion)
         final int rankFromPromotion = alliance.isWhite() ? pawnRank : (7 - pawnRank);
-
-        // Base score dependent on advancement
         final int advancementScore = (7 - rankFromPromotion) * 20;
         passedPawnScore += advancementScore;
 
-        // Additional bonuses for advanced passed pawns
         if (rankFromPromotion <= 2) {
-          // Very advanced pawn
           passedPawnScore += 50;
         } else if (rankFromPromotion <= 4) {
-          // Moderately advanced pawn
           passedPawnScore += 30;
         }
 
-        // King support for passed pawn
         final int kingDistance = calculateChebyshevDistance(playerKing.getPiecePosition(), pawnPosition);
         passedPawnScore += (8 - kingDistance) * 5;
 
-        // Opponent king distance from passed pawn
         final int opponentKingDistance = calculateChebyshevDistance(opponentKing.getPiecePosition(), pawnPosition);
         passedPawnScore += opponentKingDistance * 3;
 
-        // Path to promotion clear?
         if (isPathToPromotionClear(pawn, alliance, board)) {
           passedPawnScore += 40;
         }
 
-        // Protected passed pawn bonus
         if (isPawnProtected(pawn, playerPawns, alliance)) {
           passedPawnScore += 25;
         }
       }
     }
 
-    // Connected passed pawns (extremely strong)
     passedPawnScore += evaluateConnectedPassedPawns(playerPawns, opponentPawns, alliance);
 
     return passedPawnScore;
   }
 
   /**
-   * Checks if a pawn is a passed pawn (no opposing pawns in front or on adjacent files).
+   * Checks if a pawn is a passed pawn by verifying that no opposing pawns
+   * block its path to promotion on the same file or adjacent files.
+   *
+   * @param pawn The pawn to check.
+   * @param opponentPawns The opponent's pawns.
+   * @param alliance The alliance of the pawn being checked.
+   * @return True if the pawn is passed, false otherwise.
    */
   private boolean isPassedPawn(final Piece pawn, final List<Piece> opponentPawns, final Alliance alliance) {
     final int pawnPosition = pawn.getPiecePosition();
     final int pawnFile = pawnPosition % 8;
     final int pawnRank = pawnPosition / 8;
-
-    // Direction to check (forward for the pawn)
     final int rankDirection = alliance.isWhite() ? -1 : 1;
 
-    // Check all squares in front of the pawn and on adjacent files
     for (int rank = pawnRank + rankDirection; alliance.isWhite() ? (rank >= 0) : (rank < 8); rank += rankDirection) {
-      // Check same file
       if (isPawnAtPosition(opponentPawns, rank * 8 + pawnFile)) {
         return false;
       }
 
-      // Check adjacent files
       if (pawnFile > 0 && isPawnAtPosition(opponentPawns, rank * 8 + (pawnFile - 1))) {
         return false;
       }
@@ -486,7 +504,11 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Checks if there's a pawn at the specified position.
+   * Checks if there is a pawn at the specified position in the given list of pawns.
+   *
+   * @param pawns The list of pawns to search.
+   * @param position The position to check.
+   * @return True if a pawn exists at the position, false otherwise.
    */
   private boolean isPawnAtPosition(final List<Piece> pawns, final int position) {
     for (final Piece pawn : pawns) {
@@ -498,21 +520,24 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Checks if the path to promotion is clear of pieces (not just pawns).
+   * Checks if the path to promotion is clear of all pieces, not just pawns.
+   * This is important for evaluating the immediate promotion potential of passed pawns.
+   *
+   * @param pawn The pawn whose promotion path is being checked.
+   * @param alliance The alliance of the pawn.
+   * @param board The current chess board state.
+   * @return True if the path is clear, false otherwise.
    */
   private boolean isPathToPromotionClear(final Piece pawn, final Alliance alliance, final Board board) {
     final int pawnPosition = pawn.getPiecePosition();
     final int pawnFile = pawnPosition % 8;
     final int pawnRank = pawnPosition / 8;
-
-    // Direction to check
     final int rankDirection = alliance.isWhite() ? -1 : 1;
 
-    // Check all squares in front of the pawn
     for (int rank = pawnRank + rankDirection; alliance.isWhite() ? (rank >= 0) : (rank < 8); rank += rankDirection) {
       final int squareToCheck = rank * 8 + pawnFile;
       if (board.getPiece(squareToCheck) != null) {
-        return false; // Something is blocking the pawn
+        return false;
       }
     }
 
@@ -520,21 +545,24 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Checks if a pawn is protected by another pawn.
+   * Checks if a pawn is protected by another pawn of the same alliance.
+   * Protected passed pawns are generally more valuable than unprotected ones.
+   *
+   * @param pawn The pawn to check for protection.
+   * @param playerPawns The list of friendly pawns.
+   * @param alliance The alliance of the pawn.
+   * @return True if the pawn is protected, false otherwise.
    */
   private boolean isPawnProtected(final Piece pawn, final List<Piece> playerPawns, final Alliance alliance) {
     final int pawnPosition = pawn.getPiecePosition();
     final int pawnFile = pawnPosition % 8;
     final int pawnRank = pawnPosition / 8;
-
-    // Positions of potential protecting pawns (behind and to the sides)
     final int rankBehind = alliance.isWhite() ? pawnRank + 1 : pawnRank - 1;
 
     if (rankBehind < 0 || rankBehind >= 8) {
       return false;
     }
 
-    // Check if there are friendly pawns that can protect this pawn
     if (pawnFile > 0 && isPawnAtPosition(playerPawns, rankBehind * 8 + (pawnFile - 1))) {
       return true;
     }
@@ -543,7 +571,14 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates connected passed pawns - a very powerful endgame feature.
+   * Evaluates connected passed pawns, which are extremely powerful in endgames.
+   * Connected passed pawns are adjacent pawns that are both passed and can
+   * support each other's advancement.
+   *
+   * @param playerPawns The player's pawns.
+   * @param opponentPawns The opponent's pawns.
+   * @param alliance The alliance of the pawns being evaluated.
+   * @return The connected passed pawns evaluation score.
    */
   private double evaluateConnectedPassedPawns(final List<Piece> playerPawns,
                                               final List<Piece> opponentPawns,
@@ -551,36 +586,29 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
     double connectedScore = 0;
     List<Piece> passedPawns = new ArrayList<>();
 
-    // Identify passed pawns
     for (final Piece pawn : playerPawns) {
       if (isPassedPawn(pawn, opponentPawns, alliance)) {
         passedPawns.add(pawn);
       }
     }
 
-    // Check for adjacent passed pawns
     for (int i = 0; i < passedPawns.size(); i++) {
       for (int j = i + 1; j < passedPawns.size(); j++) {
         final int file1 = passedPawns.get(i).getPiecePosition() % 8;
         final int file2 = passedPawns.get(j).getPiecePosition() % 8;
 
-        // Connected passed pawns are on adjacent files
         if (Math.abs(file1 - file2) == 1) {
-          // Connected passed pawns are extremely powerful
           connectedScore += 80;
 
-          // Additional bonus for advanced connected passed pawns
           final int rank1 = passedPawns.get(i).getPiecePosition() / 8;
           final int rank2 = passedPawns.get(j).getPiecePosition() / 8;
-
-          // Rank from pawn's perspective
           final int advancedRank = alliance.isWhite() ?
                   Math.min(rank1, rank2) :
                   Math.max(rank1, rank2);
 
           if ((alliance.isWhite() && advancedRank <= 2) ||
                   (!alliance.isWhite() && advancedRank >= 5)) {
-            connectedScore += 50; // Very advanced connected pawns
+            connectedScore += 50;
           }
         }
       }
@@ -590,8 +618,12 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates pawn structure, including pawn islands, isolated pawns,
-   * doubled pawns, and pawn majorities.
+   * Evaluates pawn structure factors that are particularly important in endgames,
+   * including pawn islands, isolated pawns, doubled pawns, and pawn majorities.
+   *
+   * @param player The player whose pawn structure is being evaluated.
+   * @param board The current chess board state.
+   * @return The pawn structure evaluation score.
    */
   private double pawnStructureEvaluation(final Player player, final Board board) {
     final List<Piece> playerPawns = getPlayerPawns(player);
@@ -599,40 +631,30 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
     final Alliance alliance = player.getAlliance();
     double pawnStructureScore = 0;
 
-    // Evaluate pawn islands (compact pawn structure is better)
     pawnStructureScore += evaluatePawnIslands(playerPawns);
-
-    // Evaluate doubled pawns (more problematic in endgames)
     pawnStructureScore += evaluateDoubledPawns(playerPawns);
-
-    // Evaluate isolated pawns (severe weakness in endgames)
     pawnStructureScore += evaluateIsolatedPawns(playerPawns);
-
-    // Evaluate pawn majorities and minority attacks
     pawnStructureScore += evaluatePawnMajorities(playerPawns, opponentPawns);
-
-    // Evaluate pawn chains (less important in endgames)
     pawnStructureScore += evaluatePawnChains(playerPawns);
-
-    // Evaluate backward pawns
     pawnStructureScore += evaluateBackwardPawns(playerPawns, alliance);
 
     return pawnStructureScore;
   }
 
   /**
-   * Evaluates pawn islands (groups of connected pawns).
+   * Evaluates pawn islands, which are groups of connected pawns separated by
+   * files without pawns. Fewer pawn islands are generally better.
+   *
+   * @param playerPawns The player's pawns.
+   * @return The pawn islands evaluation score.
    */
   private double evaluatePawnIslands(final List<Piece> playerPawns) {
     double islandScore = 0;
-
-    // Mark files with pawns
     boolean[] filesWithPawns = new boolean[8];
     for (final Piece pawn : playerPawns) {
       filesWithPawns[pawn.getPiecePosition() % 8] = true;
     }
 
-    // Count islands
     int islands = 0;
     boolean inIsland = false;
 
@@ -647,7 +669,6 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
       }
     }
 
-    // Penalty for multiple islands (worse in endgames)
     if (islands > 1) {
       islandScore -= (islands - 1) * 15;
     }
@@ -656,18 +677,19 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates doubled pawns (multiple pawns on the same file).
+   * Evaluates doubled pawns, which are multiple pawns on the same file.
+   * Doubled pawns are generally considered a weakness, especially in endgames.
+   *
+   * @param playerPawns The player's pawns.
+   * @return The doubled pawns evaluation score.
    */
   private double evaluateDoubledPawns(final List<Piece> playerPawns) {
     double doubledPawnScore = 0;
-
-    // Count pawns on each file
     int[] pawnsPerFile = new int[8];
     for (final Piece pawn : playerPawns) {
       pawnsPerFile[pawn.getPiecePosition() % 8]++;
     }
 
-    // Penalty for doubled pawns (harsher in endgames)
     for (int count : pawnsPerFile) {
       if (count > 1) {
         doubledPawnScore -= (count - 1) * 25;
@@ -678,32 +700,30 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates isolated pawns (pawns with no friendly pawns on adjacent files).
+   * Evaluates isolated pawns, which are pawns with no friendly pawns on adjacent files.
+   * Isolated pawns are particularly weak in endgames.
+   *
+   * @param playerPawns The player's pawns.
+   * @return The isolated pawns evaluation score.
    */
   private double evaluateIsolatedPawns(final List<Piece> playerPawns) {
     double isolatedPawnScore = 0;
-
-    // Mark files with pawns
     boolean[] filesWithPawns = new boolean[8];
     for (final Piece pawn : playerPawns) {
       filesWithPawns[pawn.getPiecePosition() % 8] = true;
     }
 
-    // Check for isolated pawns
     for (final Piece pawn : playerPawns) {
       final int pawnFile = pawn.getPiecePosition() % 8;
       boolean isIsolated = pawnFile <= 0 || !filesWithPawns[pawnFile - 1];
-
-      // Check adjacent files
 
       if (pawnFile < 7 && filesWithPawns[pawnFile + 1]) {
         isIsolated = false;
       }
 
       if (isIsolated) {
-        isolatedPawnScore -= 20; // Harsher penalty in endgames
+        isolatedPawnScore -= 20;
 
-        // Extra penalty for isolated pawns on open files
         if (isOnOpenFile(pawn, playerPawns)) {
           isolatedPawnScore -= 10;
         }
@@ -714,7 +734,11 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Checks if a pawn is on an open file (no other pawns on the file).
+   * Checks if a pawn is on an open file with no other pawns of the same alliance.
+   *
+   * @param pawn The pawn to check.
+   * @param pawns The list of pawns to compare against.
+   * @return True if the pawn is on an open file, false otherwise.
    */
   private boolean isOnOpenFile(final Piece pawn, final List<Piece> pawns) {
     final int pawnFile = pawn.getPiecePosition() % 8;
@@ -729,12 +753,15 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates pawn majorities on different sides of the board.
+   * Evaluates pawn majorities on different sides of the board. Having more pawns
+   * on one side of the board can be advantageous for creating passed pawns.
+   *
+   * @param playerPawns The player's pawns.
+   * @param opponentPawns The opponent's pawns.
+   * @return The pawn majorities evaluation score.
    */
   private double evaluatePawnMajorities(final List<Piece> playerPawns, final List<Piece> opponentPawns) {
     double majorityScore = 0;
-
-    // Count pawns on kingside and queenside
     int playerKingsidePawns = 0;
     int playerQueensidePawns = 0;
     int opponentKingsidePawns = 0;
@@ -758,12 +785,10 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
       }
     }
 
-    // Evaluate kingside majority
     if (playerKingsidePawns > opponentKingsidePawns) {
       majorityScore += 15 + (playerKingsidePawns - opponentKingsidePawns) * 5;
     }
 
-    // Evaluate queenside majority
     if (playerQueensidePawns > opponentQueensidePawns) {
       majorityScore += 15 + (playerQueensidePawns - opponentQueensidePawns) * 5;
     }
@@ -772,12 +797,14 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates pawn chains (connected pawns that protect each other).
+   * Evaluates pawn chains, which are connected pawns that protect each other.
+   * Pawn chains provide mutual support and are generally advantageous.
+   *
+   * @param playerPawns The player's pawns.
+   * @return The pawn chains evaluation score.
    */
   private double evaluatePawnChains(final List<Piece> playerPawns) {
     double pawnChainScore = 0;
-
-    // Map pawns by rank and file
     Map<Integer, Set<Integer>> pawnsByRank = new HashMap<>();
 
     for (final Piece pawn : playerPawns) {
@@ -791,19 +818,16 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
       pawnsByRank.get(rank).add(file);
     }
 
-    // Find chain links
     int chainLinks = 0;
     for (final Piece pawn : playerPawns) {
       final int rank = pawn.getPiecePosition() / 8;
       final int file = pawn.getPiecePosition() % 8;
 
-      // Check if pawn is protected by another pawn
       if (isPawnProtectingFile(pawnsByRank, rank, file)) {
         chainLinks++;
       }
     }
 
-    // Bonus for pawn chains (less valuable in endgames)
     pawnChainScore += chainLinks * 5;
 
     return pawnChainScore;
@@ -811,15 +835,17 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
 
   /**
    * Checks if a pawn is protected by another pawn on an adjacent file.
+   *
+   * @param pawnsByRank A map of pawns organized by rank.
+   * @param rank The rank of the pawn being checked.
+   * @param file The file of the pawn being checked.
+   * @return True if the pawn is protected, false otherwise.
    */
   private boolean isPawnProtectingFile(final Map<Integer, Set<Integer>> pawnsByRank,
                                        final int rank,
                                        final int file) {
-    // Check if there's a pawn on the previous rank that could protect this pawn
     if (pawnsByRank.containsKey(rank + 1)) {
       final Set<Integer> filesWithPawns = pawnsByRank.get(rank + 1);
-
-      // Check if there are pawns on adjacent files that could protect this pawn
       return (file > 0 && filesWithPawns.contains(file - 1)) ||
               (file < 7 && filesWithPawns.contains(file + 1));
     }
@@ -828,12 +854,15 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates backward pawns (pawns that can't be protected by adjacent pawns).
+   * Evaluates backward pawns, which are pawns that cannot be protected by
+   * adjacent pawns and are often targets for attack.
+   *
+   * @param playerPawns The player's pawns.
+   * @param alliance The alliance of the pawns.
+   * @return The backward pawns evaluation score.
    */
   private double evaluateBackwardPawns(final List<Piece> playerPawns, final Alliance alliance) {
     double backwardPawnScore = 0;
-
-    // Mark ranks with pawns on each file
     int[] lowestRankOnFile = new int[8];
     for (int i = 0; i < 8; i++) {
       lowestRankOnFile[i] = alliance.isWhite() ? 7 : 0;
@@ -850,14 +879,11 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
       }
     }
 
-    // Check for backward pawns
     for (final Piece pawn : playerPawns) {
       final int file = pawn.getPiecePosition() % 8;
       final int rank = pawn.getPiecePosition() / 8;
-
       boolean isBackward = false;
 
-      // Compare with adjacent files
       if (file > 0) {
         if (alliance.isWhite() && rank > lowestRankOnFile[file - 1]) {
           isBackward = true;
@@ -877,7 +903,6 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
       if (isBackward) {
         backwardPawnScore -= 15;
 
-        // Backward pawns on open files are worse
         if (isOnOpenFile(pawn, playerPawns)) {
           backwardPawnScore -= 10;
         }
@@ -888,43 +913,45 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates piece coordination in endgames, focusing on cooperation
-   * between pieces and with the king.
+   * Evaluates piece coordination in endgames, focusing on cooperation between
+   * pieces and their support for pawns and the king.
+   *
+   * @param player The player whose piece coordination is being evaluated.
+   * @param board The current chess board state.
+   * @return The piece coordination evaluation score.
    */
   private double pieceCoordinationEvaluation(final Player player, final Board board) {
     double coordinationScore = 0;
     final Collection<Piece> playerPieces = player.getActivePieces();
 
-    // Knight and bishop coordination
     coordinationScore += evaluateMinorPieceCoordination(playerPieces, board);
-
-    // Piece placement relative to pawns
     coordinationScore += evaluatePiecePlacement(playerPieces, getPlayerPawns(player));
-
-    // Support for passed pawns
     coordinationScore += evaluatePiecesSupportingPassedPawns(player, board);
 
     return coordinationScore;
   }
 
   /**
-   * Evaluates minor piece coordination in the endgame.
+   * Evaluates minor piece coordination in endgames, including bishop pair
+   * advantages and knight positioning relative to remaining pawns.
+   *
+   * @param playerPieces The player's pieces.
+   * @param board The current chess board state.
+   * @return The minor piece coordination evaluation score.
    */
   private double evaluateMinorPieceCoordination(final Collection<Piece> playerPieces, final Board board) {
     double minorPieceScore = 0;
 
-    // Check for bishop pair in endgames with pawns
     if (board.getAllPieces().stream().anyMatch(p -> p.getPieceType() == Piece.PieceType.PAWN)) {
       long bishopCount = playerPieces.stream()
               .filter(p -> p.getPieceType() == Piece.PieceType.BISHOP)
               .count();
 
       if (bishopCount >= 2) {
-        minorPieceScore += 50; // Even more valuable in endgames
+        minorPieceScore += 50;
       }
     }
 
-    // Knights lose value in endgames with few pawns
     if (getPlayerPawns(board.whitePlayer()).size() + getPlayerPawns(board.blackPlayer()).size() <= 4) {
       long knightCount = playerPieces.stream()
               .filter(p -> p.getPieceType() == Piece.PieceType.KNIGHT)
@@ -937,7 +964,12 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates piece placement relative to pawns.
+   * Evaluates piece placement relative to pawns, particularly the positioning
+   * of bishops and knights in relation to the pawn structure.
+   *
+   * @param playerPieces The player's pieces.
+   * @param playerPawns The player's pawns.
+   * @return The piece placement evaluation score.
    */
   private double evaluatePiecePlacement(final Collection<Piece> playerPieces,
                                         final List<Piece> playerPawns) {
@@ -945,10 +977,8 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
 
     for (final Piece piece : playerPieces) {
       if (piece.getPieceType() == Piece.PieceType.BISHOP) {
-        // Bishops behind pawns are well-placed
         placementScore += evaluateBishopPlacement((Bishop) piece, playerPawns);
       } else if (piece.getPieceType() == Piece.PieceType.KNIGHT) {
-        // Knights near pawns are well-placed
         placementScore += evaluateKnightPlacement((Knight) piece, playerPawns);
       }
     }
@@ -957,7 +987,12 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates bishops placement relative to pawns.
+   * Evaluates bishop placement relative to pawns. Bishops positioned behind
+   * pawns on long diagonals are generally well-placed.
+   *
+   * @param bishop The bishop to evaluate.
+   * @param playerPawns The player's pawns.
+   * @return The bishop placement evaluation score.
    */
   private double evaluateBishopPlacement(final Bishop bishop, final List<Piece> playerPawns) {
     double bishopScore = 0;
@@ -966,15 +1001,12 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
     final int bishopRank = bishopPosition / 8;
     final Alliance alliance = bishop.getPieceAllegiance();
 
-    // Check if bishop is behind pawns (good for long diagonals)
     int pawnsInFront = 0;
     for (final Piece pawn : playerPawns) {
       final int pawnFile = pawn.getPiecePosition() % 8;
       final int pawnRank = pawn.getPiecePosition() / 8;
 
-      // Pawn is on same or adjacent file
       if (Math.abs(pawnFile - bishopFile) <= 1) {
-        // Pawn is in front of bishop
         if ((alliance.isWhite() && pawnRank < bishopRank) ||
                 (!alliance.isWhite() && pawnRank > bishopRank)) {
           pawnsInFront++;
@@ -986,7 +1018,6 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
       bishopScore += 10;
     }
 
-    // Check if bishop is on a long diagonal
     if ((bishopPosition % 9 == 0) || (bishopPosition % 7 == 0 && bishopPosition % 8 != 0 && bishopPosition % 8 != 7)) {
       bishopScore += 15;
     }
@@ -995,13 +1026,17 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates knight placement relative to pawns.
+   * Evaluates knight placement relative to pawns. Knights positioned near
+   * pawns are generally more effective in endgames.
+   *
+   * @param knight The knight to evaluate.
+   * @param playerPawns The player's pawns.
+   * @return The knight placement evaluation score.
    */
   private double evaluateKnightPlacement(final Knight knight, final List<Piece> playerPawns) {
     double knightScore = 0;
     final int knightPosition = knight.getPiecePosition();
 
-    // Knights are good near pawns in the endgame
     for (final Piece pawn : playerPawns) {
       final int distance = calculateChebyshevDistance(knightPosition, pawn.getPiecePosition());
 
@@ -1014,7 +1049,12 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates how pieces support passed pawns.
+   * Evaluates how well pieces support passed pawns by providing protection
+   * or controlling key squares in the pawn's path to promotion.
+   *
+   * @param player The player whose piece support is being evaluated.
+   * @param board The current chess board state.
+   * @return The piece support evaluation score.
    */
   private double evaluatePiecesSupportingPassedPawns(final Player player, final Board board) {
     double supportScore = 0;
@@ -1023,7 +1063,6 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
     final Alliance alliance = player.getAlliance();
     final Collection<Piece> playerPieces = player.getActivePieces();
 
-    // Find passed pawns
     for (final Piece pawn : playerPawns) {
       if (isPassedPawn(pawn, opponentPawns, alliance)) {
         final int pawnPosition = pawn.getPiecePosition();
@@ -1031,26 +1070,23 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
                 (pawnPosition % 8) :
                 ((7 * 8) + (pawnPosition % 8));
 
-        // Check for pieces supporting the pawn
         for (final Piece piece : playerPieces) {
           if (piece.getPieceType() != Piece.PieceType.PAWN &&
                   piece.getPieceType() != Piece.PieceType.KING) {
 
-            // Check if piece supports the passed pawn
             final int piecePosition = piece.getPiecePosition();
             final int distance = calculateChebyshevDistance(piecePosition, pawnPosition);
 
             if (distance <= 1) {
-              supportScore += 20; // Direct support
+              supportScore += 20;
             } else if (distance == 2) {
-              supportScore += 10; // Near support
+              supportScore += 10;
             }
 
-            // Check if piece controls promotion square
             final Collection<Move> pieceMoves = piece.calculateLegalMoves(board);
             for (final Move move : pieceMoves) {
               if (move.getDestinationCoordinate() == promotionSquare) {
-                supportScore += 15; // Controls promotion square
+                supportScore += 15;
                 break;
               }
             }
@@ -1063,8 +1099,12 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates rook-specific endgame patterns, like rooks behind passed pawns,
-   * rooks on the 7th rank, and open file control.
+   * Evaluates rook-specific endgame patterns, including rook activity on open files,
+   * rook placement behind passed pawns, and rook coordination.
+   *
+   * @param player The player whose rook endgame factors are being evaluated.
+   * @param board The current chess board state.
+   * @return The rook endgame evaluation score.
    */
   private double rookEndgameEvaluation(final Player player, final Board board) {
     double rookScore = 0;
@@ -1076,23 +1116,15 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
       return 0;
     }
 
-    // Get all pawns
     final List<Piece> playerPawns = getPlayerPawns(player);
     final List<Piece> opponentPawns = getPlayerPawns(player.getOpponent());
     final Alliance alliance = player.getAlliance();
 
-    // Evaluate each rook
     for (final Piece rook : playerRooks) {
-      // Rooks on open files
       rookScore += evaluateRookOnOpenFile(rook, board);
-
-      // Rooks behind passed pawns
       rookScore += evaluateRookBehindPassedPawn(rook, playerPawns, opponentPawns, alliance);
-
-      // Rooks on 7th rank
       rookScore += evaluateRookOn7thRank(rook, opponentPawns, alliance);
 
-      // Connected rooks
       if (playerRooks.size() >= 2) {
         rookScore += evaluateConnectedRooks(playerRooks);
       }
@@ -1102,22 +1134,24 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates rooks on open or semi-open files.
+   * Evaluates rooks on open or semi-open files, which are generally advantageous
+   * positions for rooks in endgames.
+   *
+   * @param rook The rook to evaluate.
+   * @param board The current chess board state.
+   * @return The rook file evaluation score.
    */
   private double evaluateRookOnOpenFile(final Piece rook, final Board board) {
     double fileScore = 0;
     final int rookFile = rook.getPiecePosition() % 8;
-
     boolean openFile = true;
     boolean semiOpenFile = true;
 
-    // Check if file is open (no pawns at all)
     for (int rank = 0; rank < 8; rank++) {
       final Piece piece = board.getPiece(rank * 8 + rookFile);
       if (piece != null && piece.getPieceType() == Piece.PieceType.PAWN) {
         openFile = false;
 
-        // Check if semi-open (no friendly pawns)
         if (piece.getPieceAllegiance() == rook.getPieceAllegiance()) {
           semiOpenFile = false;
         }
@@ -1125,16 +1159,23 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
     }
 
     if (openFile) {
-      fileScore += 30; // Open file is very valuable for rooks
+      fileScore += 30;
     } else if (semiOpenFile) {
-      fileScore += 15; // Semi-open file
+      fileScore += 15;
     }
 
     return fileScore;
   }
 
   /**
-   * Evaluates rooks behind passed pawns (Tarrasch rule).
+   * Evaluates rooks behind passed pawns, following the Tarrasch rule that
+   * rooks belong behind passed pawns to support their advancement.
+   *
+   * @param rook The rook to evaluate.
+   * @param playerPawns The player's pawns.
+   * @param opponentPawns The opponent's pawns.
+   * @param alliance The alliance of the rook.
+   * @return The rook-pawn cooperation evaluation score.
    */
   private double evaluateRookBehindPassedPawn(final Piece rook,
                                               final List<Piece> playerPawns,
@@ -1145,30 +1186,26 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
     final int rookFile = rookPosition % 8;
     final int rookRank = rookPosition / 8;
 
-    // Check for passed pawns on the same file
     for (final Piece pawn : playerPawns) {
       if (pawn.getPiecePosition() % 8 == rookFile &&
               isPassedPawn(pawn, opponentPawns, alliance)) {
         final int pawnRank = pawn.getPiecePosition() / 8;
 
-        // Check if rook is behind the passed pawn
         if ((alliance.isWhite() && rookRank > pawnRank) ||
                 (!alliance.isWhite() && rookRank < pawnRank)) {
-          behindPawnScore += 30; // Tarrasch rule: Rooks belong behind passed pawns
+          behindPawnScore += 30;
         }
       }
     }
 
-    // Check for opposing passed pawns on the same file
     for (final Piece pawn : opponentPawns) {
       if (pawn.getPiecePosition() % 8 == rookFile &&
               isPassedPawn(pawn, playerPawns, alliance.equals(Alliance.WHITE) ? Alliance.BLACK : Alliance.WHITE)) {
         final int pawnRank = pawn.getPiecePosition() / 8;
 
-        // Check if rook is behind the opponent's passed pawn
         if ((alliance.isWhite() && rookRank > pawnRank) ||
                 (!alliance.isWhite() && rookRank < pawnRank)) {
-          behindPawnScore += 20; // Good to have rook behind opponent's passed pawn too
+          behindPawnScore += 20;
         }
       }
     }
@@ -1177,7 +1214,13 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates rooks on the 7th rank (or 2nd for black).
+   * Evaluates rooks on the 7th rank (or 2nd rank for black), which is often
+   * a very strong position in endgames for attacking pawns and restricting the king.
+   *
+   * @param rook The rook to evaluate.
+   * @param opponentPawns The opponent's pawns.
+   * @param alliance The alliance of the rook.
+   * @return The 7th rank rook evaluation score.
    */
   private double evaluateRookOn7thRank(final Piece rook,
                                        final List<Piece> opponentPawns,
@@ -1185,11 +1228,9 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
     double seventhRankScore = 0;
     final int rookRank = rook.getPiecePosition() / 8;
 
-    // Check if rook is on 7th rank (2nd rank for black)
     if ((alliance.isWhite() && rookRank == 1) || (!alliance.isWhite() && rookRank == 6)) {
       seventhRankScore += 30;
 
-      // Additional bonus if there are enemy pawns on the 7th rank
       for (final Piece pawn : opponentPawns) {
         final int pawnRank = pawn.getPiecePosition() / 8;
         if ((alliance.isWhite() && pawnRank == 1) || (!alliance.isWhite() && pawnRank == 6)) {
@@ -1202,7 +1243,11 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates connected rooks (rooks that protect each other).
+   * Evaluates connected rooks that protect each other on the same rank or file.
+   * Connected rooks can provide mutual support and control important squares.
+   *
+   * @param playerRooks The player's rooks.
+   * @return The connected rooks evaluation score.
    */
   private double evaluateConnectedRooks(final List<Piece> playerRooks) {
     double connectedScore = 0;
@@ -1212,12 +1257,10 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
         final int rookPos1 = playerRooks.get(i).getPiecePosition();
         final int rookPos2 = playerRooks.get(j).getPiecePosition();
 
-        // Rooks on same rank
         if (rookPos1 / 8 == rookPos2 / 8) {
           connectedScore += 20;
         }
 
-        // Rooks on same file
         if (rookPos1 % 8 == rookPos2 % 8) {
           connectedScore += 15;
         }
@@ -1228,8 +1271,12 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates bishop endgame patterns, including color complexes,
-   * mobility, and bishop vs knight dynamics.
+   * Evaluates bishop endgame patterns, including color complex control,
+   * bishop mobility, and bishop versus knight dynamics.
+   *
+   * @param player The player whose bishop endgame factors are being evaluated.
+   * @param board The current chess board state.
+   * @return The bishop endgame evaluation score.
    */
   private double bishopEndgameEvaluation(final Player player, final Board board) {
     double bishopScore = 0;
@@ -1241,16 +1288,13 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
       return 0;
     }
 
-    // Evaluate color complex control
     bishopScore += evaluateColorComplexControl(playerBishops, board);
 
-    // Bishop mobility (more important in endgames)
     for (final Piece bishop : playerBishops) {
       final Collection<Move> bishopMoves = bishop.calculateLegalMoves(board);
       bishopScore += bishopMoves.size() * 5;
     }
 
-    // Bishop vs Knight evaluation in specific positions
     final List<Piece> playerKnights = player.getActivePieces().stream()
             .filter(p -> p.getPieceType() == Piece.PieceType.KNIGHT)
             .toList();
@@ -1259,7 +1303,6 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
             .filter(p -> p.getPieceType() == Piece.PieceType.KNIGHT)
             .toList();
 
-    // Bishop vs Knight dynamics
     if (!playerBishops.isEmpty() && !opponentKnights.isEmpty() && playerKnights.isEmpty()) {
       bishopScore += evaluateBishopVsKnight(board);
     }
@@ -1268,12 +1311,16 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates color complex control (important in endgames).
+   * Evaluates color complex control, which is important in bishop endgames.
+   * Bishops that control squares of the opposite color from most pawns are
+   * generally more effective.
+   *
+   * @param playerBishops The player's bishops.
+   * @param board The current chess board state.
+   * @return The color complex control evaluation score.
    */
   private double evaluateColorComplexControl(final List<Piece> playerBishops, final Board board) {
     double colorScore = 0;
-
-    // Check bishop square colors
     boolean hasLightSquareBishop = false;
     boolean hasDarkSquareBishop = false;
 
@@ -1288,13 +1335,11 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
       }
     }
 
-    // Bishop pair bonus
     if (hasLightSquareBishop && hasDarkSquareBishop) {
       colorScore += 50;
-      return colorScore; // With bishop pair, no need for further evaluation
+      return colorScore;
     }
 
-    // Count pawns on same colored squares as the bishop
     final List<Piece> allPawns = new ArrayList<>();
     allPawns.addAll(getPlayerPawns(board.whitePlayer()));
     allPawns.addAll(getPlayerPawns(board.blackPlayer()));
@@ -1313,73 +1358,72 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
       }
     }
 
-    // Favorable color complex
     if (hasLightSquareBishop && darkSquarePawns > lightSquarePawns) {
-      colorScore += 20; // Good - bishop controls squares not blocked by pawns
+      colorScore += 20;
     } else if (!hasLightSquareBishop && hasDarkSquareBishop && lightSquarePawns > darkSquarePawns) {
-      colorScore += 20; // Good - bishop controls squares not blocked by pawns
+      colorScore += 20;
     }
 
-    // Unfavorable color complex
     if (hasLightSquareBishop && lightSquarePawns > darkSquarePawns) {
-      colorScore -= 15; // Bad - bishop controls squares mostly blocked by pawns
+      colorScore -= 15;
     } else if (!hasLightSquareBishop && hasDarkSquareBishop && darkSquarePawns > lightSquarePawns) {
-      colorScore -= 15; // Bad - bishop controls squares mostly blocked by pawns
+      colorScore -= 15;
     }
 
     return colorScore;
   }
 
   /**
-   * Evaluates bishop vs knight dynamics in specific positions.
+   * Evaluates bishop versus knight dynamics in specific positions.
+   * Bishops are generally better in open positions while knights prefer closed positions.
+   *
+   * @param board The current chess board state.
+   * @return The bishop versus knight evaluation score.
    */
   private double evaluateBishopVsKnight(final Board board) {
     double dynamicScore = 0;
-
-    // Count pawns
     final int pawnCount = getPlayerPawns(board.whitePlayer()).size() +
             getPlayerPawns(board.blackPlayer()).size();
 
-    // Bishops are better in open positions
     if (pawnCount <= 5) {
-      dynamicScore += 20; // Open position favors bishop
+      dynamicScore += 20;
     } else if (pawnCount >= 8) {
-      dynamicScore -= 10; // Closed position favors knight
+      dynamicScore -= 10;
     }
 
     return dynamicScore;
   }
 
   /**
-   * Evaluates common draw patterns in endgames.
+   * Evaluates common draw patterns in endgames, including insufficient material,
+   * opposite-colored bishops, and other drawish tendencies.
+   *
+   * @param player The player whose draw patterns are being evaluated.
+   * @param board The current chess board state.
+   * @return The draw pattern evaluation score.
    */
   private double drawPatternEvaluation(final Player player, final Board board) {
     double drawScore = 0;
     final Collection<Piece> playerPieces = player.getActivePieces();
     final Collection<Piece> opponentPieces = player.getOpponent().getActivePieces();
 
-    // Count material
     Map<Piece.PieceType, Integer> playerPieceCounts = countPieceTypes(playerPieces);
     Map<Piece.PieceType, Integer> opponentPieceCounts = countPieceTypes(opponentPieces);
 
-    // Insufficient material draws
     if (isInsufficientMaterial(playerPieceCounts, opponentPieceCounts)) {
-      drawScore -= 800; // Large drawish penalty
+      drawScore -= 800;
     }
 
-    // Opposite colored bishops endgame
     if (hasOppositeColoredBishops(playerPieces, opponentPieces) &&
             playerPieceCounts.getOrDefault(Piece.PieceType.PAWN, 0) <= 2 &&
             opponentPieceCounts.getOrDefault(Piece.PieceType.PAWN, 0) <= 2) {
-      drawScore -= 200; // Likely draw with few pawns
+      drawScore -= 200;
     }
 
-    // Rook and pawn vs rook (often drawish)
     if (playerPieceCounts.getOrDefault(Piece.PieceType.ROOK, 0) == 1 &&
             playerPieceCounts.getOrDefault(Piece.PieceType.PAWN, 0) == 1 &&
             opponentPieceCounts.getOrDefault(Piece.PieceType.ROOK, 0) == 1 &&
             opponentPieceCounts.getOrDefault(Piece.PieceType.PAWN, 0) == 0) {
-      // Check if pawn is too advanced
       List<Piece> playerPawns = getPlayerPawns(player);
       if (!playerPawns.isEmpty()) {
         Piece pawn = playerPawns.get(0);
@@ -1387,9 +1431,9 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
 
         if ((player.getAlliance().isWhite() && pawnRank <= 1) ||
                 (!player.getAlliance().isWhite() && pawnRank >= 6)) {
-          drawScore += 100; // Advanced pawn might win
+          drawScore += 100;
         } else {
-          drawScore -= 100; // Likely draw
+          drawScore -= 100;
         }
       }
     }
@@ -1398,28 +1442,28 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates mobility, which is less important in many endgames but
-   * still relevant for certain positions.
+   * Evaluates mobility, which is less important in many endgames but still
+   * relevant for certain positions, particularly with active pieces.
+   *
+   * @param player The player whose mobility is being evaluated.
+   * @param board The current chess board state.
+   * @return The mobility evaluation score.
    */
   private double mobilityEvaluation(final Player player, final Board board) {
     double mobilityScore = 0;
     final Collection<Move> playerMoves = player.getLegalMoves();
     final Collection<Move> opponentMoves = player.getOpponent().getLegalMoves();
 
-    // Adjust mobility importance based on position type
     double mobilityWeight = 1.0;
 
-    // In pawn endgames, mobility is less important
     if (isPawnEndgame(board)) {
       mobilityWeight = 0.5;
     }
 
-    // In positions with opposite bishops, mobility is more important
     if (hasOppositeColoredBishops(player.getActivePieces(), player.getOpponent().getActivePieces())) {
       mobilityWeight = 1.5;
     }
 
-    // Calculate mobility difference
     int mobilityDifference = playerMoves.size() - opponentMoves.size();
     mobilityScore += mobilityDifference * 2 * mobilityWeight;
 
@@ -1427,7 +1471,10 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Checks if the position is a pawn endgame (only kings and pawns).
+   * Checks if the position is a pawn endgame with only kings and pawns remaining.
+   *
+   * @param board The current chess board state.
+   * @return True if the position is a pawn endgame, false otherwise.
    */
   private boolean isPawnEndgame(final Board board) {
     for (final Piece piece : board.getAllPieces()) {
@@ -1440,7 +1487,12 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Calculates the Chebyshev distance between two squares.
+   * Calculates the Chebyshev distance between two squares on the chess board.
+   * This is the maximum of the horizontal and vertical distances.
+   *
+   * @param position1 The first position.
+   * @param position2 The second position.
+   * @return The Chebyshev distance between the positions.
    */
   private int calculateChebyshevDistance(final int position1, final int position2) {
     final int file1 = position1 % 8;
@@ -1453,6 +1505,9 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
 
   /**
    * Gets a list of pawn pieces for the specified player.
+   *
+   * @param player The player whose pawns are requested.
+   * @return A list of the player's pawn pieces.
    */
   private static List<Piece> getPlayerPawns(final Player player) {
     return player.getActivePieces().stream()
