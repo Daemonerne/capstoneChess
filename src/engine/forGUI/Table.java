@@ -4,7 +4,7 @@ import com.google.common.collect.Lists;
 import engine.forBoard.*;
 import engine.forPiece.Piece;
 import engine.forPlayer.Player;
-import engine.forPlayer.forAI.StockAlphaBeta;
+import engine.forPlayer.forAI.AlphaBeta;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 
 import javax.imageio.ImageIO;
@@ -459,7 +459,7 @@ public final class Table extends Observable {
     @Override
     protected Move doInBackground() {
       final Move bestMove;
-      final StockAlphaBeta strategy = new StockAlphaBeta(Table.get().getGameSetup().getSearchDepth(), Table.get().getGameBoard());
+      final AlphaBeta strategy = new AlphaBeta(Table.get().getGameSetup().getSearchDepth(), Table.get().getGameBoard());
       strategy.addObserver(Table.get().getDebugPanel());
       bestMove = strategy.execute(Table.get().getGameBoard());
       return bestMove;

@@ -23,7 +23,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import static engine.forBoard.Move.MoveFactory;
 
 /**
- * The StockAlphaBeta class implements a chess engine using the alpha-beta search algorithm
+ * The AlphaBeta class implements a chess engine using the alpha-beta search algorithm
  * with Lazy SMP parallel search optimization. This implementation employs advanced chess
  * engine techniques including iterative deepening, aspiration windows, transposition tables,
  * quiescence search, null move pruning, late move reductions, and various move ordering
@@ -35,7 +35,7 @@ import static engine.forBoard.Move.MoveFactory;
  *
  * @author Aaron Ho
  */
-public class StockAlphaBeta extends Observable implements MoveStrategy {
+public class AlphaBeta extends Observable implements MoveStrategy {
 
   /** The evaluator used to assess board positions and generate evaluation scores. */
   private final BoardEvaluator evaluator;
@@ -124,7 +124,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     STANDARD {
       @Override
       Collection<Move> sort(final Collection<Move> moves, final Board board,
-                            final StockAlphaBeta engine, final int ply) {
+                            final AlphaBeta engine, final int ply) {
         List<Move> sortedMoves = new ArrayList<>(moves);
         Move[][] killers = engine.killerMoves.get();
         Move lastMove = board.getTransitionMove();
@@ -229,7 +229,7 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
     EXPENSIVE {
       @Override
       Collection<Move> sort(final Collection<Move> moves, final Board board,
-                            final StockAlphaBeta engine, final int ply) {
+                            final AlphaBeta engine, final int ply) {
         List<Move> sortedMoves = new ArrayList<>(moves);
 
         Map<Move, Integer> seeScores = new HashMap<>();
@@ -279,18 +279,18 @@ public class StockAlphaBeta extends Observable implements MoveStrategy {
      * @return A sorted collection of moves.
      */
     abstract Collection<Move> sort(Collection<Move> moves, final Board board,
-                                   final StockAlphaBeta engine, final int ply);
+                                   final AlphaBeta engine, final int ply);
   }
 
   /**
-   * Constructs a StockAlphaBeta chess engine with the specified maximum search depth.
+   * Constructs a AlphaBeta chess engine with the specified maximum search depth.
    * Initializes the thread pool, transposition table, and determines the appropriate
    * board evaluator based on the current game state.
    *
    * @param maxDepth The maximum depth for iterative deepening search.
    * @param board The initial board position for evaluator selection.
    */
-  public StockAlphaBeta(final int maxDepth, final Board board) {
+  public AlphaBeta(final int maxDepth, final Board board) {
     this.maxDepth = maxDepth;
     this.threadCount = Runtime.getRuntime().availableProcessors();
     this.searchThreadPool = Executors.newFixedThreadPool(threadCount);
