@@ -909,7 +909,7 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
     coordinationScore += evaluateBishopPair(playerPieces);
     coordinationScore += evaluateRookCoordination(playerPieces, board);
     coordinationScore += evaluateKnightOutposts(playerPieces, getPlayerPawns(player), getPlayerPawns(player.getOpponent()));
-    coordinationScore += evaluatePieceProtection(playerPieces, playerMoves);
+    coordinationScore += evaluatePieceProtection(playerPieces, playerMoves, board, player.getOpponent());
     coordinationScore += evaluatePieceActivity(playerPieces);
 
     return coordinationScore;
@@ -1108,14 +1108,20 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
   }
 
   /**
-   * Evaluates how well pieces protect each other.
+   * Evaluates how well pieces protect each other and heavily penalizes hanging pieces.
+   * This version includes comprehensive piece safety analysis with severe penalties
+   * for undefended valuable pieces that can be captured.
    *
    * @param playerPieces The player's pieces.
    * @param playerMoves The player's legal moves.
-   * @return The piece protection evaluation score.
+   * @param board The current chess board state.
+   * @param opponent The opposing player.
+   * @return The enhanced piece protection evaluation score.
    */
   private double evaluatePieceProtection(final Collection<Piece> playerPieces,
-                                         final Collection<Move> playerMoves) {
+                                         final Collection<Move> playerMoves,
+                                         final Board board,
+                                         final Player opponent) {
     double protectionScore = 0;
     Map<Integer, Integer> squareProtectionCount = new HashMap<>();
 
@@ -1125,17 +1131,47 @@ public class MiddlegameBoardEvaluator implements BoardEvaluator {
               squareProtectionCount.getOrDefault(destination, 0) + 1);
     }
 
+    Map<Integer, List<Move>> opponentAttacks = new HashMap<>();
+    for (final Move move : opponent.getLegalMoves()) {
+      int destination = move.getDestinationCoordinate();
+      opponentAttacks.computeIfAbsent(destination, k -> new ArrayList<>()).add(move);
+    }
+
     for (final Piece piece : playerPieces) {
+      if (piece.getPieceType() == Piece.PieceType.KING) continue;
+
       final int position = piece.getPiecePosition();
       final int protectionCount = squareProtectionCount.getOrDefault(position, 0);
+      final List<Move> attacks = opponentAttacks.getOrDefault(position, new ArrayList<>());
 
-      if (protectionCount > 0) {
-        protectionScore += 5;
+      if (!attacks.isEmpty()) {
+        if (protectionCount == 0) {
+          switch (piece.getPieceType()) {
+            case QUEEN -> protectionScore -= 850;
+            case ROOK -> protectionScore -= 480;
+            case BISHOP -> protectionScore -= 320;
+            case KNIGHT -> protectionScore -= 300;
+            case PAWN -> protectionScore -= 95;
+          }
+        } else if (attacks.size() > protectionCount) {
+          double penalty = piece.getPieceValue() * 0.8 * (attacks.size() - protectionCount);
+          protectionScore -= penalty;
+        } else {
+          protectionScore += piece.getPieceValue() * 0.1;
+        }
+      } else if (protectionCount > 0) {
+        protectionScore += 8;
 
         if (piece.getPieceType() == Piece.PieceType.QUEEN) {
-          protectionScore += 5 * protectionCount;
+          protectionScore += 6 * protectionCount;
         } else if (piece.getPieceType() == Piece.PieceType.ROOK) {
-          protectionScore += 3 * protectionCount;
+          protectionScore += 4 * protectionCount;
+        }
+      }
+
+      for (final Move attack : attacks) {
+        if (attack.getMovedPiece().getPieceType() == Piece.PieceType.PAWN && protectionCount == 0) {
+          protectionScore -= piece.getPieceValue() * 0.3;
         }
       }
     }

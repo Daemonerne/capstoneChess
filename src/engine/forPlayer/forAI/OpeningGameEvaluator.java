@@ -63,18 +63,16 @@ public class OpeningGameEvaluator implements BoardEvaluator {
    */
   @VisibleForTesting
   private double score(final Player player, final Board board, final int depth) {
-    double materialScore = materialScore(player.getActivePieces()) * 0.7;
-    double developmentScore = developmentScore(player, board) * 3.0;
-    double centerControlScore = centerControlScore(player, board) * 2.5;
-    double kingSafetyScore = kingSafetyScore(player, board) * 2.2;
-    double pawnStructureScore = pawnStructureScore(player, board);
-    double mobilityScore = mobilityScore(player, board) * 0.8;
-    double pieceCoordinationScore = pieceCoordinationScore(player, board) * 1.2;
-    double tempoScore = tempoScore(player, board, depth) * 1.5;
 
-    return materialScore + developmentScore + centerControlScore +
-            kingSafetyScore + pawnStructureScore + mobilityScore +
-            pieceCoordinationScore + tempoScore;
+    return materialScore(player.getActivePieces()) +
+            developmentScore(player, board) +
+            centerControlScore(player, board) +
+            kingSafetyScore(player, board) +
+            pawnStructureScore(player, board) +
+            mobilityScore(player, board) +
+            pieceCoordinationScore(player, board) +
+            tempoScore(player, board, depth) +
+            pieceSafetyScore(player, board);
   }
 
   /**
@@ -821,6 +819,126 @@ public class OpeningGameEvaluator implements BoardEvaluator {
     }
 
     return score;
+  }
+
+  /**
+   * Evaluates piece safety by detecting hanging pieces and undefended valuable pieces.
+   * Heavily penalizes pieces that can be captured for free or are inadequately defended.
+   * This is crucial in the opening to prevent tactical blunders.
+   *
+   * @param player The player whose piece safety is being evaluated.
+   * @param board The current chess board state.
+   * @return The piece safety evaluation score (negative values indicate unsafe pieces).
+   */
+  private double pieceSafetyScore(final Player player, final Board board) {
+    double safetyScore = 0;
+    final Collection<Piece> playerPieces = player.getActivePieces();
+    final Collection<Move> opponentMoves = player.getOpponent().getLegalMoves();
+
+    Map<Integer, List<Piece>> opponentAttacks = new HashMap<>();
+    for (final Move move : opponentMoves) {
+      int destination = move.getDestinationCoordinate();
+      opponentAttacks.computeIfAbsent(destination, k -> new ArrayList<>()).add(move.getMovedPiece());
+    }
+
+    Map<Integer, List<Piece>> playerDefenses = new HashMap<>();
+    for (final Move move : player.getLegalMoves()) {
+      int destination = move.getDestinationCoordinate();
+      playerDefenses.computeIfAbsent(destination, k -> new ArrayList<>()).add(move.getMovedPiece());
+    }
+
+    for (final Piece piece : playerPieces) {
+      if (piece.getPieceType() == Piece.PieceType.KING) continue;
+
+      final int position = piece.getPiecePosition();
+      final List<Piece> attackers = opponentAttacks.getOrDefault(position, new ArrayList<>());
+      final List<Piece> defenders = playerDefenses.getOrDefault(position, new ArrayList<>());
+
+      if (!attackers.isEmpty()) {
+        int attackerCount = attackers.size();
+        int defenderCount = defenders.size();
+
+        if (defenderCount == 0) {
+          switch (piece.getPieceType()) {
+            case QUEEN -> safetyScore -= 800;
+            case ROOK -> safetyScore -= 450;
+            case BISHOP, KNIGHT -> safetyScore -= 280;
+            case PAWN -> safetyScore -= 90;
+          }
+        } else if (attackerCount > defenderCount) {
+          int materialLoss = calculateSimpleExchange(piece, attackers, defenders);
+          safetyScore -= materialLoss * 0.7;
+        }
+      }
+
+      int defenderCount = defenders.size();
+      if (defenderCount > 0) {
+        switch (piece.getPieceType()) {
+          case QUEEN -> safetyScore += Math.min(defenderCount * 15, 45);
+          case ROOK -> safetyScore += Math.min(defenderCount * 10, 30);
+          case BISHOP, KNIGHT -> safetyScore += Math.min(defenderCount * 5, 15);
+        }
+      }
+    }
+
+    return safetyScore;
+  }
+
+  /**
+   * Calculates the approximate material outcome of an exchange sequence.
+   * Uses simplified logic to estimate the result of a capture sequence.
+   *
+   * @param piece The piece being attacked.
+   * @param attackers List of pieces that can capture.
+   * @param defenders List of pieces that can defend.
+   * @return The estimated material loss for the defending side.
+   */
+  private int calculateSimpleExchange(final Piece piece, final List<Piece> attackers, final List<Piece> defenders) {
+    List<Integer> attackerValues = attackers.stream()
+            .mapToInt(Piece::getPieceValue)
+            .sorted()
+            .boxed()
+            .toList();
+
+    List<Integer> defenderValues = defenders.stream()
+            .mapToInt(Piece::getPieceValue)
+            .sorted()
+            .boxed()
+            .toList();
+
+    int materialBalance = 0;
+    int targetValue = piece.getPieceValue();
+    boolean attackerTurn = true;
+
+    materialBalance += targetValue;
+
+    int attackerIndex = 0;
+    int defenderIndex = 0;
+
+    while ((attackerTurn && defenderIndex < defenderValues.size()) ||
+            (!attackerTurn && attackerIndex < attackerValues.size())) {
+
+      if (attackerTurn) {
+        if (attackerIndex < attackerValues.size()) {
+          materialBalance -= attackerValues.get(attackerIndex);
+          attackerIndex++;
+        }
+        defenderIndex++;
+      } else {
+        if (defenderIndex < defenderValues.size()) {
+          materialBalance += defenderValues.get(defenderIndex);
+          defenderIndex++;
+        }
+        attackerIndex++;
+      }
+
+      attackerTurn = !attackerTurn;
+
+      if (attackerTurn && materialBalance <= 0) break;
+      if (!attackerTurn && materialBalance >= 0) break;
+    }
+
+    return Math.max(0, materialBalance);
   }
 
   /**

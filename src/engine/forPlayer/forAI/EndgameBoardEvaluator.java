@@ -70,7 +70,8 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
             rookEndgameEvaluation(player, board) +
             bishopEndgameEvaluation(player, board) +
             drawPatternEvaluation(player, board) +
-            mobilityEvaluation(player, board);
+            mobilityEvaluation(player, board) +
+            pieceSafetyEvaluation(player, board);
   }
 
   /**
@@ -1468,6 +1469,57 @@ public class EndgameBoardEvaluator implements BoardEvaluator {
     mobilityScore += mobilityDifference * 2 * mobilityWeight;
 
     return mobilityScore;
+  }
+
+  /**
+   * Evaluates piece safety in endgame positions where piece coordination becomes critical.
+   * In endgames, losing material is often decisive, so hanging pieces are penalized severely.
+   *
+   * @param player The player whose piece safety is being evaluated.
+   * @param board The current chess board state.
+   * @return The piece safety evaluation score.
+   */
+  private double pieceSafetyEvaluation(final Player player, final Board board) {
+    double safetyScore = 0;
+    final Collection<Piece> playerPieces = player.getActivePieces();
+    final Collection<Move> playerMoves = player.getLegalMoves();
+    final Collection<Move> opponentMoves = player.getOpponent().getLegalMoves();
+
+    Map<Integer, Integer> defenseCount = new HashMap<>();
+    Map<Integer, Integer> attackCount = new HashMap<>();
+
+    for (final Move move : playerMoves) {
+      defenseCount.put(move.getDestinationCoordinate(),
+              defenseCount.getOrDefault(move.getDestinationCoordinate(), 0) + 1);
+    }
+
+    for (final Move move : opponentMoves) {
+      attackCount.put(move.getDestinationCoordinate(),
+              attackCount.getOrDefault(move.getDestinationCoordinate(), 0) + 1);
+    }
+
+    for (final Piece piece : playerPieces) {
+      if (piece.getPieceType() == Piece.PieceType.KING) continue;
+
+      final int position = piece.getPiecePosition();
+      final int attacks = attackCount.getOrDefault(position, 0);
+      final int defenses = defenseCount.getOrDefault(position, 0);
+
+      if (attacks > 0) {
+        if (defenses == 0) {
+          switch (piece.getPieceType()) {
+            case QUEEN -> safetyScore -= 900;
+            case ROOK -> safetyScore -= 520;
+            case BISHOP, KNIGHT -> safetyScore -= 340;
+            case PAWN -> safetyScore -= 110;
+          }
+        } else if (attacks > defenses) {
+          safetyScore -= piece.getPieceValue() * 0.9;
+        }
+      }
+    }
+
+    return safetyScore;
   }
 
   /**
