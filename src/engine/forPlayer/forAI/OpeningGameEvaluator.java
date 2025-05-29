@@ -137,15 +137,16 @@ public class OpeningGameEvaluator implements BoardEvaluator {
         queenMoved = true;
         int queenRank = piece.getPiecePosition() / 8;
         int queenFile = piece.getPiecePosition() % 8;
+        score -= 200;
 
         if ((isWhite && queenRank < 4) || (!isWhite && queenRank > 3)) {
-          score -= 100;
+          score -= 150;
         }
 
         if (queenFile >= 2 && queenFile <= 5) {
-          score -= 60;
+          score -= 100;
         } else {
-          score -= 50;
+          score -= 80;
         }
       }
     }
